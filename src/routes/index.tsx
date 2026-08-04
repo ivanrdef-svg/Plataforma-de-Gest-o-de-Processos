@@ -163,19 +163,49 @@ function Launchpad() {
         <div className="space-y-10">
           <section>
             <SectionHeader title="Minhas tarefas" />
-            <EmptyState
-              icon={<ListChecks className="h-5 w-5" />}
-              title="Sem tarefas atribuídas"
+            <div className="divide-y rounded-xl border bg-card">
+              {DEMO_TASKS.map((task) => (
+                <div key={task.id} className="flex items-center gap-3 px-4 py-3">
+                  <ListChecks className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <p className="min-w-0 truncate text-sm">{task.title}</p>
+                  <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
+                    {task.due}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section>
+            <SectionHeader
+              title="Favoritos"
+              action={
+                <Link
+                  to="/favoritos"
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                >
+                  Ver todos <ArrowUpRight className="h-3 w-3" />
+                </Link>
+              }
             />
+            <div className="divide-y rounded-xl border bg-card">
+              {DEMO_FAVORITES.map((item) => (
+                <div key={item.id} className="flex items-center gap-3 px-4 py-3">
+                  <Star className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <p className="min-w-0 truncate text-sm">{item.title}</p>
+                  <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
+                    {item.type}
+                  </span>
+                </div>
+              ))}
+            </div>
           </section>
 
           <section>
-            <SectionHeader title="Favoritos" />
-            <EmptyState icon={<Star className="h-5 w-5" />} title="Nenhum favorito ainda" />
-          </section>
-
-          <section>
-            <SectionHeader title="Indicadores" />
+            <SectionHeader
+              title="Indicadores"
+              description="Área reservada para indicadores futuros."
+            />
             <div className="grid grid-cols-2 gap-3">
               {[
                 { label: "Processos", value: "—", icon: TrendingUp },
