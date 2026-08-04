@@ -58,9 +58,11 @@ export const PLATFORM_MODULES: PlatformModule[] = [
     name: "Conhecimento",
     description: "A origem de tudo: base estruturada de conhecimento corporativo.",
     icon: BookOpen,
-    status: "planned",
+    route: "/knowledge",
+    status: "available",
     group: "core",
   },
+
   {
     id: "processes",
     name: "Processos",
