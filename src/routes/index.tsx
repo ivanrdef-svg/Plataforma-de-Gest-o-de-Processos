@@ -9,7 +9,7 @@ import {
   Star,
   TrendingUp,
 } from "lucide-react";
-import { PageContainer, SectionHeader, EmptyState } from "@/components/layout/page";
+import { PageContainer, SectionHeader } from "@/components/layout/page";
 import { PLATFORM_MODULES } from "@/config/modules";
 import {
   DEMO_FAVORITES,
