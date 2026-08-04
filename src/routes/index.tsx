@@ -9,8 +9,13 @@ import {
   Star,
   TrendingUp,
 } from "lucide-react";
-import { PageContainer, SectionHeader, EmptyState } from "@/components/layout/page";
+import { PageContainer, SectionHeader } from "@/components/layout/page";
 import { PLATFORM_MODULES } from "@/config/modules";
+import {
+  DEMO_FAVORITES,
+  DEMO_TASKS,
+  DEMO_WORKSPACES,
+} from "@/config/workspace-demo";
 import { useGlobalSearch } from "@/components/search/global-search-context";
 
 export const Route = createFileRoute("/")({
@@ -72,11 +77,23 @@ function Launchpad() {
               title="Continuar de onde parei"
               description="Retome o último objeto aberto."
             />
-            <EmptyState
-              icon={<Clock className="h-5 w-5" />}
-              title="Nada em andamento"
-              description="Assim que você abrir um objeto em um workspace, ele aparecerá aqui."
-            />
+            <Link
+              to="/workspaces/$workspaceId"
+              params={{ workspaceId: DEMO_WORKSPACES[0]!.id }}
+              className="group flex items-center gap-4 rounded-xl border bg-card p-4 transition-all hover:-translate-y-0.5 hover:shadow-float"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Clock className="h-4 w-4" />
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">{DEMO_WORKSPACES[0]!.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {DEMO_WORKSPACES[0]!.type} · {DEMO_WORKSPACES[0]!.version} ·{" "}
+                  {DEMO_WORKSPACES[0]!.updatedAt}
+                </p>
+              </div>
+              <ArrowUpRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+            </Link>
           </section>
 
           <section>
@@ -91,11 +108,27 @@ function Launchpad() {
                 </Link>
               }
             />
-            <EmptyState
-              icon={<LayoutGrid className="h-5 w-5" />}
-              title="Nenhum workspace recente"
-              description="Workspaces organizam todo o trabalho da plataforma."
-            />
+            <div className="grid gap-3 sm:grid-cols-2">
+              {DEMO_WORKSPACES.map((ws) => (
+                <Link
+                  key={ws.id}
+                  to="/workspaces/$workspaceId"
+                  params={{ workspaceId: ws.id }}
+                  className="group rounded-xl border bg-card p-4 transition-all hover:-translate-y-0.5 hover:shadow-float"
+                >
+                  <div className="flex items-center gap-2">
+                    <LayoutGrid className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="truncate text-sm font-medium">{ws.name}</span>
+                  </div>
+                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                    {ws.description}
+                  </p>
+                  <p className="mt-3 text-[11px] text-muted-foreground/80">
+                    {ws.owner} · {ws.updatedAt}
+                  </p>
+                </Link>
+              ))}
+            </div>
           </section>
 
           <section>
@@ -130,19 +163,49 @@ function Launchpad() {
         <div className="space-y-10">
           <section>
             <SectionHeader title="Minhas tarefas" />
-            <EmptyState
-              icon={<ListChecks className="h-5 w-5" />}
-              title="Sem tarefas atribuídas"
+            <div className="divide-y rounded-xl border bg-card">
+              {DEMO_TASKS.map((task) => (
+                <div key={task.id} className="flex items-center gap-3 px-4 py-3">
+                  <ListChecks className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <p className="min-w-0 truncate text-sm">{task.title}</p>
+                  <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
+                    {task.due}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section>
+            <SectionHeader
+              title="Favoritos"
+              action={
+                <Link
+                  to="/favoritos"
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                >
+                  Ver todos <ArrowUpRight className="h-3 w-3" />
+                </Link>
+              }
             />
+            <div className="divide-y rounded-xl border bg-card">
+              {DEMO_FAVORITES.map((item) => (
+                <div key={item.id} className="flex items-center gap-3 px-4 py-3">
+                  <Star className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <p className="min-w-0 truncate text-sm">{item.title}</p>
+                  <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
+                    {item.type}
+                  </span>
+                </div>
+              ))}
+            </div>
           </section>
 
           <section>
-            <SectionHeader title="Favoritos" />
-            <EmptyState icon={<Star className="h-5 w-5" />} title="Nenhum favorito ainda" />
-          </section>
-
-          <section>
-            <SectionHeader title="Indicadores" />
+            <SectionHeader
+              title="Indicadores"
+              description="Área reservada para indicadores futuros."
+            />
             <div className="grid grid-cols-2 gap-3">
               {[
                 { label: "Processos", value: "—", icon: TrendingUp },
