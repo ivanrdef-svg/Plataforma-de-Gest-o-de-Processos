@@ -12,7 +12,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Home, LayoutGrid, Search, Settings2, Star } from "lucide-react";
+import { BookOpen, Home, LayoutGrid, Search, Settings2, Star } from "lucide-react";
 import { MODULE_GROUPS, PLATFORM_MODULES, type ModuleGroup } from "@/config/modules";
 import { cn } from "@/lib/utils";
 import { useGlobalSearch } from "@/components/search/global-search-context";
@@ -76,6 +76,19 @@ export function AppSidebar() {
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
+                  isActive={isActive("/knowledge")}
+                  tooltip="Knowledge"
+                >
+                  <Link to="/knowledge" className="flex items-center gap-2.5">
+                    <BookOpen className="h-4 w-4" />
+                    {!collapsed && <span>Knowledge</span>}
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+
+                <SidebarMenuButton
+                  asChild
                   isActive={isActive("/favoritos")}
                   tooltip="Favoritos"
                 >
@@ -112,8 +125,9 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {PLATFORM_MODULES.filter(
-                  (m) => m.group === group && m.id !== "workspaces",
+                  (m) => m.group === group && m.id !== "workspaces" && m.id !== "knowledge",
                 ).map((module) => {
+
                   const Icon = module.icon;
                   const content = (
                     <>
