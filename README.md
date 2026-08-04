@@ -1,4 +1,4 @@
-# AI Buddy
+# Plataforma de Gestão de Processos
 
 Create a new project with AI enabled.
 
