@@ -23,6 +23,8 @@ export interface WorkspaceLayoutProps {
   subtitle?: string;
   /** Barra de contexto: breadcrumbs, status, metadados do objeto aberto. */
   contextBar?: ReactNode;
+  /** Metadados do header (tipo, versão, status, responsável, atualização). */
+  meta?: ReactNode;
   /** Ações do header (botões discretos). */
   actions?: ReactNode;
   tabs?: WorkspaceTab[];
@@ -40,6 +42,7 @@ export function WorkspaceLayout({
   title,
   subtitle,
   contextBar,
+  meta,
   actions,
   tabs,
   defaultTab,
@@ -57,6 +60,7 @@ export function WorkspaceLayout({
             {subtitle && (
               <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
             )}
+            {meta && <div className="mt-3">{meta}</div>}
           </div>
           {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
         </div>
