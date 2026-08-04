@@ -55,21 +55,21 @@ function KnowledgeCard({ pkg }: { pkg: KnowledgePackage }) {
       params={{ packageId: pkg.id }}
       className="group flex flex-col rounded-xl border bg-card p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-float"
     >
-      <div className="flex items-start gap-2">
+      <div className="flex items-start gap-2.5">
         <KnowledgeTypeIcon type={pkg.type} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <span className="truncate text-sm font-medium">{pkg.name}</span>
             <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-1">
+          <div className="mt-1.5 flex flex-wrap items-center gap-1">
             <KnowledgeTypeBadge type={pkg.type} />
             <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
               {pkg.category}
             </span>
+            <WorkspaceStatusPill status={pkg.status} />
           </div>
         </div>
-        <WorkspaceStatusPill status={pkg.status} />
       </div>
 
       <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
@@ -87,11 +87,11 @@ function KnowledgeCard({ pkg }: { pkg: KnowledgePackage }) {
         </span>
       </div>
 
-      <div className="mt-3 flex items-center justify-between gap-2 border-t pt-2.5 text-[11px] text-muted-foreground/80">
-        <span className="min-w-0 truncate">
+      <div className="mt-3 border-t pt-2.5">
+        <p className="truncate text-[11px] text-muted-foreground/80">
           {pkg.version} · {pkg.owner} · {pkg.updatedAt}
-        </span>
-        <CardQuickActions name={pkg.name} className="-mr-1 shrink-0" />
+        </p>
+        <CardQuickActions name={pkg.name} className="-ml-1.5 mt-1" />
       </div>
     </Link>
   );
@@ -156,7 +156,6 @@ function KnowledgeExplorer() {
             aria-label="Pesquisar Knowledge Packages"
           />
         </div>
-        <NewKnowledgeMenu />
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5">
@@ -194,13 +193,13 @@ function KnowledgeExplorer() {
       </div>
 
       {loading ? (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <KnowledgeCardSkeleton key={i} />
           ))}
         </div>
       ) : results.length > 0 ? (
-        <div className="grid animate-fade-in gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid animate-fade-in gap-3 sm:grid-cols-2 2xl:grid-cols-3">
           {results.map((pkg) => (
             <KnowledgeCard key={pkg.id} pkg={pkg} />
           ))}
