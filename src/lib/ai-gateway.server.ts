@@ -31,9 +31,7 @@ export function createLovableAiGatewayRunIdFetch(initialRunId?: string) {
       }
 
       try {
-        console.log("[AI Gateway] Request:", input, init?.body);
         const response = await fetch(input, { ...init, headers });
-        console.log("[AI Gateway] Response status:", response.status);
         publishRunId(response.headers.get(LOVABLE_AIG_RUN_ID_HEADER) ?? undefined);
         return response;
       } catch (error) {
