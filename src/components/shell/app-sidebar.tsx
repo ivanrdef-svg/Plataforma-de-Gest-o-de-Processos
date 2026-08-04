@@ -111,7 +111,9 @@ export function AppSidebar() {
             )}
             <SidebarGroupContent>
               <SidebarMenu>
-                {PLATFORM_MODULES.filter((m) => m.group === group).map((module) => {
+                {PLATFORM_MODULES.filter(
+                  (m) => m.group === group && m.id !== "workspaces",
+                ).map((module) => {
                   const Icon = module.icon;
                   const content = (
                     <>
