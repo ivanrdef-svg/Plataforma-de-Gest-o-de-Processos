@@ -11,6 +11,11 @@ import {
 } from "lucide-react";
 import { PageContainer, SectionHeader, EmptyState } from "@/components/layout/page";
 import { PLATFORM_MODULES } from "@/config/modules";
+import {
+  DEMO_FAVORITES,
+  DEMO_TASKS,
+  DEMO_WORKSPACES,
+} from "@/config/workspace-demo";
 import { useGlobalSearch } from "@/components/search/global-search-context";
 
 export const Route = createFileRoute("/")({
