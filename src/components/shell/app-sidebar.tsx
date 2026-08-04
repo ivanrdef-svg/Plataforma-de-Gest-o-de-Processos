@@ -76,6 +76,19 @@ export function AppSidebar() {
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
+                  isActive={isActive("/knowledge")}
+                  tooltip="Knowledge"
+                >
+                  <Link to="/knowledge" className="flex items-center gap-2.5">
+                    <BookOpen className="h-4 w-4" />
+                    {!collapsed && <span>Knowledge</span>}
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+
+                <SidebarMenuButton
+                  asChild
                   isActive={isActive("/favoritos")}
                   tooltip="Favoritos"
                 >
