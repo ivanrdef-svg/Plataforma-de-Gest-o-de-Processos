@@ -9,8 +9,10 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
-import { Home, LayoutGrid } from "lucide-react";
+import { BookOpen, Home, LayoutGrid } from "lucide-react";
 import { MODULE_GROUPS, PLATFORM_MODULES, type ModuleGroup } from "@/config/modules";
+import { KNOWLEDGE_PACKAGES } from "@/config/knowledge-demo";
+import { DEMO_WORKSPACES } from "@/config/workspace-demo";
 import { useGlobalSearch } from "./global-search-context";
 
 const GROUP_ORDER: ModuleGroup[] = ["core", "execucao", "inteligencia", "governanca"];
@@ -54,6 +56,38 @@ export function GlobalSearch() {
             <LayoutGrid className="mr-2 h-4 w-4" />
             Workspaces
           </CommandItem>
+        </CommandGroup>
+        <CommandSeparator />
+        <CommandGroup heading="Knowledge">
+          {KNOWLEDGE_PACKAGES.map((pkg) => (
+            <CommandItem
+              key={pkg.id}
+              value={`${pkg.name} ${pkg.type} ${pkg.category} conhecimento pop`}
+              onSelect={() => go(`/knowledge/${pkg.id}`)}
+            >
+              <BookOpen className="mr-2 h-4 w-4" />
+              <span>{pkg.name}</span>
+              <span className="ml-auto text-[10px] text-muted-foreground">
+                {pkg.type}
+              </span>
+            </CommandItem>
+          ))}
+        </CommandGroup>
+        <CommandSeparator />
+        <CommandGroup heading="Workspaces e processos">
+          {DEMO_WORKSPACES.map((ws) => (
+            <CommandItem
+              key={ws.id}
+              value={`${ws.name} ${ws.type} workspace processo`}
+              onSelect={() => go(`/workspaces/${ws.id}`)}
+            >
+              <LayoutGrid className="mr-2 h-4 w-4" />
+              <span>{ws.name}</span>
+              <span className="ml-auto text-[10px] text-muted-foreground">
+                {ws.type}
+              </span>
+            </CommandItem>
+          ))}
         </CommandGroup>
         <CommandSeparator />
         {GROUP_ORDER.map((group) => (
