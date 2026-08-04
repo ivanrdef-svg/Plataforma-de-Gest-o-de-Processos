@@ -79,3 +79,62 @@ export const DEMO_ENVIRONMENT = {
   version: "Sprint 001",
   environment: "Preview",
 };
+
+/**
+ * Build 2.5 — "Continue trabalhando": últimos objetos abertos pelo usuário.
+ * Dados simulados; a fonte real chega em builds futuras mantendo o formato.
+ */
+export interface DemoRecentObject {
+  id: string;
+  name: string;
+  type: string;
+  editedAt: string;
+  owner: string;
+  /** Progresso opcional (0-100) — exibido como barra discreta. */
+  progress?: number;
+  /** Rota de destino do botão "Continuar". */
+  to: "workspace" | "knowledge";
+  targetId: string;
+}
+
+export const DEMO_RECENT_OBJECTS: DemoRecentObject[] = [
+  {
+    id: "r1",
+    name: "Onboarding de Clientes",
+    type: "Processo",
+    editedAt: "há 12 minutos",
+    owner: "Marina Alves",
+    progress: 72,
+    to: "workspace",
+    targetId: "onboarding-clientes",
+  },
+  {
+    id: "r2",
+    name: "Conhecimento Fiscal",
+    type: "Knowledge Package",
+    editedAt: "há 3 horas",
+    owner: "Camila Torres",
+    progress: 100,
+    to: "knowledge",
+    targetId: "conhecimento-fiscal",
+  },
+  {
+    id: "r3",
+    name: "Gestão de Fornecedores",
+    type: "Processo",
+    editedAt: "ontem",
+    owner: "Rafael Souza",
+    progress: 34,
+    to: "workspace",
+    targetId: "gestao-fornecedores",
+  },
+  {
+    id: "r4",
+    name: "Segurança da Informação",
+    type: "Knowledge Package",
+    editedAt: "há 2 dias",
+    owner: "Bruno Lima",
+    to: "knowledge",
+    targetId: "seguranca-informacao",
+  },
+];
