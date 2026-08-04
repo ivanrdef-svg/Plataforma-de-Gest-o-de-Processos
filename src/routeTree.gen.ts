@@ -14,6 +14,7 @@ import { Route as AdministracaoRouteImport } from './routes/administracao'
 import { Route as FavoritosRouteImport } from './routes/favoritos'
 import { Route as KnowledgeRouteImport } from './routes/knowledge'
 import { Route as WorkspacesRouteImport } from './routes/workspaces'
+import { Route as KnowledgeIndexRouteImport } from './routes/knowledge.index'
 import { Route as WorkspacesIndexRouteImport } from './routes/workspaces.index'
 import { Route as WorkspacesWorkspaceIdRouteImport } from './routes/workspaces.$workspaceId'
 
@@ -42,6 +43,11 @@ const WorkspacesRoute = WorkspacesRouteImport.update({
   path: '/workspaces',
   getParentRoute: () => rootRouteImport,
 } as any)
+const KnowledgeIndexRoute = KnowledgeIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => KnowledgeRoute,
+} as any)
 const WorkspacesIndexRoute = WorkspacesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -57,17 +63,18 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/administracao': typeof AdministracaoRoute
   '/favoritos': typeof FavoritosRoute
-  '/knowledge': typeof KnowledgeRoute
+  '/knowledge': typeof KnowledgeRouteWithChildren
   '/workspaces': typeof WorkspacesRouteWithChildren
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRoute
+  '/knowledge/': typeof KnowledgeIndexRoute
   '/workspaces/': typeof WorkspacesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/administracao': typeof AdministracaoRoute
   '/favoritos': typeof FavoritosRoute
-  '/knowledge': typeof KnowledgeRoute
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRoute
+  '/knowledge': typeof KnowledgeIndexRoute
   '/workspaces': typeof WorkspacesIndexRoute
 }
 export interface FileRoutesById {
@@ -75,9 +82,10 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/administracao': typeof AdministracaoRoute
   '/favoritos': typeof FavoritosRoute
-  '/knowledge': typeof KnowledgeRoute
+  '/knowledge': typeof KnowledgeRouteWithChildren
   '/workspaces': typeof WorkspacesRouteWithChildren
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRoute
+  '/knowledge/': typeof KnowledgeIndexRoute
   '/workspaces/': typeof WorkspacesIndexRoute
 }
 export interface FileRouteTypes {
@@ -89,14 +97,15 @@ export interface FileRouteTypes {
     | '/knowledge'
     | '/workspaces'
     | '/workspaces/$workspaceId'
+    | '/knowledge/'
     | '/workspaces/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/administracao'
     | '/favoritos'
-    | '/knowledge'
     | '/workspaces/$workspaceId'
+    | '/knowledge'
     | '/workspaces'
   id:
     | '__root__'
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/knowledge'
     | '/workspaces'
     | '/workspaces/$workspaceId'
+    | '/knowledge/'
     | '/workspaces/'
   fileRoutesById: FileRoutesById
 }
@@ -113,7 +123,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdministracaoRoute: typeof AdministracaoRoute
   FavoritosRoute: typeof FavoritosRoute
-  KnowledgeRoute: typeof KnowledgeRoute
+  KnowledgeRoute: typeof KnowledgeRouteWithChildren
   WorkspacesRoute: typeof WorkspacesRouteWithChildren
 }
 
@@ -154,6 +164,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspacesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/knowledge/': {
+      id: '/knowledge/'
+      path: '/'
+      fullPath: '/knowledge/'
+      preLoaderRoute: typeof KnowledgeIndexRouteImport
+      parentRoute: typeof KnowledgeRoute
+    }
     '/workspaces/': {
       id: '/workspaces/'
       path: '/'
@@ -170,6 +187,18 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface KnowledgeRouteChildren {
+  KnowledgeIndexRoute: typeof KnowledgeIndexRoute
+}
+
+const KnowledgeRouteChildren: KnowledgeRouteChildren = {
+  KnowledgeIndexRoute: KnowledgeIndexRoute,
+}
+
+const KnowledgeRouteWithChildren = KnowledgeRoute._addFileChildren(
+  KnowledgeRouteChildren,
+)
 
 interface WorkspacesRouteChildren {
   WorkspacesWorkspaceIdRoute: typeof WorkspacesWorkspaceIdRoute
@@ -189,7 +218,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdministracaoRoute: AdministracaoRoute,
   FavoritosRoute: FavoritosRoute,
-  KnowledgeRoute: KnowledgeRoute,
+  KnowledgeRoute: KnowledgeRouteWithChildren,
   WorkspacesRoute: WorkspacesRouteWithChildren,
 }
 export const routeTree = rootRouteImport
