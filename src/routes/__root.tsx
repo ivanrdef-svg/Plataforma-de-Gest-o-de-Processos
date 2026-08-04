@@ -12,6 +12,8 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
+import { AppShell } from "@/components/shell/app-shell";
+
 
 function NotFoundComponent() {
   return (
@@ -78,15 +80,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Idea Spark" },
-      { name: "description", content: "AI-powered brainstorming assistant" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Idea Spark" },
-      { property: "og:description", content: "AI-powered brainstorming assistant" },
+      { title: "Process Platform" },
+      {
+        name: "description",
+        content:
+          "Plataforma Enterprise de Engenharia de Processos, Conhecimento e Governança.",
+      },
+      { name: "author", content: "Process Platform" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
+
     links: [
       {
         rel: "stylesheet",
@@ -120,9 +124,12 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <AppShell>
+        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+        <Outlet />
+      </AppShell>
       <Toaster position="bottom-center" richColors />
     </QueryClientProvider>
   );
 }
+
