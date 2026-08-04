@@ -12,7 +12,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Home, Search, Star } from "lucide-react";
+import { Home, LayoutGrid, Search, Settings2, Star } from "lucide-react";
 import { MODULE_GROUPS, PLATFORM_MODULES, type ModuleGroup } from "@/config/modules";
 import { cn } from "@/lib/utils";
 import { useGlobalSearch } from "@/components/search/global-search-context";
@@ -62,11 +62,42 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Favoritos" className="text-muted-foreground">
-                  <Star className="h-4 w-4" />
-                  {!collapsed && <span>Favoritos</span>}
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive("/workspaces")}
+                  tooltip="Workspaces"
+                >
+                  <Link to="/workspaces" className="flex items-center gap-2.5">
+                    <LayoutGrid className="h-4 w-4" />
+                    {!collapsed && <span>Workspaces</span>}
+                  </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive("/favoritos")}
+                  tooltip="Favoritos"
+                >
+                  <Link to="/favoritos" className="flex items-center gap-2.5">
+                    <Star className="h-4 w-4" />
+                    {!collapsed && <span>Favoritos</span>}
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive("/administracao")}
+                  tooltip="Administração"
+                >
+                  <Link to="/administracao" className="flex items-center gap-2.5">
+                    <Settings2 className="h-4 w-4" />
+                    {!collapsed && <span>Administração</span>}
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
