@@ -1,13 +1,20 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowUpRight, BookOpen, FileText, Link2, Plus, Search } from "lucide-react";
+import { ArrowUpRight, BookOpen, FileText, Link2, Search } from "lucide-react";
 import { WorkspaceLayout } from "@/components/workspace/workspace-layout";
 import { WorkspaceAiPanel } from "@/components/workspace/workspace-ai-panel";
 import { WorkspaceStatusBar } from "@/components/workspace/workspace-status-bar";
 import { WorkspaceStatusPill } from "@/components/workspace/workspace-meta";
+import { CardQuickActions } from "@/components/workspace/card-quick-actions";
+import { KnowledgeStats } from "@/components/knowledge/knowledge-stats";
+import { NewKnowledgeMenu } from "@/components/knowledge/new-knowledge-menu";
+import {
+  KnowledgeTypeBadge,
+  KnowledgeTypeIcon,
+} from "@/components/knowledge/knowledge-type-badge";
 import { EmptyState } from "@/components/layout/page";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { DEMO_ENVIRONMENT } from "@/config/workspace-demo";
 import {
@@ -46,22 +53,23 @@ function KnowledgeCard({ pkg }: { pkg: KnowledgePackage }) {
     <Link
       to="/knowledge/$packageId"
       params={{ packageId: pkg.id }}
-      className="group flex flex-col rounded-xl border bg-card p-4 transition-all hover:-translate-y-0.5 hover:border-border-strong hover:shadow-float"
+      className="group flex flex-col rounded-xl border bg-card p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-float"
     >
-      <div className="flex items-start gap-2">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <BookOpen className="h-4 w-4" />
-        </span>
+      <div className="flex items-start gap-2.5">
+        <KnowledgeTypeIcon type={pkg.type} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <span className="truncate text-sm font-medium">{pkg.name}</span>
             <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
           </div>
-          <span className="mt-0.5 inline-block rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-            {pkg.category}
-          </span>
+          <div className="mt-1.5 flex flex-wrap items-center gap-1">
+            <KnowledgeTypeBadge type={pkg.type} />
+            <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              {pkg.category}
+            </span>
+            <WorkspaceStatusPill status={pkg.status} />
+          </div>
         </div>
-        <WorkspaceStatusPill status={pkg.status} />
       </div>
 
       <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
@@ -79,10 +87,30 @@ function KnowledgeCard({ pkg }: { pkg: KnowledgePackage }) {
         </span>
       </div>
 
-      <div className="mt-3 border-t pt-3 text-[11px] text-muted-foreground/80">
-        {pkg.version} · {pkg.owner} · {pkg.updatedAt}
+      <div className="mt-3 border-t pt-2.5">
+        <p className="truncate text-[11px] text-muted-foreground/80">
+          {pkg.version} · {pkg.owner} · {pkg.updatedAt}
+        </p>
+        <CardQuickActions name={pkg.name} className="-ml-1.5 mt-1" />
       </div>
     </Link>
+  );
+}
+
+function KnowledgeCardSkeleton() {
+  return (
+    <div className="rounded-xl border bg-card p-4">
+      <div className="flex items-start gap-2">
+        <Skeleton className="h-8 w-8 rounded-lg" />
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-3.5 w-2/3" />
+          <Skeleton className="h-3 w-1/3" />
+        </div>
+      </div>
+      <Skeleton className="mt-4 h-3 w-full" />
+      <Skeleton className="mt-2 h-3 w-4/5" />
+      <Skeleton className="mt-5 h-3 w-1/2" />
+    </div>
   );
 }
 
@@ -90,6 +118,12 @@ function KnowledgeExplorer() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<KnowledgeQuickFilter>("todos");
   const [category, setCategory] = useState<KnowledgeCategory | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 450);
+    return () => clearTimeout(timer);
+  }, []);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -101,13 +135,16 @@ function KnowledgeExplorer() {
         p.name.toLowerCase().includes(q) ||
         p.description.toLowerCase().includes(q) ||
         p.owner.toLowerCase().includes(q) ||
+        p.type.toLowerCase().includes(q) ||
         p.category.toLowerCase().includes(q)
       );
     });
   }, [query, filter, category]);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
+      <KnowledgeStats />
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -119,10 +156,6 @@ function KnowledgeExplorer() {
             aria-label="Pesquisar Knowledge Packages"
           />
         </div>
-        <Button className="h-10 gap-1.5">
-          <Plus className="h-4 w-4" />
-          Novo Knowledge Package
-        </Button>
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5">
@@ -159,8 +192,14 @@ function KnowledgeExplorer() {
         ))}
       </div>
 
-      {results.length > 0 ? (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      {loading ? (
+        <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <KnowledgeCardSkeleton key={i} />
+          ))}
+        </div>
+      ) : results.length > 0 ? (
+        <div className="grid animate-fade-in gap-3 sm:grid-cols-2 2xl:grid-cols-3">
           {results.map((pkg) => (
             <KnowledgeCard key={pkg.id} pkg={pkg} />
           ))}
@@ -181,6 +220,7 @@ function KnowledgeCenterPage() {
     <WorkspaceLayout
       title="Knowledge Center"
       subtitle="Ponto de entrada de todo o conhecimento institucional da organização."
+      actions={<NewKnowledgeMenu />}
       contextBar={
         <span>
           {KNOWLEDGE_PACKAGES.length} Knowledge Packages ·{" "}

@@ -6,6 +6,8 @@
  * Sprints futuras substituem a fonte mantendo estes formatos.
  */
 
+import type { KnowledgeType } from "./knowledge-types";
+
 export type KnowledgeStatus = "rascunho" | "em revisão" | "publicado";
 
 export interface KnowledgePackage {
@@ -13,6 +15,8 @@ export interface KnowledgePackage {
   id: string;
   name: string;
   category: KnowledgeCategory;
+  /** Build 2.5 — tipo visual do conteúdo (POP, Manual, Norma...). */
+  type: KnowledgeType;
   owner: string;
   status: KnowledgeStatus;
   version: string;
@@ -45,6 +49,7 @@ export const KNOWLEDGE_PACKAGES: KnowledgePackage[] = [
     id: "conhecimento-fiscal",
     name: "Conhecimento Fiscal",
     category: "Financeiro",
+    type: "Norma",
     owner: "Camila Torres",
     status: "publicado",
     version: "v3.0",
@@ -58,6 +63,7 @@ export const KNOWLEDGE_PACKAGES: KnowledgePackage[] = [
     id: "onboarding-clientes",
     name: "Onboarding de Clientes",
     category: "Comercial",
+    type: "POP",
     owner: "Marina Alves",
     status: "em revisão",
     version: "v1.4",
@@ -71,6 +77,7 @@ export const KNOWLEDGE_PACKAGES: KnowledgePackage[] = [
     id: "gestao-fornecedores",
     name: "Gestão de Fornecedores",
     category: "Operações",
+    type: "Checklist",
     owner: "Rafael Souza",
     status: "rascunho",
     version: "v0.9",
@@ -84,6 +91,7 @@ export const KNOWLEDGE_PACKAGES: KnowledgePackage[] = [
     id: "seguranca-informacao",
     name: "Segurança da Informação",
     category: "Tecnologia",
+    type: "Manual",
     owner: "Bruno Lima",
     status: "publicado",
     version: "v2.2",
@@ -97,6 +105,7 @@ export const KNOWLEDGE_PACKAGES: KnowledgePackage[] = [
     id: "ciclo-de-vida-do-colaborador",
     name: "Ciclo de Vida do Colaborador",
     category: "Pessoas",
+    type: "Fluxograma",
     owner: "Aline Prado",
     status: "em revisão",
     version: "v1.1",
@@ -110,6 +119,7 @@ export const KNOWLEDGE_PACKAGES: KnowledgePackage[] = [
     id: "programa-de-compliance",
     name: "Programa de Compliance",
     category: "Compliance",
+    type: "FAQ",
     owner: "Eduardo Nunes",
     status: "publicado",
     version: "v4.1",
@@ -133,3 +143,15 @@ export type KnowledgeQuickFilter = (typeof KNOWLEDGE_QUICK_FILTERS)[number]["id"
 export function getKnowledgePackage(id: string): KnowledgePackage | undefined {
   return KNOWLEDGE_PACKAGES.find((p) => p.id === id);
 }
+
+/**
+ * Build 2.5 — indicadores rápidos (faixa superior do Knowledge Center).
+ * Valores simulados.
+ */
+export const KNOWLEDGE_STATS = [
+  { id: "packages", label: "Knowledge Packages", value: KNOWLEDGE_PACKAGES.length },
+  { id: "artigos", label: "Artigos", value: 196 },
+  { id: "documentos", label: "Documentos", value: 412 },
+  { id: "revisao", label: "Em revisão", value: 2 },
+  { id: "publicados", label: "Publicados", value: 3 },
+] as const;

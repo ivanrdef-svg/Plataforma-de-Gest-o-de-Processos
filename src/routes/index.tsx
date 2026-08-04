@@ -17,6 +17,8 @@ import {
   DEMO_WORKSPACES,
 } from "@/config/workspace-demo";
 import { useGlobalSearch } from "@/components/search/global-search-context";
+import { ContinueWorking } from "@/components/home/continue-working";
+import { CardQuickActions } from "@/components/workspace/card-quick-actions";
 
 export const Route = createFileRoute("/")({
   component: Launchpad,
@@ -74,6 +76,14 @@ function Launchpad() {
         <div className="space-y-10 lg:col-span-2">
           <section>
             <SectionHeader
+              title="Continue trabalhando"
+              description="Últimos objetos abertos por você."
+            />
+            <ContinueWorking />
+          </section>
+
+          <section>
+            <SectionHeader
               title="Continuar de onde parei"
               description="Retome o último objeto aberto."
             />
@@ -114,11 +124,12 @@ function Launchpad() {
                   key={ws.id}
                   to="/workspaces/$workspaceId"
                   params={{ workspaceId: ws.id }}
-                  className="group rounded-xl border bg-card p-4 transition-all hover:-translate-y-0.5 hover:shadow-float"
+                  className="group rounded-xl border bg-card p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-float"
                 >
                   <div className="flex items-center gap-2">
                     <LayoutGrid className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <span className="truncate text-sm font-medium">{ws.name}</span>
+                    <CardQuickActions name={ws.name} className="ml-auto -mr-1" />
                   </div>
                   <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
                     {ws.description}

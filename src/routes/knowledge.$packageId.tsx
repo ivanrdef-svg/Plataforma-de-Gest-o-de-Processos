@@ -5,6 +5,7 @@ import { WorkspaceAiPanel } from "@/components/workspace/workspace-ai-panel";
 import { WorkspaceStatusBar } from "@/components/workspace/workspace-status-bar";
 import { WorkspaceContextBar } from "@/components/workspace/workspace-context-bar";
 import { WorkspaceMeta, WorkspaceStatusPill } from "@/components/workspace/workspace-meta";
+import { WorkspaceHeaderActions } from "@/components/workspace/workspace-header-actions";
 import { EmptyState } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
 import { DEMO_ENVIRONMENT, DEMO_RELATIONS } from "@/config/workspace-demo";
@@ -53,12 +54,15 @@ function KnowledgePackageWorkspace() {
         />
       }
       actions={
-        <Button asChild variant="ghost" size="sm" className="gap-1.5">
-          <Link to="/knowledge">
-            <ChevronLeft className="h-4 w-4" />
-            <span className="hidden sm:inline">Knowledge Center</span>
-          </Link>
-        </Button>
+        <>
+          <WorkspaceHeaderActions name={pkg.name} />
+          <Button asChild variant="ghost" size="sm" className="gap-1.5">
+            <Link to="/knowledge">
+              <ChevronLeft className="h-4 w-4" />
+              <span className="hidden sm:inline">Knowledge Center</span>
+            </Link>
+          </Button>
+        </>
       }
       contextBar={
         <WorkspaceContextBar
