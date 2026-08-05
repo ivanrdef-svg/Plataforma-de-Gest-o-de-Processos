@@ -15,9 +15,12 @@ import { KNOWLEDGE_TYPE_LIST } from "@/config/knowledge-types";
 
 /**
  * Build 2.5 — menu "Novo".
- * Lista os tipos de conhecimento. Os formulários chegam em builds futuras.
+ * Build 003 — cria o Knowledge Package a partir do template do tipo
+ * e abre o Workspace diretamente.
  */
 export function NewKnowledgeMenu() {
+  const navigate = useNavigate();
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -38,12 +41,18 @@ export function NewKnowledgeMenu() {
           return (
             <DropdownMenuItem
               key={type.id}
-              onSelect={() =>
-                toast(`${article} ${type.label}`, {
-                  description: "O formulário chega em uma próxima build.",
-                })
-              }
+              onSelect={() => {
+                const doc = createKnowledgeDoc(type.id);
+                toast.success(`${article} ${type.label} criado`, {
+                  description: "Comece a escrever na aba Conteúdo.",
+                });
+                void navigate({
+                  to: "/knowledge/$packageId",
+                  params: { packageId: doc.id },
+                });
+              }}
             >
+
               <Icon className="mr-2 h-4 w-4 text-muted-foreground" />
               {article} {type.label}
             </DropdownMenuItem>
