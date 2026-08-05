@@ -2,12 +2,17 @@ import { KNOWLEDGE_STATS } from "@/config/knowledge-demo";
 
 /**
  * Build 2.5 — faixa de indicadores rápidos do Knowledge Center.
- * Dados simulados, somente leitura.
+ * Build 003 — aceita valores dinâmicos opcionais (contagens ao vivo).
  */
-export function KnowledgeStats() {
+export function KnowledgeStats({
+  overrides,
+}: {
+  overrides?: Partial<Record<string, number>>;
+}) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
       {KNOWLEDGE_STATS.map((stat) => (
+
         <div
           key={stat.id}
           className="rounded-xl border bg-card px-4 py-3 transition-shadow duration-200 hover:shadow-soft"
