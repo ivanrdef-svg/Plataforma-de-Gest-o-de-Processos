@@ -143,8 +143,16 @@ function KnowledgePackageWorkspace() {
             <BlockEditor
               key={doc.id}
               blocks={doc.blocks}
-              onChange={(blocks) => patch({ blocks })}
+              onChange={(blocks) => {
+                const first = blocks[0];
+                const name =
+                  first?.type === "title" && first.text?.trim()
+                    ? first.text.trim()
+                    : doc.name;
+                patch({ blocks, name });
+              }}
             />
+
           ),
         },
         {
