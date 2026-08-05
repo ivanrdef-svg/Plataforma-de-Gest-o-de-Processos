@@ -1,5 +1,7 @@
 import { ChevronDown, Plus } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
+import { createKnowledgeDoc } from "@/lib/knowledge-store";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
