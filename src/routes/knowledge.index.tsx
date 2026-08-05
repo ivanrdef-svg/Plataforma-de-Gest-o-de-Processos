@@ -17,13 +17,12 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { DEMO_ENVIRONMENT } from "@/config/workspace-demo";
+import { useKnowledgeDocs, type KnowledgeDoc } from "@/lib/knowledge-store";
 import {
   KNOWLEDGE_CATEGORIES,
-  KNOWLEDGE_PACKAGES,
   KNOWLEDGE_QUICK_FILTERS,
   type KnowledgeCategory,
   type KnowledgeQuickFilter,
-  type KnowledgePackage,
 } from "@/config/knowledge-demo";
 
 export const Route = createFileRoute("/knowledge/")({
