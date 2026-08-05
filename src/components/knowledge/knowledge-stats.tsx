@@ -18,7 +18,10 @@ export function KnowledgeStats({
           className="rounded-xl border bg-card px-4 py-3 transition-shadow duration-200 hover:shadow-soft"
         >
           <p className="text-[11px] text-muted-foreground">{stat.label}</p>
-          <p className="mt-1 text-xl font-semibold tracking-tight">{stat.value}</p>
+          <p className="mt-1 text-xl font-semibold tracking-tight">
+            {overrides?.[stat.id] ?? stat.value}
+          </p>
+
         </div>
       ))}
     </div>
