@@ -47,7 +47,7 @@ export const Route = createFileRoute("/knowledge/")({
   }),
 });
 
-function KnowledgeCard({ pkg }: { pkg: KnowledgePackage }) {
+function KnowledgeCard({ pkg }: { pkg: KnowledgeDoc }) {
   return (
     <Link
       to="/knowledge/$packageId"
@@ -118,6 +118,7 @@ function KnowledgeExplorer() {
   const [filter, setFilter] = useState<KnowledgeQuickFilter>("todos");
   const [category, setCategory] = useState<KnowledgeCategory | null>(null);
   const [loading, setLoading] = useState(true);
+  const docs = useKnowledgeDocs();
 
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 450);
@@ -126,7 +127,7 @@ function KnowledgeExplorer() {
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return KNOWLEDGE_PACKAGES.filter((p) => {
+    return docs.filter((p) => {
       if (filter !== "todos" && p.status !== filter) return false;
       if (category && p.category !== category) return false;
       if (!q) return true;
@@ -138,11 +139,17 @@ function KnowledgeExplorer() {
         p.category.toLowerCase().includes(q)
       );
     });
-  }, [query, filter, category]);
+  }, [docs, query, filter, category]);
 
   return (
     <div className="space-y-6">
-      <KnowledgeStats />
+      <KnowledgeStats
+        overrides={{
+          packages: docs.length,
+          revisao: docs.filter((d) => d.status === "em revisão").length,
+          publicados: docs.filter((d) => d.status === "publicado").length,
+        }}
+      />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
@@ -215,6 +222,7 @@ function KnowledgeExplorer() {
 }
 
 function KnowledgeCenterPage() {
+  const docs = useKnowledgeDocs();
   return (
     <WorkspaceLayout
       title="Knowledge Center"
@@ -222,7 +230,7 @@ function KnowledgeCenterPage() {
       actions={<NewKnowledgeMenu />}
       contextBar={
         <span>
-          {KNOWLEDGE_PACKAGES.length} Knowledge Packages ·{" "}
+          {docs.length} Knowledge Packages ·{" "}
           {KNOWLEDGE_CATEGORIES.length} categorias
         </span>
       }
