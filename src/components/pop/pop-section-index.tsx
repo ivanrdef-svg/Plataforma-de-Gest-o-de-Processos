@@ -11,7 +11,7 @@ export function PopSectionIndex({
   onSelect,
 }: {
   sections: PopSection[];
-  activeId?: string;
+  activeId?: string | undefined;
   onSelect: (id: string) => void;
 }) {
   return (
