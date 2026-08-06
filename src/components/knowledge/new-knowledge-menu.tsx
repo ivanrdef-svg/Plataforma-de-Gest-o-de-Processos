@@ -2,6 +2,7 @@ import { ChevronDown, Plus } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { createKnowledgeDoc } from "@/lib/knowledge-store";
+import { createPopDoc } from "@/lib/pop-store";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -42,6 +43,18 @@ export function NewKnowledgeMenu() {
             <DropdownMenuItem
               key={type.id}
               onSelect={() => {
+                // Build 004 — POP abre o Workspace estruturado dedicado.
+                if (type.id === "POP") {
+                  const pop = createPopDoc();
+                  toast.success("Novo POP criado", {
+                    description: "Estrutura padrão com 10 seções.",
+                  });
+                  void navigate({
+                    to: "/pop/$popId",
+                    params: { popId: pop.id },
+                  });
+                  return;
+                }
                 const doc = createKnowledgeDoc(type.id);
                 toast.success(`${article} ${type.label} criado`, {
                   description: "Comece a escrever na aba Conteúdo.",
