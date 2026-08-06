@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdministracaoRouteImport } from './routes/administracao'
 import { Route as FavoritosRouteImport } from './routes/favoritos'
 import { Route as KnowledgeRouteImport } from './routes/knowledge'
+import { Route as PopRouteImport } from './routes/pop'
 import { Route as WorkspacesRouteImport } from './routes/workspaces'
 import { Route as KnowledgeIndexRouteImport } from './routes/knowledge.index'
 import { Route as KnowledgePackageIdRouteImport } from './routes/knowledge.$packageId'
@@ -37,6 +38,11 @@ const FavoritosRoute = FavoritosRouteImport.update({
 const KnowledgeRoute = KnowledgeRouteImport.update({
   id: '/knowledge',
   path: '/knowledge',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PopRoute = PopRouteImport.update({
+  id: '/pop',
+  path: '/pop',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WorkspacesRoute = WorkspacesRouteImport.update({
@@ -70,6 +76,7 @@ export interface FileRoutesByFullPath {
   '/administracao': typeof AdministracaoRoute
   '/favoritos': typeof FavoritosRoute
   '/knowledge': typeof KnowledgeRouteWithChildren
+  '/pop': typeof PopRoute
   '/workspaces': typeof WorkspacesRouteWithChildren
   '/knowledge/$packageId': typeof KnowledgePackageIdRoute
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRoute
@@ -80,6 +87,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/administracao': typeof AdministracaoRoute
   '/favoritos': typeof FavoritosRoute
+  '/pop': typeof PopRoute
   '/knowledge/$packageId': typeof KnowledgePackageIdRoute
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRoute
   '/knowledge': typeof KnowledgeIndexRoute
@@ -91,6 +99,7 @@ export interface FileRoutesById {
   '/administracao': typeof AdministracaoRoute
   '/favoritos': typeof FavoritosRoute
   '/knowledge': typeof KnowledgeRouteWithChildren
+  '/pop': typeof PopRoute
   '/workspaces': typeof WorkspacesRouteWithChildren
   '/knowledge/$packageId': typeof KnowledgePackageIdRoute
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRoute
@@ -104,6 +113,7 @@ export interface FileRouteTypes {
     | '/administracao'
     | '/favoritos'
     | '/knowledge'
+    | '/pop'
     | '/workspaces'
     | '/knowledge/$packageId'
     | '/workspaces/$workspaceId'
@@ -114,6 +124,7 @@ export interface FileRouteTypes {
     | '/'
     | '/administracao'
     | '/favoritos'
+    | '/pop'
     | '/knowledge/$packageId'
     | '/workspaces/$workspaceId'
     | '/knowledge'
@@ -124,6 +135,7 @@ export interface FileRouteTypes {
     | '/administracao'
     | '/favoritos'
     | '/knowledge'
+    | '/pop'
     | '/workspaces'
     | '/knowledge/$packageId'
     | '/workspaces/$workspaceId'
@@ -136,6 +148,7 @@ export interface RootRouteChildren {
   AdministracaoRoute: typeof AdministracaoRoute
   FavoritosRoute: typeof FavoritosRoute
   KnowledgeRoute: typeof KnowledgeRouteWithChildren
+  PopRoute: typeof PopRoute
   WorkspacesRoute: typeof WorkspacesRouteWithChildren
 }
 
@@ -167,6 +180,13 @@ declare module '@tanstack/react-router' {
       path: '/knowledge'
       fullPath: '/knowledge'
       preLoaderRoute: typeof KnowledgeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pop': {
+      id: '/pop'
+      path: '/pop'
+      fullPath: '/pop'
+      preLoaderRoute: typeof PopRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/workspaces': {
@@ -240,18 +260,9 @@ const rootRouteChildren: RootRouteChildren = {
   AdministracaoRoute: AdministracaoRoute,
   FavoritosRoute: FavoritosRoute,
   KnowledgeRoute: KnowledgeRouteWithChildren,
+  PopRoute: PopRoute,
   WorkspacesRoute: WorkspacesRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
