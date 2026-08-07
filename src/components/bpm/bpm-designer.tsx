@@ -83,7 +83,7 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
 
   // Reenquadra o diagrama quando a área útil do canvas muda.
   useEffect(() => {
-    const id = window.setTimeout(() => canvasRef.current?.fitToContent(), 220);
+    const id = window.setTimeout(() => canvasRef.current?.fit(), 220);
     return () => window.clearTimeout(id);
   }, [fullscreen, showSource, showProps]);
 
