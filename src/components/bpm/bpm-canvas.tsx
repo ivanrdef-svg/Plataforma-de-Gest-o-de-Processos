@@ -269,36 +269,57 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
               const a = nodeById.get(edge.source);
               const b = nodeById.get(edge.target);
               if (!a || !b) return null;
-              const sameRow = Math.abs(a.y + a.height / 2 - (b.y + b.height / 2)) < 1;
-              let x1: number, y1: number, x2: number, y2: number, d: string;
-              if (sameRow) {
-                const forward = b.x >= a.x;
-                x1 = forward ? a.x + a.width : a.x;
-                x2 = forward ? b.x : b.x + b.width;
-                y1 = a.y + a.height / 2;
-                y2 = b.y + b.height / 2;
-                const tip = forward ? x2 - 6 : x2 + 6;
-                d = `M ${x1} ${y1} L ${tip} ${y2}`;
+              const dependency = edge.variant === "dependency";
+
+              const x1 = a.x + a.width;
+              const y1 = a.y + a.height / 2;
+              const x2 = b.x;
+              const y2 = b.y + b.height / 2;
+
+              let d: string;
+              if (dependency) {
+                // Dependência declarada: arco discreto por cima do fluxo.
+                const top = Math.min(a.y, b.y) - 46;
+                d = `M ${a.x + a.width / 2} ${a.y} C ${a.x + a.width / 2} ${top}, ${b.x + b.width / 2} ${top}, ${b.x + b.width / 2} ${b.y - 6}`;
+              } else if (x2 >= x1) {
+                const mid = x1 + (x2 - x1) / 2;
+                d = `M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2 - 6} ${y2}`;
               } else {
-                // quebra de linha do layout em serpentina
-                x1 = a.x + a.width / 2;
-                y1 = a.y + a.height;
-                x2 = b.x + b.width / 2;
-                y2 = b.y;
-                const mid = (y1 + y2) / 2;
-                d = `M ${x1} ${y1} C ${x1} ${mid}, ${x2} ${mid}, ${x2} ${y2 - 6}`;
+                const below = Math.max(a.y + a.height, b.y + b.height) + 48;
+                d = `M ${a.x + a.width / 2} ${a.y + a.height} C ${a.x + a.width / 2} ${below}, ${b.x + b.width / 2} ${below}, ${b.x + b.width / 2} ${b.y + b.height + 6}`;
               }
 
+              const labelX = dependency
+                ? (a.x + a.width / 2 + b.x + b.width / 2) / 2
+                : (x1 + x2) / 2;
+              const labelY = dependency
+                ? Math.min(a.y, b.y) - 26
+                : (y1 + y2) / 2 - 8;
+
               return (
-                <path
-                  key={edge.id}
-                  d={d}
-                  fill="none"
-                  stroke="var(--muted-foreground)"
-                  strokeOpacity={0.5}
-                  strokeWidth={1.5}
-                  markerEnd="url(#bpm-arrow)"
-                />
+                <g key={edge.id}>
+                  <path
+                    d={d}
+                    fill="none"
+                    stroke={
+                      dependency ? "var(--primary)" : "var(--muted-foreground)"
+                    }
+                    strokeOpacity={dependency ? 0.45 : 0.5}
+                    strokeWidth={1.5}
+                    strokeDasharray={dependency ? "5 4" : undefined}
+                    markerEnd="url(#bpm-arrow)"
+                  />
+                  {edge.label && (
+                    <text
+                      x={labelX}
+                      y={labelY}
+                      textAnchor="middle"
+                      className="fill-muted-foreground text-[10px]"
+                    >
+                      {edge.label}
+                    </text>
+                  )}
+                </g>
               );
             })}
 
@@ -315,9 +336,14 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
           </g>
         </svg>
 
+        {showMinimap && (
+          <Minimap diagram={diagram} selectedId={selectedId} />
+        )}
+
         <div className="pointer-events-none absolute bottom-3 left-3 rounded-md border bg-background/80 px-2 py-1 text-[10px] text-muted-foreground backdrop-blur">
           Arraste para mover · ⌘/Ctrl + scroll para zoom
         </div>
+
       </div>
     );
   },
