@@ -1,4 +1,4 @@
-import { MousePointerSquareDashed } from "lucide-react";
+import { AlertTriangle, MousePointerSquareDashed } from "lucide-react";
 import {
   ObjectTypeIcon,
   RelationshipIndicators,
@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import type { BpmNode } from "@/config/bpm-model";
+import { getStepType } from "@/config/process-model";
 
 /**
  * Build 007 — Painel direito do BPM Designer.
@@ -53,7 +54,15 @@ export function BpmPropertiesPanel({
   }
 
   const kindLabel =
-    node.kind === "start" ? "Evento de início" : node.kind === "end" ? "Evento de fim" : "Etapa";
+    node.kind === "start"
+      ? "Evento de início"
+      : node.kind === "end"
+        ? "Evento de fim"
+        : node.kind === "gateway"
+          ? "Decisão"
+          : node.kind === "approval"
+            ? "Aprovação"
+            : getStepType(node.stepType).label;
 
   return (
     <div className="space-y-4">
@@ -81,7 +90,34 @@ export function BpmPropertiesPanel({
       </div>
 
       <ReadField label="Responsável" value={node.owner} />
+      <ReadField label="Entradas" value={node.inputs ?? ""} />
+      <ReadField label="Saídas" value={node.outputs ?? ""} />
       <ReadField label="Tempo estimado" value={node.duration} />
+
+      {!!node.issues?.length && (
+        <div className="space-y-1.5 rounded-lg border border-dashed bg-muted/30 p-2">
+          <Label className="text-[11px] text-muted-foreground">
+            Consistência do elemento
+          </Label>
+          <ul className="space-y-1">
+            {node.issues.map((issue) => (
+              <li
+                key={issue.id}
+                className="flex items-start gap-1.5 text-[11px] leading-snug text-muted-foreground"
+              >
+                <AlertTriangle
+                  className={
+                    issue.severity === "erro"
+                      ? "mt-[2px] h-3 w-3 shrink-0 text-destructive"
+                      : "mt-[2px] h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400"
+                  }
+                />
+                <span>{issue.message}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <Separator />
 
