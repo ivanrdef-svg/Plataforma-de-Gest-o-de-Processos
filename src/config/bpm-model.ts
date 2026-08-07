@@ -87,36 +87,30 @@ export function processSignature(doc: ProcessDoc): string {
  * Início → Etapas (na ordem cadastrada) → Fim.
  */
 export function generateDiagramFromProcess(doc: ProcessDoc): BpmDiagram {
-  const nodes: BpmNode[] = [];
   const edges: BpmEdge[] = [];
-  let x = 0;
 
-  const pushEvent = (id: string, kind: "start" | "end", name: string) => {
-    const size = NODE_SIZE.event;
-    nodes.push({
-      id,
-      kind,
-      name,
-      description:
-        kind === "start"
-          ? "Evento que dispara o processo."
-          : "Evento que encerra o processo.",
-      owner: kind === "start" ? doc.owner : "",
-      duration: "",
-      notes: "",
-      x,
-      y: ROW_Y + (NODE_SIZE.task.height - size.height) / 2,
-      width: size.width,
-      height: size.height,
-    });
-    x += size.width + GAP_X;
-  };
+  type Draft = Omit<BpmNode, "x" | "y">;
+  const drafts: Draft[] = [];
 
-  pushEvent("start", "start", "Início");
+  const eventDraft = (id: string, kind: "start" | "end", name: string): Draft => ({
+    id,
+    kind,
+    name,
+    description:
+      kind === "start"
+        ? "Evento que dispara o processo."
+        : "Evento que encerra o processo.",
+    owner: kind === "start" ? doc.owner : "",
+    duration: "",
+    notes: "",
+    width: NODE_SIZE.event.width,
+    height: NODE_SIZE.event.height,
+  });
+
+  drafts.push(eventDraft("start", "start", "Início"));
 
   doc.steps.forEach((step, i) => {
-    const size = NODE_SIZE.task;
-    nodes.push({
+    drafts.push({
       id: `task-${step.id}`,
       kind: "task",
       stepId: step.id,
@@ -125,15 +119,29 @@ export function generateDiagramFromProcess(doc: ProcessDoc): BpmDiagram {
       owner: step.owner,
       duration: step.duration,
       notes: step.notes,
-      x,
-      y: ROW_Y,
-      width: size.width,
-      height: size.height,
+      width: NODE_SIZE.task.width,
+      height: NODE_SIZE.task.height,
     });
-    x += size.width + GAP_X;
   });
 
-  pushEvent("end", "end", "Fim");
+  drafts.push(eventDraft("end", "end", "Fim"));
+
+  // Layout em serpentina: mantém o diagrama legível mesmo com muitas etapas.
+  const slot = NODE_SIZE.task.width;
+  const nodes: BpmNode[] = drafts.map((draft, index) => {
+    const row = Math.floor(index / COLUMNS);
+    const colInRow = index % COLUMNS;
+    const col = row % 2 === 0 ? colInRow : COLUMNS - 1 - colInRow;
+    const slotX = col * (slot + GAP_X);
+    return {
+      ...draft,
+      x: slotX + (slot - draft.width) / 2,
+      y:
+        ROW_Y +
+        row * (NODE_SIZE.task.height + GAP_Y) +
+        (NODE_SIZE.task.height - draft.height) / 2,
+    };
+  });
 
   for (let i = 0; i < nodes.length - 1; i++) {
     edges.push({
@@ -143,6 +151,7 @@ export function generateDiagramFromProcess(doc: ProcessDoc): BpmDiagram {
       target: nodes[i + 1]!.id,
     });
   }
+
 
   return {
     processId: doc.id,
