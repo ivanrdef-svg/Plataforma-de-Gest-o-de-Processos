@@ -14,6 +14,7 @@ import { Route as AdministracaoRouteImport } from './routes/administracao'
 import { Route as FavoritosRouteImport } from './routes/favoritos'
 import { Route as KnowledgeRouteImport } from './routes/knowledge'
 import { Route as PopRouteImport } from './routes/pop'
+import { Route as ProcessosRouteImport } from './routes/processos'
 import { Route as WorkspacesRouteImport } from './routes/workspaces'
 import { Route as KnowledgeIndexRouteImport } from './routes/knowledge.index'
 import { Route as KnowledgePackageIdRouteImport } from './routes/knowledge.$packageId'
@@ -45,6 +46,11 @@ const KnowledgeRoute = KnowledgeRouteImport.update({
 const PopRoute = PopRouteImport.update({
   id: '/pop',
   path: '/pop',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProcessosRoute = ProcessosRouteImport.update({
+  id: '/processos',
+  path: '/processos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WorkspacesRoute = WorkspacesRouteImport.update({
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/favoritos': typeof FavoritosRoute
   '/knowledge': typeof KnowledgeRouteWithChildren
   '/pop': typeof PopRouteWithChildren
+  '/processos': typeof ProcessosRoute
   '/workspaces': typeof WorkspacesRouteWithChildren
   '/knowledge/$packageId': typeof KnowledgePackageIdRoute
   '/pop/$popId': typeof PopPopIdRoute
@@ -101,6 +108,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/administracao': typeof AdministracaoRoute
   '/favoritos': typeof FavoritosRoute
+  '/processos': typeof ProcessosRoute
   '/knowledge/$packageId': typeof KnowledgePackageIdRoute
   '/pop/$popId': typeof PopPopIdRoute
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRoute
@@ -115,6 +123,7 @@ export interface FileRoutesById {
   '/favoritos': typeof FavoritosRoute
   '/knowledge': typeof KnowledgeRouteWithChildren
   '/pop': typeof PopRouteWithChildren
+  '/processos': typeof ProcessosRoute
   '/workspaces': typeof WorkspacesRouteWithChildren
   '/knowledge/$packageId': typeof KnowledgePackageIdRoute
   '/pop/$popId': typeof PopPopIdRoute
@@ -131,6 +140,7 @@ export interface FileRouteTypes {
     | '/favoritos'
     | '/knowledge'
     | '/pop'
+    | '/processos'
     | '/workspaces'
     | '/knowledge/$packageId'
     | '/pop/$popId'
@@ -143,6 +153,7 @@ export interface FileRouteTypes {
     | '/'
     | '/administracao'
     | '/favoritos'
+    | '/processos'
     | '/knowledge/$packageId'
     | '/pop/$popId'
     | '/workspaces/$workspaceId'
@@ -156,6 +167,7 @@ export interface FileRouteTypes {
     | '/favoritos'
     | '/knowledge'
     | '/pop'
+    | '/processos'
     | '/workspaces'
     | '/knowledge/$packageId'
     | '/pop/$popId'
@@ -171,6 +183,7 @@ export interface RootRouteChildren {
   FavoritosRoute: typeof FavoritosRoute
   KnowledgeRoute: typeof KnowledgeRouteWithChildren
   PopRoute: typeof PopRouteWithChildren
+  ProcessosRoute: typeof ProcessosRoute
   WorkspacesRoute: typeof WorkspacesRouteWithChildren
 }
 
@@ -209,6 +222,13 @@ declare module '@tanstack/react-router' {
       path: '/pop'
       fullPath: '/pop'
       preLoaderRoute: typeof PopRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/processos': {
+      id: '/processos'
+      path: '/processos'
+      fullPath: '/processos'
+      preLoaderRoute: typeof ProcessosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/workspaces': {
@@ -309,18 +329,9 @@ const rootRouteChildren: RootRouteChildren = {
   FavoritosRoute: FavoritosRoute,
   KnowledgeRoute: KnowledgeRouteWithChildren,
   PopRoute: PopRouteWithChildren,
+  ProcessosRoute: ProcessosRoute,
   WorkspacesRoute: WorkspacesRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
