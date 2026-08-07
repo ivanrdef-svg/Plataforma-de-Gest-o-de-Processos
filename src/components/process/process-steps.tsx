@@ -3,7 +3,10 @@ import {
   ArrowDown,
   ArrowUp,
   ChevronDown,
+  CircleCheck,
+  CircleDot,
   Clock,
+  GitBranch,
   LogIn,
   LogOut,
   Plus,
@@ -15,7 +18,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { AutoTextarea } from "./process-section-block";
+import { StepTypePicker } from "./process-step-type";
+import { PROCESS_EXECUTION_MODES } from "@/config/process-model";
 import type { ProcessStep } from "@/lib/process-store";
+
 
 /**
  * Build 006 — Etapas do Processo.
@@ -96,12 +102,18 @@ function StepCard({
             />
           </button>
           <div className="min-w-0 flex-1">
-            <input
-              value={step.name}
-              onChange={(e) => onChange({ name: e.target.value })}
-              placeholder="Nome da etapa"
-              className="w-full bg-transparent text-sm font-medium tracking-tight outline-none"
-            />
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                value={step.name}
+                onChange={(e) => onChange({ name: e.target.value })}
+                placeholder="Nome da etapa"
+                className="min-w-0 flex-1 bg-transparent text-sm font-medium tracking-tight outline-none"
+              />
+              <StepTypePicker
+                value={step.type}
+                onChange={(type) => onChange({ type })}
+              />
+            </div>
             {!open && (
               <p className="mt-0.5 flex flex-wrap items-center gap-x-3 text-[11px] text-muted-foreground">
                 {step.owner && (
@@ -122,9 +134,15 @@ function StepCard({
                     {step.outputs}
                   </span>
                 )}
+                {step.execution === "paralela" && (
+                  <span className="rounded-full border border-dashed px-1.5 text-[10px]">
+                    Paralela
+                  </span>
+                )}
               </p>
             )}
           </div>
+
 
           <div className="flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
             <Button
@@ -195,6 +213,58 @@ function StepCard({
                 onChange={(duration) => onChange({ duration })}
               />
             </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field
+                label="Pré-condições"
+                icon={CircleDot}
+                value={step.preconditions ?? ""}
+                placeholder="O que precisa existir antes"
+                onChange={(preconditions) => onChange({ preconditions })}
+              />
+              <Field
+                label="Pós-condições"
+                icon={CircleCheck}
+                value={step.postconditions ?? ""}
+                placeholder="Estado esperado ao concluir"
+                onChange={(postconditions) => onChange({ postconditions })}
+              />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <GitBranch className="h-3 w-3" />
+                  Execução
+                </Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {PROCESS_EXECUTION_MODES.map((mode) => (
+                    <button
+                      key={mode.id}
+                      type="button"
+                      onClick={() => onChange({ execution: mode.id })}
+                      className={cn(
+                        "rounded-full border px-2.5 py-1 text-[10px] capitalize transition-colors",
+                        (step.execution ?? "sequencial") === mode.id
+                          ? "border-primary/40 bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:border-border-strong hover:text-foreground",
+                      )}
+                    >
+                      {mode.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <Field
+                label="Depende de"
+                icon={GitBranch}
+                value={step.dependsOn ?? ""}
+                placeholder="Etapa(s) anteriores"
+                onChange={(dependsOn) => onChange({ dependsOn })}
+              />
+            </div>
+
+
 
             <div className="rounded-lg bg-muted/50 px-3 py-2">
               <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">

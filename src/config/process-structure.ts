@@ -17,7 +17,15 @@ export type ProcessSectionId =
   | "saidas"
   | "participantes"
   | "sistemas"
-  | "documentos";
+  | "documentos"
+  // Build 007 — blocos adicionais do modelo organizacional.
+  | "evento-inicial"
+  | "resultados"
+  | "papeis"
+  | "areas"
+  | "riscos"
+  | "controles"
+  | "indicadores";
 
 export interface ProcessSectionTemplate {
   id: ProcessSectionId;
@@ -183,6 +191,8 @@ export const PROCESS_CENTER_STATS = [
   { id: "desenvolvimento", label: "Em desenvolvimento" },
   { id: "publicados", label: "Publicados" },
   { id: "etapas", label: "Etapas mapeadas" },
+  { id: "revisao", label: "Em revisão" },
+  { id: "modelagem", label: "Em modelagem" },
   { id: "prontos", label: "Prontos para BPM" },
 ];
 

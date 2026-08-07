@@ -11,6 +11,7 @@ import { RelationshipIndicators } from "@/components/relationships/relationship-
 import { useRelationshipStats } from "@/lib/relationship-store";
 import { EmptyState } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
+import { readinessScore } from "@/components/process/process-consistency-panel";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { DEMO_ENVIRONMENT } from "@/config/workspace-demo";
@@ -128,7 +129,13 @@ function ProcessCenter() {
     desenvolvimento: docs.filter((d) => d.status === "em desenvolvimento").length,
     publicados: docs.filter((d) => d.status === "publicado").length,
     etapas: docs.reduce((sum, d) => sum + d.steps.length, 0),
-    prontos: docs.filter((d) => d.steps.length >= 3).length,
+    revisao: docs.filter((d) => d.status === "em revisão").length,
+    modelagem: docs.filter(
+      (d) => d.steps.length > 0 && readinessScore(d).blocking > 0,
+    ).length,
+    prontos: docs.filter(
+      (d) => d.steps.length >= 3 && readinessScore(d).blocking === 0,
+    ).length,
   };
 
   const recent = docs.slice(0, 6);
@@ -139,7 +146,7 @@ function ProcessCenter() {
 
   const toolbar = (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7">
         {PROCESS_CENTER_STATS.map((stat) => (
           <div
             key={stat.id}
