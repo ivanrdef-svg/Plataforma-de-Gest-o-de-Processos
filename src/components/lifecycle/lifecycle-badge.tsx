@@ -1,4 +1,6 @@
 import { cn } from "@/lib/utils";
+import { Pill } from "@/components/ui/pill";
+
 import {
   LIFECYCLE_TRACK,
   stateStyle,
