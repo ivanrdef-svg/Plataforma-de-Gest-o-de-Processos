@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { Pill } from "@/components/ui/pill";
 import { KNOWLEDGE_TYPES, type KnowledgeType } from "@/config/knowledge-types";
 
 /**
@@ -15,21 +16,14 @@ export function KnowledgeTypeBadge({
   showLabel?: boolean;
 }) {
   const style = KNOWLEDGE_TYPES[type];
-  const Icon = style.icon;
 
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium",
-        style.tone,
-        className,
-      )}
-    >
-      <Icon className="h-3 w-3" />
+    <Pill tone={style.tone} icon={style.icon} className={className}>
       {showLabel && style.label}
-    </span>
+    </Pill>
   );
 }
+
 
 export function KnowledgeTypeIcon({
   type,
