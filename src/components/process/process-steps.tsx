@@ -211,6 +211,58 @@ function StepCard({
               />
             </div>
 
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field
+                label="Pré-condições"
+                icon={CircleDot}
+                value={step.preconditions ?? ""}
+                placeholder="O que precisa existir antes"
+                onChange={(preconditions) => onChange({ preconditions })}
+              />
+              <Field
+                label="Pós-condições"
+                icon={CircleCheck}
+                value={step.postconditions ?? ""}
+                placeholder="Estado esperado ao concluir"
+                onChange={(postconditions) => onChange({ postconditions })}
+              />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <GitBranch className="h-3 w-3" />
+                  Execução
+                </Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {PROCESS_EXECUTION_MODES.map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => onChange({ execution: mode })}
+                      className={cn(
+                        "rounded-full border px-2.5 py-1 text-[10px] capitalize transition-colors",
+                        (step.execution ?? "sequencial") === mode
+                          ? "border-primary/40 bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:border-border-strong hover:text-foreground",
+                      )}
+                    >
+                      {mode}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <Field
+                label="Depende de"
+                icon={GitBranch}
+                value={step.dependsOn ?? ""}
+                placeholder="Etapa(s) anteriores"
+                onChange={(dependsOn) => onChange({ dependsOn })}
+              />
+            </div>
+
+
+
             <div className="rounded-lg bg-muted/50 px-3 py-2">
               <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
                 Observações
