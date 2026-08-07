@@ -14,7 +14,10 @@ import { WorkspaceLayout } from "@/components/workspace/workspace-layout";
 import { WorkspaceAiPanel } from "@/components/workspace/workspace-ai-panel";
 import { WorkspaceStatusBar } from "@/components/workspace/workspace-status-bar";
 import { WorkspaceContextBar } from "@/components/workspace/workspace-context-bar";
-import { WorkspaceMeta, WorkspaceStatusPill } from "@/components/workspace/workspace-meta";
+import { WorkspaceMeta } from "@/components/workspace/workspace-meta";
+import { LifecycleBadge } from "@/components/lifecycle/lifecycle-badge";
+import { LifecyclePanel, LifecycleTab } from "@/components/lifecycle/lifecycle-panel";
+import { useLifecycle, type LifecycleSeed } from "@/lib/lifecycle-store";
 import { ProcessSectionBlock } from "@/components/process/process-section-block";
 import { ProcessSteps } from "@/components/process/process-steps";
 import { ProcessOrigin } from "@/components/process/process-origin";
@@ -216,6 +219,16 @@ function ProcessWorkspace() {
     if (processId) ensureProcessModel(processId);
   }, [processId]);
 
+  const lifecycleSeed: LifecycleSeed = {
+    objectId: doc?.id ?? "",
+    kind: "processo",
+    name: doc?.name ?? "",
+    owner: doc?.owner ?? "",
+    status: doc?.status ?? "",
+    updatedAt: doc?.savedAt ?? doc?.revisedAt ?? "",
+  };
+  const lifecycle = useLifecycle(lifecycleSeed);
+
   if (!doc) {
     return (
       <div className="p-10">
@@ -241,7 +254,10 @@ function ProcessWorkspace() {
             { label: "Tipo", value: "Processo" },
             { label: "Categoria", value: doc.category },
             { label: "Versão", value: doc.version },
-            { label: "Status", value: <WorkspaceStatusPill status={doc.status} /> },
+            {
+              label: "Estado",
+              value: <LifecycleBadge state={lifecycle.state} size="sm" />,
+            },
             { label: "Responsável", value: doc.owner },
             { label: "Etapas", value: String(doc.steps.length) },
             { label: "Última revisão", value: doc.revisedAt },
@@ -424,11 +440,22 @@ function ProcessWorkspace() {
             </div>
           ),
         },
-        { id: "historico", label: "Histórico", content: <ProcessHistory /> },
+        {
+          id: "historico",
+          label: "Histórico",
+          content: (
+            <div className="space-y-10">
+              <LifecycleTab seed={lifecycleSeed} />
+              <ProcessHistory />
+            </div>
+          ),
+        },
       ]}
       defaultTab="estrutura"
       sidePanel={
         <div className="space-y-6">
+          <LifecyclePanel seed={lifecycleSeed} showTimeline={false} />
+          <Separator />
           <ProcessMetadataPanel key={doc.id} doc={doc} onChange={patch} />
           <Separator />
           <ProcessConsistencyPanel doc={doc} />

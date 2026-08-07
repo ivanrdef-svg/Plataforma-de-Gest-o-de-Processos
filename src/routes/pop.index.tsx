@@ -3,7 +3,42 @@ import { FileText, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
-import { createPopDoc, usePopDocs } from "@/lib/pop-store";
+import { createPopDoc, usePopDocs, type PopDoc } from "@/lib/pop-store";
+import { LifecycleBadge, LifecycleTrack } from "@/components/lifecycle/lifecycle-badge";
+import { useLifecycleState } from "@/lib/lifecycle-store";
+
+/** Build 009 — o card do POP mostra claramente o estágio do ciclo de vida. */
+function PopCard({ doc }: { doc: PopDoc }) {
+  const state = useLifecycleState({
+    objectId: doc.id,
+    kind: "pop",
+    name: doc.name,
+    owner: doc.owner,
+    status: doc.status,
+    updatedAt: doc.savedAt || doc.revisedAt,
+  });
+
+  return (
+    <Link
+      to="/pop/$popId"
+      params={{ popId: doc.id }}
+      className="rounded-xl border bg-card p-4 transition-colors hover:border-border-strong"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <p className="font-mono text-[11px] text-muted-foreground">{doc.code}</p>
+        <LifecycleBadge state={state} size="sm" />
+      </div>
+      <p className="mt-1 truncate text-sm font-medium">{doc.name}</p>
+      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+        {doc.description}
+      </p>
+      <LifecycleTrack state={state} className="mt-3" />
+      <p className="mt-3 text-[11px] text-muted-foreground">
+        {doc.category} · {doc.version} · {doc.owner}
+      </p>
+    </Link>
+  );
+}
 
 export const Route = createFileRoute("/pop/")({
   component: PopIndex,
@@ -62,21 +97,7 @@ function PopIndex() {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {docs.map((doc) => (
-            <Link
-              key={doc.id}
-              to="/pop/$popId"
-              params={{ popId: doc.id }}
-              className="rounded-xl border bg-card p-4 transition-colors hover:border-border-strong"
-            >
-              <p className="font-mono text-[11px] text-muted-foreground">{doc.code}</p>
-              <p className="mt-1 truncate text-sm font-medium">{doc.name}</p>
-              <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                {doc.description}
-              </p>
-              <p className="mt-3 text-[11px] text-muted-foreground">
-                {doc.category} · {doc.version} · {doc.status}
-              </p>
-            </Link>
+            <PopCard key={doc.id} doc={doc} />
           ))}
         </div>
       )}
