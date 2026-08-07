@@ -74,7 +74,7 @@ export const NODE_SIZE = {
 
 const GAP_X = 72;
 const GAP_Y = 96;
-const COLUMNS = 3;
+const COLUMNS = 2;
 const ROW_Y = 40;
 
 
