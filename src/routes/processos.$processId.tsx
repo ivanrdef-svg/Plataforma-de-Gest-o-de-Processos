@@ -4,7 +4,6 @@ import {
   ChevronLeft,
   Copy,
   Download,
-  GitBranch,
   Save,
   Share2,
   Star,
