@@ -4,7 +4,6 @@ import {
   ChevronLeft,
   Copy,
   Download,
-  GitBranch,
   Save,
   Share2,
   Star,
@@ -19,6 +18,7 @@ import { WorkspaceMeta, WorkspaceStatusPill } from "@/components/workspace/works
 import { ProcessSectionBlock } from "@/components/process/process-section-block";
 import { ProcessSteps } from "@/components/process/process-steps";
 import { ProcessOrigin } from "@/components/process/process-origin";
+import { BpmDesigner } from "@/components/bpm/bpm-designer";
 import { ProcessMetadataPanel } from "@/components/process/process-metadata-panel";
 import { RelationshipsTab } from "@/components/relationships/relationships-tab";
 import { RelationshipSummary } from "@/components/relationships/relationship-summary";
@@ -317,21 +317,9 @@ function ProcessWorkspace() {
         {
           id: "bpmn",
           label: "Modelagem BPM",
-          content: (
-            <div className="mx-auto max-w-xl py-10 text-center">
-              <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <GitBranch className="h-5 w-5" />
-              </span>
-              <p className="mt-4 text-sm font-medium">
-                Este Processo está pronto para ser modelado.
-              </p>
-              <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-muted-foreground">
-                As {doc.steps.length} etapas já mapeadas servirão de base para a
-                representação gráfica em BPMN em uma próxima build.
-              </p>
-            </div>
-          ),
+          content: <BpmDesigner key={doc.id} doc={doc} />,
         },
+
         {
           id: "relacionamentos",
           label: "Relacionamentos",
