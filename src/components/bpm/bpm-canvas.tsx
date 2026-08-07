@@ -6,7 +6,14 @@ import {
   useRef,
   useState,
 } from "react";
-import { CircleDot, Flag } from "lucide-react";
+import {
+  AlertTriangle,
+  BadgeCheck,
+  CircleDot,
+  Flag,
+  GitBranch,
+} from "lucide-react";
+import { getStepType } from "@/config/process-model";
 import {
   diagramBounds,
   type BpmDiagram,
