@@ -15,7 +15,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { AutoTextarea } from "./process-section-block";
+import { StepTypePicker } from "./process-step-type";
+import { PROCESS_EXECUTION_MODES } from "@/config/process-model";
 import type { ProcessStep } from "@/lib/process-store";
+
 
 /**
  * Build 006 — Etapas do Processo.
