@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ChevronLeft,
@@ -18,6 +18,11 @@ import { WorkspaceMeta, WorkspaceStatusPill } from "@/components/workspace/works
 import { ProcessSectionBlock } from "@/components/process/process-section-block";
 import { ProcessSteps } from "@/components/process/process-steps";
 import { ProcessOrigin } from "@/components/process/process-origin";
+import { ProcessRules } from "@/components/process/process-rules";
+import { ProcessParticipants } from "@/components/process/process-participants";
+import { ProcessTimeline } from "@/components/process/process-timeline";
+import { ProcessConsistencyPanel } from "@/components/process/process-consistency-panel";
+import { BpmReadinessBanner } from "@/components/process/bpm-readiness";
 import { BpmDesigner } from "@/components/bpm/bpm-designer";
 import { ProcessMetadataPanel } from "@/components/process/process-metadata-panel";
 import { RelationshipsTab } from "@/components/relationships/relationships-tab";
@@ -32,7 +37,15 @@ import {
   PROCESS_DEMO_ORIGIN,
 } from "@/config/process-structure";
 import {
+  addProcessParticipant,
+  addProcessRule,
   addProcessStep,
+  ensureProcessModel,
+  removeProcessParticipant,
+  removeProcessRule,
+  toggleParticipantStep,
+  updateProcessParticipant,
+  updateProcessRule,
   duplicateProcessDoc,
   moveProcessStep,
   removeProcessStep,
@@ -197,6 +210,12 @@ function ProcessWorkspace() {
   const { processId } = Route.useParams();
   const doc = useProcessDoc(processId);
 
+  /* Build 007 — injeta os blocos do modelo organizacional em processos
+     criados em builds anteriores, preservando todo o conteúdo existente. */
+  useEffect(() => {
+    if (processId) ensureProcessModel(processId);
+  }, [processId]);
+
   if (!doc) {
     return (
       <div className="p-10">
@@ -310,6 +329,59 @@ function ProcessWorkspace() {
           ),
         },
         {
+          id: "timeline",
+          label: "Timeline",
+          content: <ProcessTimeline steps={doc.steps} />,
+        },
+        {
+          id: "regras",
+          label: "Regras",
+          content: (
+            <ProcessRules
+              rules={doc.rules ?? []}
+              onChange={(id, p) => updateProcessRule(doc.id, id, p)}
+              onRemove={(id) => removeProcessRule(doc.id, id)}
+              onAdd={() => addProcessRule(doc.id)}
+            />
+          ),
+        },
+        {
+          id: "participantes",
+          label: "Participantes",
+          content: (
+            <ProcessParticipants
+              participants={doc.participants ?? []}
+              steps={doc.steps}
+              onChange={(id, p) => updateProcessParticipant(doc.id, id, p)}
+              onToggleStep={(id, stepId) =>
+                toggleParticipantStep(doc.id, id, stepId)
+              }
+              onRemove={(id) => removeProcessParticipant(doc.id, id)}
+              onAdd={() => addProcessParticipant(doc.id)}
+              onImportFromSteps={() => {
+                const mapped = new Set(
+                  (doc.participants ?? []).map((p) => p.name.trim()),
+                );
+                const owners = [
+                  ...new Set(doc.steps.map((s) => s.owner.trim()).filter(Boolean)),
+                ].filter((o) => !mapped.has(o));
+                owners.forEach((owner) =>
+                  addProcessParticipant(doc.id, {
+                    name: owner,
+                    area: doc.area,
+                    stepIds: doc.steps
+                      .filter((s) => s.owner.trim() === owner)
+                      .map((s) => s.id),
+                  }),
+                );
+                toast.success("Participantes importados", {
+                  description: `${owners.length} responsável(is) das etapas.`,
+                });
+              }}
+            />
+          ),
+        },
+        {
           id: "origem",
           label: "Origem",
           content: <ProcessOrigin processName={doc.name} />,
@@ -317,7 +389,12 @@ function ProcessWorkspace() {
         {
           id: "bpmn",
           label: "Modelagem BPM",
-          content: <BpmDesigner key={doc.id} doc={doc} />,
+          content: (
+            <div className="space-y-6">
+              <BpmReadinessBanner doc={doc} />
+              <BpmDesigner key={doc.id} doc={doc} />
+            </div>
+          ),
         },
 
         {
@@ -353,6 +430,8 @@ function ProcessWorkspace() {
       sidePanel={
         <div className="space-y-6">
           <ProcessMetadataPanel key={doc.id} doc={doc} onChange={patch} />
+          <Separator />
+          <ProcessConsistencyPanel doc={doc} />
           <Separator />
           <WorkspaceAiPanel />
         </div>
