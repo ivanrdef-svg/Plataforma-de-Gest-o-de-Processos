@@ -7,6 +7,11 @@ import {
   useGlobalSearch,
 } from "@/components/search/global-search-context";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Search, Sparkles } from "lucide-react";
 
 function TopBar() {

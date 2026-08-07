@@ -77,7 +77,8 @@ export const PLATFORM_MODULES: PlatformModule[] = [
     name: "POP",
     description: "Procedimentos Operacionais Padrão como objetos estruturados.",
     icon: FileText,
-    status: "planned",
+    route: "/pop",
+    status: "available",
     group: "core",
   },
   {
