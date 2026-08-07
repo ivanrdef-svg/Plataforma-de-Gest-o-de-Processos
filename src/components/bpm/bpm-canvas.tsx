@@ -45,13 +45,14 @@ interface BpmCanvasProps {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onMoveNode: (id: string, x: number, y: number) => void;
-  onZoomChange?: (zoom: number) => void;
-  className?: string;
+  onZoomChange?: ((zoom: number) => void) | undefined;
+  insets?: { left: number; right: number; top: number; bottom: number } | undefined;
+  className?: string | undefined;
 }
 
 export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
   function BpmCanvas(
-    { diagram, selectedId, onSelect, onMoveNode, onZoomChange, className },
+    { diagram, selectedId, onSelect, onMoveNode, onZoomChange, insets, className },
     ref,
   ) {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -72,21 +73,20 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
       if (!el) return;
       const rect = el.getBoundingClientRect();
       const b = diagramBounds(diagram);
-      const pad = 56;
+      const i = insets ?? { left: 48, right: 48, top: 48, bottom: 48 };
+      const availW = Math.max(rect.width - i.left - i.right, 120);
+      const availH = Math.max(rect.height - i.top - i.bottom, 120);
       const zoom = clamp(
-        Math.min(
-          (rect.width - pad * 2) / Math.max(b.width, 1),
-          (rect.height - pad * 2) / Math.max(b.height, 1),
-        ),
+        Math.min(availW / Math.max(b.width, 1), availH / Math.max(b.height, 1)),
         MIN_ZOOM,
-        1.2,
+        1.1,
       );
       apply({
         zoom,
-        x: (rect.width - b.width * zoom) / 2 - b.minX * zoom,
-        y: (rect.height - b.height * zoom) / 2 - b.minY * zoom,
+        x: i.left + (availW - b.width * zoom) / 2 - b.minX * zoom,
+        y: i.top + (availH - b.height * zoom) / 2 - b.minY * zoom,
       });
-    }, [diagram, apply]);
+    }, [diagram, apply, insets]);
 
     const zoomAt = useCallback(
       (nextZoom: number, px: number, py: number) => {
@@ -121,7 +121,7 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
       const id = window.requestAnimationFrame(fit);
       return () => window.cancelAnimationFrame(id);
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [diagram.generatedAt]);
+    }, [diagram.generatedAt, insets?.left, insets?.right]);
 
     // wheel não-passivo (React usa listeners passivos)
     const wheelRef = useRef<(e: WheelEvent) => void>(() => {});

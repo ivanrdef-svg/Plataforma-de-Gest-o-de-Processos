@@ -8,6 +8,8 @@ import {
   ZoomIn,
   ZoomOut,
   Sparkles,
+  PanelLeft,
+  PanelRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { BpmCanvas, type BpmCanvasHandle } from "@/components/bpm/bpm-canvas";
@@ -69,6 +71,8 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [fullscreen, setFullscreen] = useState(false);
+  const [showSource, setShowSource] = useState(true);
+  const [showProps, setShowProps] = useState(true);
   const canvasRef = useRef<BpmCanvasHandle>(null);
 
   // Gera o fluxo inicial automaticamente ao abrir o Processo.
@@ -126,6 +130,21 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
             onClick={() => canvasRef.current?.fit()}
           />
         </div>
+
+        <Separator orientation="vertical" className="h-5" />
+
+        <ToolButton
+          label={showSource ? "Ocultar painel do Processo" : "Mostrar painel do Processo"}
+          icon={PanelLeft}
+          active={showSource}
+          onClick={() => setShowSource((v) => !v)}
+        />
+        <ToolButton
+          label={showProps ? "Ocultar propriedades" : "Mostrar propriedades"}
+          icon={PanelRight}
+          active={showProps}
+          onClick={() => setShowProps((v) => !v)}
+        />
 
         <Separator orientation="vertical" className="h-5" />
 
