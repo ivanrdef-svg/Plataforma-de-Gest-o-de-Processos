@@ -6,7 +6,14 @@ import {
   useRef,
   useState,
 } from "react";
-import { CircleDot, Flag } from "lucide-react";
+import {
+  AlertTriangle,
+  BadgeCheck,
+  CircleDot,
+  Flag,
+  GitBranch,
+} from "lucide-react";
+import { getStepType } from "@/config/process-model";
 import {
   diagramBounds,
   type BpmDiagram,
@@ -47,12 +54,23 @@ interface BpmCanvasProps {
   onMoveNode: (id: string, x: number, y: number) => void;
   onZoomChange?: ((zoom: number) => void) | undefined;
   insets?: { left: number; right: number; top: number; bottom: number } | undefined;
+  /** Build 008 — minimapa do diagrama no canto do canvas. */
+  showMinimap?: boolean | undefined;
   className?: string | undefined;
 }
 
 export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
   function BpmCanvas(
-    { diagram, selectedId, onSelect, onMoveNode, onZoomChange, insets, className },
+    {
+      diagram,
+      selectedId,
+      onSelect,
+      onMoveNode,
+      onZoomChange,
+      insets,
+      showMinimap,
+      className,
+    },
     ref,
   ) {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -269,36 +287,57 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
               const a = nodeById.get(edge.source);
               const b = nodeById.get(edge.target);
               if (!a || !b) return null;
-              const sameRow = Math.abs(a.y + a.height / 2 - (b.y + b.height / 2)) < 1;
-              let x1: number, y1: number, x2: number, y2: number, d: string;
-              if (sameRow) {
-                const forward = b.x >= a.x;
-                x1 = forward ? a.x + a.width : a.x;
-                x2 = forward ? b.x : b.x + b.width;
-                y1 = a.y + a.height / 2;
-                y2 = b.y + b.height / 2;
-                const tip = forward ? x2 - 6 : x2 + 6;
-                d = `M ${x1} ${y1} L ${tip} ${y2}`;
+              const dependency = edge.variant === "dependency";
+
+              const x1 = a.x + a.width;
+              const y1 = a.y + a.height / 2;
+              const x2 = b.x;
+              const y2 = b.y + b.height / 2;
+
+              let d: string;
+              if (dependency) {
+                // Dependência declarada: arco discreto por cima do fluxo.
+                const top = Math.min(a.y, b.y) - 46;
+                d = `M ${a.x + a.width / 2} ${a.y} C ${a.x + a.width / 2} ${top}, ${b.x + b.width / 2} ${top}, ${b.x + b.width / 2} ${b.y - 6}`;
+              } else if (x2 >= x1) {
+                const mid = x1 + (x2 - x1) / 2;
+                d = `M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2 - 6} ${y2}`;
               } else {
-                // quebra de linha do layout em serpentina
-                x1 = a.x + a.width / 2;
-                y1 = a.y + a.height;
-                x2 = b.x + b.width / 2;
-                y2 = b.y;
-                const mid = (y1 + y2) / 2;
-                d = `M ${x1} ${y1} C ${x1} ${mid}, ${x2} ${mid}, ${x2} ${y2 - 6}`;
+                const below = Math.max(a.y + a.height, b.y + b.height) + 48;
+                d = `M ${a.x + a.width / 2} ${a.y + a.height} C ${a.x + a.width / 2} ${below}, ${b.x + b.width / 2} ${below}, ${b.x + b.width / 2} ${b.y + b.height + 6}`;
               }
 
+              const labelX = dependency
+                ? (a.x + a.width / 2 + b.x + b.width / 2) / 2
+                : (x1 + x2) / 2;
+              const labelY = dependency
+                ? Math.min(a.y, b.y) - 26
+                : (y1 + y2) / 2 - 8;
+
               return (
-                <path
-                  key={edge.id}
-                  d={d}
-                  fill="none"
-                  stroke="var(--muted-foreground)"
-                  strokeOpacity={0.5}
-                  strokeWidth={1.5}
-                  markerEnd="url(#bpm-arrow)"
-                />
+                <g key={edge.id}>
+                  <path
+                    d={d}
+                    fill="none"
+                    stroke={
+                      dependency ? "var(--primary)" : "var(--muted-foreground)"
+                    }
+                    strokeOpacity={dependency ? 0.45 : 0.5}
+                    strokeWidth={1.5}
+                    strokeDasharray={dependency ? "5 4" : undefined}
+                    markerEnd="url(#bpm-arrow)"
+                  />
+                  {edge.label && (
+                    <text
+                      x={labelX}
+                      y={labelY}
+                      textAnchor="middle"
+                      className="fill-muted-foreground text-[10px]"
+                    >
+                      {edge.label}
+                    </text>
+                  )}
+                </g>
               );
             })}
 
@@ -315,9 +354,18 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
           </g>
         </svg>
 
+        {showMinimap && (
+          <Minimap
+            diagram={diagram}
+            selectedId={selectedId}
+            offsetRight={(insets?.right ?? 12) + 8}
+          />
+        )}
+
         <div className="pointer-events-none absolute bottom-3 left-3 rounded-md border bg-background/80 px-2 py-1 text-[10px] text-muted-foreground backdrop-blur">
           Arraste para mover · ⌘/Ctrl + scroll para zoom
         </div>
+
       </div>
     );
   },
@@ -385,6 +433,38 @@ function BpmNodeShape({
             {node.name}
           </text>
         </>
+      ) : node.kind === "gateway" ? (
+        <>
+          {/* Decisão — losango moderno (estilo Camunda 8 / FigJam) */}
+          <path
+            d={`M ${node.width / 2} 2 L ${node.width - 2} ${node.height / 2} L ${node.width / 2} ${node.height - 2} L 2 ${node.height / 2} Z`}
+            fill="var(--card)"
+            stroke={
+              selected
+                ? "var(--primary)"
+                : "color-mix(in oklch, var(--border-strong, var(--border)) 100%, transparent)"
+            }
+            strokeWidth={selected ? 2.5 : 1.5}
+          />
+          <foreignObject
+            x={node.width * 0.18}
+            y={node.height / 2 - 18}
+            width={node.width * 0.64}
+            height={36}
+          >
+            <div className="flex h-9 flex-col items-center justify-center gap-0.5">
+              <GitBranch className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+            </div>
+          </foreignObject>
+          <text
+            x={node.width / 2}
+            y={node.height + 16}
+            textAnchor="middle"
+            className="fill-foreground text-[11px] font-medium"
+          >
+            {truncate(node.name, 26)}
+          </text>
+        </>
       ) : (
         <>
           <rect
@@ -395,12 +475,27 @@ function BpmNodeShape({
             stroke={selected ? "var(--primary)" : "var(--border)"}
             strokeWidth={selected ? 2 : 1}
           />
-          <rect width={4} height={node.height} rx={2} fill="var(--primary)" opacity={selected ? 1 : 0.35} />
-          <foreignObject x={14} y={12} width={node.width - 26} height={node.height - 20}>
+          <rect
+            width={4}
+            height={node.height}
+            rx={2}
+            fill={
+              node.kind === "approval"
+                ? "var(--color-emerald-500, var(--primary))"
+                : "var(--primary)"
+            }
+            opacity={selected ? 1 : 0.35}
+          />
+          <foreignObject x={14} y={10} width={node.width - 26} height={node.height - 16}>
             <div className="flex h-full flex-col justify-between">
-              <p className="line-clamp-2 text-[12px] font-medium leading-snug text-foreground">
-                {node.name}
-              </p>
+              <div className="flex items-start gap-1.5">
+                <span className="mt-[3px] flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+                  <StepGlyph node={node} />
+                </span>
+                <p className="line-clamp-2 text-[12px] font-medium leading-snug text-foreground">
+                  {node.name}
+                </p>
+              </div>
               <p className="truncate text-[10px] text-muted-foreground">
                 {[node.owner, node.duration].filter(Boolean).join(" · ") ||
                   "Sem responsável definido"}
@@ -409,6 +504,111 @@ function BpmNodeShape({
           </foreignObject>
         </>
       )}
+
+      {/* Build 008 — indicador discreto de inconsistência */}
+      {!!node.issues?.length && (
+        <g transform={`translate(${node.width - 12} -6)`}>
+          <circle
+            r={8}
+            fill="var(--card)"
+            stroke={
+              node.issues.some((i) => i.severity === "erro")
+                ? "color-mix(in oklch, red 60%, var(--border))"
+                : "color-mix(in oklch, orange 60%, var(--border))"
+            }
+            strokeWidth={1.5}
+          />
+          <foreignObject x={-8} y={-8} width={16} height={16}>
+            <div className="flex h-4 w-4 items-center justify-center">
+              <AlertTriangle
+                className={cn(
+                  "h-2.5 w-2.5",
+                  node.issues.some((i) => i.severity === "erro")
+                    ? "text-destructive"
+                    : "text-amber-600 dark:text-amber-400",
+                )}
+              />
+            </div>
+          </foreignObject>
+        </g>
+      )}
     </g>
   );
 }
+
+function truncate(value: string, max: number) {
+  return value.length > max ? `${value.slice(0, max - 1)}…` : value;
+}
+
+function StepGlyph({ node }: { node: BpmNode }) {
+  if (node.kind === "approval")
+    return <BadgeCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />;
+  const Icon = getStepType(node.stepType).icon;
+  return <Icon className="h-3.5 w-3.5 text-muted-foreground" />;
+}
+
+/** Build 008 — minimapa do diagrama (canto inferior direito). */
+function Minimap({
+  diagram,
+  selectedId,
+  offsetRight = 12,
+}: {
+  diagram: BpmDiagram;
+  selectedId: string | null;
+  offsetRight?: number;
+}) {
+  const b = diagramBounds(diagram);
+  const pad = 24;
+  const vbW = b.width + pad * 2;
+  const vbH = b.height + pad * 2;
+
+  return (
+    <div
+      className="pointer-events-none absolute bottom-3 z-10 w-[164px] rounded-lg border bg-background/85 p-1.5 shadow-sm backdrop-blur"
+      style={{ right: offsetRight }}
+    >
+      <svg
+        viewBox={`${b.minX - pad} ${b.minY - pad} ${vbW} ${vbH}`}
+        className="h-[92px] w-full"
+        role="presentation"
+      >
+        {diagram.edges.map((edge) => {
+          const a = diagram.nodes.find((n) => n.id === edge.source);
+          const c = diagram.nodes.find((n) => n.id === edge.target);
+          if (!a || !c) return null;
+          return (
+            <line
+              key={edge.id}
+              x1={a.x + a.width / 2}
+              y1={a.y + a.height / 2}
+              x2={c.x + c.width / 2}
+              y2={c.y + c.height / 2}
+              stroke="var(--muted-foreground)"
+              strokeOpacity={0.3}
+              strokeWidth={Math.max(2, vbW / 220)}
+            />
+          );
+        })}
+        {diagram.nodes.map((n) => (
+          <rect
+            key={n.id}
+            x={n.x}
+            y={n.y}
+            width={n.width}
+            height={n.height}
+            rx={10}
+            fill={
+              selectedId === n.id
+                ? "var(--primary)"
+                : "color-mix(in oklch, var(--muted-foreground) 35%, transparent)"
+            }
+          />
+        ))}
+      </svg>
+      <p className="px-0.5 pb-0.5 text-center text-[9px] text-muted-foreground">
+        Mini mapa
+      </p>
+    </div>
+  );
+}
+
