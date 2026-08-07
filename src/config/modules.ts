@@ -68,7 +68,8 @@ export const PLATFORM_MODULES: PlatformModule[] = [
     name: "Processos",
     description: "Engenharia de processos, cadeia de valor e arquitetura processual.",
     icon: Workflow,
-    status: "planned",
+    route: "/processos",
+    status: "available",
     group: "core",
   },
   {
