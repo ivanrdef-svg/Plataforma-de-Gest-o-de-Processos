@@ -6,6 +6,7 @@ import {
   type RelatedObjectType,
 } from "@/config/relationship-model";
 import { cn } from "@/lib/utils";
+import { Pill } from "@/components/ui/pill";
 import type { RelationshipStats } from "@/lib/relationship-store";
 
 /**
@@ -22,18 +23,10 @@ export function ObjectTypeBadge({
   className?: string;
 }) {
   const style = OBJECT_TYPES[type];
-  const Icon = style.icon;
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium",
-        style.tone,
-        className,
-      )}
-    >
-      <Icon className="h-3 w-3" />
+    <Pill tone={style.tone} icon={style.icon} className={className}>
       {type}
-    </span>
+    </Pill>
   );
 }
 
@@ -67,17 +60,17 @@ export function ImpactBadge({
   className?: string;
 }) {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium capitalize",
-        IMPACT_TONE[impact],
-        className,
-      )}
+    <Pill
+      tone={IMPACT_TONE[impact]}
+      shape="full"
+      size="default"
+      className={cn("capitalize", className)}
     >
       {impact}
-    </span>
+    </Pill>
   );
 }
+
 
 export function RelationshipKindChip({ kind }: { kind: string }) {
   return (

@@ -1,4 +1,6 @@
 import { cn } from "@/lib/utils";
+import { Pill } from "@/components/ui/pill";
+
 import {
   LIFECYCLE_TRACK,
   stateStyle,
@@ -24,22 +26,26 @@ export function LifecycleBadge({
   className?: string;
 }) {
   const style = stateStyle(state);
-  const Icon = style.icon;
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full font-medium",
-        style.tone,
-        size === "sm" ? "px-2 py-0.5 text-[10px]" : "px-2.5 py-1 text-[11px]",
-        className,
-      )}
+    <Pill
+      tone={style.tone}
+      shape="full"
+      size={size === "sm" ? "default" : "md"}
+      gap="gap-1.5"
+      {...(showIcon
+        ? {
+            icon: style.icon,
+            iconClassName: size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5",
+          }
+        : {})}
       title={style.description}
+      className={className}
     >
-      {showIcon && <Icon className={size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5"} />}
       {style.label}
-    </span>
+    </Pill>
   );
 }
+
 
 /** Ponto discreto de estado — para listas densas. */
 export function LifecycleDot({
