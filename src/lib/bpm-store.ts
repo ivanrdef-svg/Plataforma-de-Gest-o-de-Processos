@@ -99,7 +99,9 @@ export function regenerateDiagram(doc: ProcessDoc): BpmDiagram {
 export function ensureDiagram(doc: ProcessDoc): BpmDiagram {
   ensureHydrated();
   const current = state[doc.id];
-  if (current) return current;
+  // Build 008 — diagramas gerados antes da geração inteligente não possuem
+  // `issues`: nesse caso o fluxo é regerado a partir do modelo do Processo.
+  if (current && Array.isArray(current.issues)) return current;
   return regenerateDiagram(doc);
 }
 
