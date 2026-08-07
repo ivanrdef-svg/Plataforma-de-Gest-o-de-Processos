@@ -1,5 +1,9 @@
 import { MousePointerSquareDashed } from "lucide-react";
-import { RelationshipSummary } from "@/components/relationships/relationship-summary";
+import {
+  ObjectTypeIcon,
+  RelationshipIndicators,
+} from "@/components/relationships/relationship-badges";
+import { summarize, useRelationships } from "@/lib/relationship-store";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -83,7 +87,7 @@ export function BpmPropertiesPanel({
 
       <div className="space-y-2">
         <Label className="text-[11px] text-muted-foreground">Relacionamentos</Label>
-        <RelationshipSummary objectId={processId} />
+        <CompactRelationships objectId={processId} />
       </div>
 
       <Separator />
@@ -97,6 +101,39 @@ export function BpmPropertiesPanel({
           className="min-h-[80px] resize-none text-xs"
         />
       </div>
+    </div>
+  );
+}
+
+/** Lista compacta de relacionamentos — cabe na largura do painel direito. */
+function CompactRelationships({ objectId }: { objectId: string }) {
+  const items = useRelationships(objectId);
+  const stats = summarize(items);
+
+  if (!items.length) {
+    return (
+      <p className="text-[11px] text-muted-foreground/80">
+        Nenhum vínculo registrado para este processo.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <RelationshipIndicators stats={stats} />
+      <ul className="space-y-1">
+        {items.slice(0, 5).map((rel) => (
+          <li
+            key={rel.id}
+            className="flex items-center gap-2 rounded-md border bg-background px-2 py-1.5"
+          >
+            <ObjectTypeIcon type={rel.targetType} />
+            <span className="min-w-0 flex-1 truncate text-[11px]">
+              {rel.targetName}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
