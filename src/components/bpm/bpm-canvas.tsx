@@ -269,15 +269,26 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
               const a = nodeById.get(edge.source);
               const b = nodeById.get(edge.target);
               if (!a || !b) return null;
-              const x1 = a.x + a.width;
-              const y1 = a.y + a.height / 2;
-              const x2 = b.x;
-              const y2 = b.y + b.height / 2;
-              const mid = (x1 + x2) / 2;
-              const d =
-                Math.abs(y1 - y2) < 1
-                  ? `M ${x1} ${y1} L ${x2 - 6} ${y2}`
-                  : `M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2 - 6} ${y2}`;
+              const sameRow = Math.abs(a.y + a.height / 2 - (b.y + b.height / 2)) < 1;
+              let x1: number, y1: number, x2: number, y2: number, d: string;
+              if (sameRow) {
+                const forward = b.x >= a.x;
+                x1 = forward ? a.x + a.width : a.x;
+                x2 = forward ? b.x : b.x + b.width;
+                y1 = a.y + a.height / 2;
+                y2 = b.y + b.height / 2;
+                const tip = forward ? x2 - 6 : x2 + 6;
+                d = `M ${x1} ${y1} L ${tip} ${y2}`;
+              } else {
+                // quebra de linha do layout em serpentina
+                x1 = a.x + a.width / 2;
+                y1 = a.y + a.height;
+                x2 = b.x + b.width / 2;
+                y2 = b.y;
+                const mid = (y1 + y2) / 2;
+                d = `M ${x1} ${y1} C ${x1} ${mid}, ${x2} ${mid}, ${x2} ${y2 - 6}`;
+              }
+
               return (
                 <path
                   key={edge.id}
