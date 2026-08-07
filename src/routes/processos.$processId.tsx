@@ -19,6 +19,7 @@ import { WorkspaceMeta, WorkspaceStatusPill } from "@/components/workspace/works
 import { ProcessSectionBlock } from "@/components/process/process-section-block";
 import { ProcessSteps } from "@/components/process/process-steps";
 import { ProcessOrigin } from "@/components/process/process-origin";
+import { BpmDesigner } from "@/components/bpm/bpm-designer";
 import { ProcessMetadataPanel } from "@/components/process/process-metadata-panel";
 import { RelationshipsTab } from "@/components/relationships/relationships-tab";
 import { RelationshipSummary } from "@/components/relationships/relationship-summary";
