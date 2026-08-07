@@ -19,6 +19,8 @@ import { PopSectionBlock } from "@/components/pop/pop-section-block";
 import { PopSectionIndex } from "@/components/pop/pop-section-index";
 import { PopMetadataPanel } from "@/components/pop/pop-metadata-panel";
 import { PopRelations, PopHistory } from "@/components/pop/pop-relations";
+import { RelationshipsTab } from "@/components/relationships/relationships-tab";
+import { RelationshipSummary } from "@/components/relationships/relationship-summary";
 import { EmptyState } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -271,7 +273,34 @@ function PopWorkspace() {
         {
           id: "relacionamentos",
           label: "Relacionamentos",
-          content: <PopRelations />,
+          content: (
+            <div className="space-y-8">
+              <section className="space-y-3">
+                <div>
+                  <h2 className="text-sm font-medium">Resumo de relacionamentos</h2>
+                  <p className="text-xs text-muted-foreground">
+                    Normas, conhecimentos, processos, checklists, riscos e controles
+                    ligados a este POP.
+                  </p>
+                </div>
+                <RelationshipSummary objectId={doc.id} />
+              </section>
+
+              <section className="space-y-3">
+                <h2 className="text-sm font-medium">Rede de relacionamentos</h2>
+                <RelationshipsTab
+                  objectId={doc.id}
+                  objectName={doc.name}
+                  objectType="POP"
+                />
+              </section>
+
+              <section className="space-y-3">
+                <h2 className="text-sm font-medium">Vínculos de referência</h2>
+                <PopRelations />
+              </section>
+            </div>
+          ),
         },
         { id: "historico", label: "Histórico", content: <PopHistory /> },
       ]}

@@ -1,5 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { BookOpen, ChevronLeft, History, Share2 } from "lucide-react";
+import { BookOpen, ChevronLeft, History } from "lucide-react";
+import { RelationshipsTab } from "@/components/relationships/relationships-tab";
+import { RelationshipIndicators } from "@/components/relationships/relationship-badges";
+import { useRelationshipStats } from "@/lib/relationship-store";
 import { WorkspaceLayout } from "@/components/workspace/workspace-layout";
 import { WorkspaceAiPanel } from "@/components/workspace/workspace-ai-panel";
 import { WorkspaceStatusBar } from "@/components/workspace/workspace-status-bar";
@@ -41,12 +44,15 @@ export const Route = createFileRoute("/knowledge/$packageId")({
 });
 
 function KnowledgeSummary({ doc }: { doc: KnowledgeDoc }) {
+  const stats = useRelationshipStats(doc.id);
   return (
     <div className="max-w-3xl space-y-6">
       <p className="text-sm leading-relaxed text-muted-foreground">{doc.description}</p>
-      <div className="grid gap-3 sm:grid-cols-3">
+      <RelationshipIndicators stats={stats} />
+      <div className="grid gap-3 sm:grid-cols-4">
         {[
           { label: "Blocos de conteúdo", value: doc.blocks.length },
+          { label: "Objetos conectados", value: stats.total },
           { label: "Tags", value: doc.tags.length },
           { label: "Palavras-chave", value: doc.keywords.length },
         ].map((item) => (
@@ -159,10 +165,10 @@ function KnowledgePackageWorkspace() {
           id: "relacionamentos",
           label: "Relacionamentos",
           content: (
-            <EmptyState
-              icon={<Share2 className="h-5 w-5" />}
-              title="Relacionamentos"
-              description="Conexões deste conhecimento com processos, POPs, riscos e controles."
+            <RelationshipsTab
+              objectId={doc.id}
+              objectName={doc.name}
+              objectType={doc.type}
             />
           ),
         },
