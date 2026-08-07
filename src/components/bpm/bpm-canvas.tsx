@@ -355,7 +355,11 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
         </svg>
 
         {showMinimap && (
-          <Minimap diagram={diagram} selectedId={selectedId} />
+          <Minimap
+            diagram={diagram}
+            selectedId={selectedId}
+            offsetRight={(insets?.right ?? 12) + 8}
+          />
         )}
 
         <div className="pointer-events-none absolute bottom-3 left-3 rounded-md border bg-background/80 px-2 py-1 text-[10px] text-muted-foreground backdrop-blur">
@@ -547,9 +551,11 @@ function StepGlyph({ node }: { node: BpmNode }) {
 function Minimap({
   diagram,
   selectedId,
+  offsetRight = 12,
 }: {
   diagram: BpmDiagram;
   selectedId: string | null;
+  offsetRight?: number;
 }) {
   const b = diagramBounds(diagram);
   const pad = 24;
@@ -557,7 +563,10 @@ function Minimap({
   const vbH = b.height + pad * 2;
 
   return (
-    <div className="pointer-events-none absolute bottom-3 right-3 z-10 w-[164px] rounded-lg border bg-background/85 p-1.5 shadow-sm backdrop-blur">
+    <div
+      className="pointer-events-none absolute bottom-3 z-10 w-[164px] rounded-lg border bg-background/85 p-1.5 shadow-sm backdrop-blur"
+      style={{ right: offsetRight }}
+    >
       <svg
         viewBox={`${b.minX - pad} ${b.minY - pad} ${vbW} ${vbH}`}
         className="h-[92px] w-full"
