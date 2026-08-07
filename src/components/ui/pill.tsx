@@ -19,18 +19,19 @@ const SIZE: Record<PillSize, string> = {
 
 export interface PillProps {
   /** Classe de tom (cor de fundo/texto) vinda do design system. */
-  tone?: string;
-  shape?: PillShape;
-  size?: PillSize;
+  tone?: string | undefined;
+  shape?: PillShape | undefined;
+  size?: PillSize | undefined;
   /** Ícone opcional exibido antes do conteúdo. */
-  icon?: ComponentType<{ className?: string }>;
-  iconClassName?: string;
+  icon?: ComponentType<{ className?: string }> | undefined;
+  iconClassName?: string | undefined;
   /** Espaçamento entre ícone e conteúdo. */
-  gap?: string;
-  title?: string;
-  className?: string;
-  children?: ReactNode;
+  gap?: string | undefined;
+  title?: string | undefined;
+  className?: string | undefined;
+  children?: ReactNode | undefined;
 }
+
 
 export function Pill({
   tone,
