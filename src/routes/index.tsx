@@ -19,6 +19,7 @@ import {
 import { useGlobalSearch } from "@/components/search/global-search-context";
 import { ContinueWorking } from "@/components/home/continue-working";
 import { ConnectedKnowledge } from "@/components/home/connected-knowledge";
+import { ProcessesInProgress } from "@/components/home/processes-in-progress";
 import { CardQuickActions } from "@/components/workspace/card-quick-actions";
 
 export const Route = createFileRoute("/")({
@@ -142,6 +143,8 @@ function Launchpad() {
               ))}
             </div>
           </section>
+
+          <ProcessesInProgress />
 
           <ConnectedKnowledge />
 
