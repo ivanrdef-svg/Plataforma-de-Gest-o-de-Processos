@@ -60,7 +60,7 @@ export function BpmSourcePanel({
   onSelectStep,
 }: {
   doc: ProcessDoc;
-  selectedStepId?: string;
+  selectedStepId?: string | undefined;
   onSelectStep: (stepId: string) => void;
 }) {
   const participants = Array.from(
