@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowUpRight, BookOpen, FileText, Link2, Search } from "lucide-react";
+import { ArrowUpRight, BookOpen, FileText, GitBranch, Link2, Search } from "lucide-react";
 import { WorkspaceLayout } from "@/components/workspace/workspace-layout";
 import { WorkspaceAiPanel } from "@/components/workspace/workspace-ai-panel";
 import { WorkspaceStatusBar } from "@/components/workspace/workspace-status-bar";
@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { DEMO_ENVIRONMENT } from "@/config/workspace-demo";
 import { useKnowledgeDocs, type KnowledgeDoc } from "@/lib/knowledge-store";
+import { useRelationshipStats } from "@/lib/relationship-store";
 import {
   KNOWLEDGE_CATEGORIES,
   KNOWLEDGE_QUICK_FILTERS,
@@ -48,6 +49,7 @@ export const Route = createFileRoute("/knowledge/")({
 });
 
 function KnowledgeCard({ pkg }: { pkg: KnowledgeDoc }) {
+  const stats = useRelationshipStats(pkg.id);
   return (
     <Link
       to="/knowledge/$packageId"
@@ -82,8 +84,14 @@ function KnowledgeCard({ pkg }: { pkg: KnowledgeDoc }) {
         </span>
         <span className="inline-flex items-center gap-1">
           <Link2 className="h-3 w-3" />
-          {pkg.linkedObjects} objetos
+          {stats.total} relacionamentos
         </span>
+        {stats.dependencias > 0 && (
+          <span className="inline-flex items-center gap-1">
+            <GitBranch className="h-3 w-3" />
+            {stats.dependencias} dependentes
+          </span>
+        )}
       </div>
 
       <div className="mt-3 border-t pt-2.5">

@@ -18,6 +18,7 @@ import {
 } from "@/config/workspace-demo";
 import { useGlobalSearch } from "@/components/search/global-search-context";
 import { ContinueWorking } from "@/components/home/continue-working";
+import { ConnectedKnowledge } from "@/components/home/connected-knowledge";
 import { CardQuickActions } from "@/components/workspace/card-quick-actions";
 
 export const Route = createFileRoute("/")({
@@ -141,6 +142,8 @@ function Launchpad() {
               ))}
             </div>
           </section>
+
+          <ConnectedKnowledge />
 
           <section>
             <SectionHeader title="Explorar conhecimento" description="Módulos da plataforma." />

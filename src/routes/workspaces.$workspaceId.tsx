@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ChevronLeft, FileText, GitBranch, History, Share2 } from "lucide-react";
+import { ChevronLeft, FileText, GitBranch, History } from "lucide-react";
+import { RelationshipsTab } from "@/components/relationships/relationships-tab";
 import { WorkspaceLayout } from "@/components/workspace/workspace-layout";
 import { WorkspaceAiPanel } from "@/components/workspace/workspace-ai-panel";
 import { WorkspaceStatusBar } from "@/components/workspace/workspace-status-bar";
@@ -103,10 +104,10 @@ function WorkspaceDetail() {
           id: "relacionamentos",
           label: "Relacionamentos",
           content: (
-            <EmptyState
-              icon={<Share2 className="h-5 w-5" />}
-              title="Relacionamentos"
-              description="Grafo de dependências e impactos entre objetos."
+            <RelationshipsTab
+              objectId={ws.id}
+              objectName={ws.name}
+              objectType={ws.type}
             />
           ),
         },
