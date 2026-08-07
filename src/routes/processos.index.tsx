@@ -5,7 +5,8 @@ import { toast } from "sonner";
 import { WorkspaceLayout } from "@/components/workspace/workspace-layout";
 import { WorkspaceAiPanel } from "@/components/workspace/workspace-ai-panel";
 import { WorkspaceStatusBar } from "@/components/workspace/workspace-status-bar";
-import { WorkspaceStatusPill } from "@/components/workspace/workspace-meta";
+import { LifecycleBadge, LifecycleTrack } from "@/components/lifecycle/lifecycle-badge";
+import { useLifecycleState } from "@/lib/lifecycle-store";
 import { CardQuickActions } from "@/components/workspace/card-quick-actions";
 import { RelationshipIndicators } from "@/components/relationships/relationship-badges";
 import { useRelationshipStats } from "@/lib/relationship-store";
@@ -48,6 +49,14 @@ export const Route = createFileRoute("/processos/")({
 
 function ProcessCard({ doc }: { doc: ProcessDoc }) {
   const stats = useRelationshipStats(doc.id);
+  const state = useLifecycleState({
+    objectId: doc.id,
+    kind: "processo",
+    name: doc.name,
+    owner: doc.owner,
+    status: doc.status,
+    updatedAt: doc.savedAt || doc.revisedAt,
+  });
   return (
     <Link
       to="/processos/$processId"
@@ -56,7 +65,7 @@ function ProcessCard({ doc }: { doc: ProcessDoc }) {
     >
       <div className="flex items-center gap-2">
         <span className="font-mono text-[11px] text-muted-foreground">{doc.code}</span>
-        <WorkspaceStatusPill status={doc.status} className="ml-auto" />
+        <LifecycleBadge state={state} size="sm" className="ml-auto" />
         <CardQuickActions name={doc.name} className="-mr-1" />
       </div>
       <div className="mt-1.5 flex items-center gap-1.5">
@@ -69,6 +78,7 @@ function ProcessCard({ doc }: { doc: ProcessDoc }) {
       <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
         {doc.description}
       </p>
+      <LifecycleTrack state={state} className="mt-3" />
       <RelationshipIndicators stats={stats} compact className="mt-3" />
       <p className="mt-2 text-[11px] text-muted-foreground/80">
         {doc.category} · {doc.steps.length} etapas · {doc.version} · {doc.owner}

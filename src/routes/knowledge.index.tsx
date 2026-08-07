@@ -4,7 +4,8 @@ import { ArrowUpRight, BookOpen, FileText, GitBranch, Link2, Search } from "luci
 import { WorkspaceLayout } from "@/components/workspace/workspace-layout";
 import { WorkspaceAiPanel } from "@/components/workspace/workspace-ai-panel";
 import { WorkspaceStatusBar } from "@/components/workspace/workspace-status-bar";
-import { WorkspaceStatusPill } from "@/components/workspace/workspace-meta";
+import { LifecycleBadge, LifecycleTrack } from "@/components/lifecycle/lifecycle-badge";
+import { useLifecycleState } from "@/lib/lifecycle-store";
 import { CardQuickActions } from "@/components/workspace/card-quick-actions";
 import { KnowledgeStats } from "@/components/knowledge/knowledge-stats";
 import { NewKnowledgeMenu } from "@/components/knowledge/new-knowledge-menu";
@@ -50,6 +51,14 @@ export const Route = createFileRoute("/knowledge/")({
 
 function KnowledgeCard({ pkg }: { pkg: KnowledgeDoc }) {
   const stats = useRelationshipStats(pkg.id);
+  const state = useLifecycleState({
+    objectId: pkg.id,
+    kind: "knowledge",
+    name: pkg.name,
+    owner: pkg.owner,
+    status: pkg.status,
+    updatedAt: pkg.updatedAt,
+  });
   return (
     <Link
       to="/knowledge/$packageId"
@@ -68,10 +77,13 @@ function KnowledgeCard({ pkg }: { pkg: KnowledgeDoc }) {
             <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
               {pkg.category}
             </span>
-            <WorkspaceStatusPill status={pkg.status} />
+            <LifecycleBadge state={state} size="sm" />
           </div>
         </div>
       </div>
+
+      <LifecycleTrack state={state} className="mt-3" />
+
 
       <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
         {pkg.description}

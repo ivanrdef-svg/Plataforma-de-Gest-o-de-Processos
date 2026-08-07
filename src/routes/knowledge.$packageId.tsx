@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { BookOpen, ChevronLeft, History } from "lucide-react";
+import { BookOpen, ChevronLeft } from "lucide-react";
 import { RelationshipsTab } from "@/components/relationships/relationships-tab";
 import { RelationshipIndicators } from "@/components/relationships/relationship-badges";
 import { useRelationshipStats } from "@/lib/relationship-store";
@@ -7,7 +7,10 @@ import { WorkspaceLayout } from "@/components/workspace/workspace-layout";
 import { WorkspaceAiPanel } from "@/components/workspace/workspace-ai-panel";
 import { WorkspaceStatusBar } from "@/components/workspace/workspace-status-bar";
 import { WorkspaceContextBar } from "@/components/workspace/workspace-context-bar";
-import { WorkspaceMeta, WorkspaceStatusPill } from "@/components/workspace/workspace-meta";
+import { WorkspaceMeta } from "@/components/workspace/workspace-meta";
+import { LifecycleBadge } from "@/components/lifecycle/lifecycle-badge";
+import { LifecyclePanel, LifecycleTab } from "@/components/lifecycle/lifecycle-panel";
+import { useLifecycle, type LifecycleSeed } from "@/lib/lifecycle-store";
 import { WorkspaceHeaderActions } from "@/components/workspace/workspace-header-actions";
 import { BlockEditor } from "@/components/knowledge/block-editor";
 import { KnowledgePropertiesPanel } from "@/components/knowledge/knowledge-properties-panel";
@@ -83,6 +86,16 @@ function KnowledgePackageWorkspace() {
   const docs = useKnowledgeDocs();
   const doc = docs.find((d) => d.id === packageId) ?? docs[0];
 
+  const lifecycleSeed: LifecycleSeed = {
+    objectId: doc?.id ?? "",
+    kind: "knowledge",
+    name: doc?.name ?? "",
+    owner: doc?.owner ?? "",
+    status: doc?.status ?? "",
+    updatedAt: doc?.updatedAt ?? "",
+  };
+  const lifecycle = useLifecycle(lifecycleSeed);
+
   if (!doc) {
     return (
       <div className="p-10">
@@ -109,7 +122,10 @@ function KnowledgePackageWorkspace() {
             { label: "Tipo", value: doc.type },
             { label: "Categoria", value: doc.category },
             { label: "Versão", value: doc.version },
-            { label: "Status", value: <WorkspaceStatusPill status={doc.status} /> },
+            {
+              label: "Estado",
+              value: <LifecycleBadge state={lifecycle.state} size="sm" />,
+            },
             { label: "Responsável", value: doc.owner },
             { label: "Atualizado", value: doc.updatedAt },
           ]}
@@ -175,18 +191,14 @@ function KnowledgePackageWorkspace() {
         {
           id: "historico",
           label: "Histórico",
-          content: (
-            <EmptyState
-              icon={<History className="h-5 w-5" />}
-              title="Histórico de versões"
-              description="Trilha completa de alterações e aprovações do pacote."
-            />
-          ),
+          content: <LifecycleTab seed={lifecycleSeed} />,
         },
       ]}
       defaultTab="conteudo"
       sidePanel={
         <div className="space-y-6">
+          <LifecyclePanel seed={lifecycleSeed} showTimeline={false} />
+          <Separator />
           <KnowledgePropertiesPanel key={doc.id} doc={doc} onChange={patch} />
           <Separator />
           <WorkspaceAiPanel />
