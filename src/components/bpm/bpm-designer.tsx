@@ -165,46 +165,55 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
         </div>
       )}
 
-      {/* Três áreas */}
+      {/* Três áreas: painéis flutuam sobre o canvas (estilo FigJam/Figma) */}
       <div
         className={cn(
-          "grid gap-3 lg:grid-cols-[240px_minmax(0,1fr)_280px]",
-          fullscreen ? "flex-1 min-h-0" : "min-h-[560px]",
+          "relative",
+          fullscreen ? "min-h-0 flex-1" : "h-[620px]",
         )}
       >
-        <aside className="hidden max-h-[640px] overflow-y-auto rounded-xl border bg-card p-3 lg:block">
-          <BpmSourcePanel
-            doc={doc}
-            selectedStepId={selected?.stepId}
-            onSelectStep={(stepId) => {
-              const node = diagram.nodes.find((n) => n.stepId === stepId);
-              if (node) setSelectedId(node.id);
-            }}
-          />
-        </aside>
+        <BpmCanvas
+          ref={canvasRef}
+          diagram={diagram}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          onZoomChange={setZoom}
+          onMoveNode={(id, x, y) => updateBpmNode(doc.id, id, { x, y })}
+          insets={{
+            left: showSource ? 244 : 24,
+            right: showProps ? 288 : 24,
+            top: 24,
+            bottom: 48,
+          }}
+        />
 
-        <div className={cn(fullscreen ? "min-h-0" : "h-[560px]")}>
-          <BpmCanvas
-            ref={canvasRef}
-            diagram={diagram}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            onZoomChange={setZoom}
-            onMoveNode={(id, x, y) => updateBpmNode(doc.id, id, { x, y })}
-          />
-        </div>
+        {showSource && (
+          <aside className="absolute bottom-3 left-3 top-3 z-10 w-[224px] animate-fade-in overflow-y-auto rounded-xl border bg-card/95 p-3 shadow-sm backdrop-blur">
+            <BpmSourcePanel
+              doc={doc}
+              selectedStepId={selected?.stepId}
+              onSelectStep={(stepId) => {
+                const node = diagram.nodes.find((n) => n.stepId === stepId);
+                if (node) setSelectedId(node.id);
+              }}
+            />
+          </aside>
+        )}
 
-        <aside className="max-h-[640px] overflow-y-auto rounded-xl border bg-card p-3">
-          <BpmPropertiesPanel
-            node={selected}
-            processId={doc.id}
-            processName={doc.name}
-            onNotesChange={(notes) =>
-              selected && updateBpmNode(doc.id, selected.id, { notes })
-            }
-          />
-        </aside>
+        {showProps && (
+          <aside className="absolute bottom-3 right-3 top-3 z-10 w-[268px] animate-fade-in overflow-y-auto rounded-xl border bg-card/95 p-3 shadow-sm backdrop-blur">
+            <BpmPropertiesPanel
+              node={selected}
+              processId={doc.id}
+              processName={doc.name}
+              onNotesChange={(notes) =>
+                selected && updateBpmNode(doc.id, selected.id, { notes })
+              }
+            />
+          </aside>
+        )}
       </div>
+
     </div>
   );
 }
