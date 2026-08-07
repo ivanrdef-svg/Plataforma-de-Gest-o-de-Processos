@@ -3,7 +3,10 @@ import {
   ArrowDown,
   ArrowUp,
   ChevronDown,
+  CircleCheck,
+  CircleDot,
   Clock,
+  GitBranch,
   LogIn,
   LogOut,
   Plus,
@@ -237,17 +240,17 @@ function StepCard({
                 <div className="flex flex-wrap gap-1.5">
                   {PROCESS_EXECUTION_MODES.map((mode) => (
                     <button
-                      key={mode}
+                      key={mode.id}
                       type="button"
-                      onClick={() => onChange({ execution: mode })}
+                      onClick={() => onChange({ execution: mode.id })}
                       className={cn(
                         "rounded-full border px-2.5 py-1 text-[10px] capitalize transition-colors",
-                        (step.execution ?? "sequencial") === mode
+                        (step.execution ?? "sequencial") === mode.id
                           ? "border-primary/40 bg-primary/10 text-primary"
                           : "text-muted-foreground hover:border-border-strong hover:text-foreground",
                       )}
                     >
-                      {mode}
+                      {mode.label}
                     </button>
                   ))}
                 </div>
