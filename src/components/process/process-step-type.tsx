@@ -22,9 +22,9 @@ export function StepTypeBadge({
   className,
   withLabel = true,
 }: {
-  type?: string;
-  className?: string;
-  withLabel?: boolean;
+  type?: string | undefined;
+  className?: string | undefined;
+  withLabel?: boolean | undefined;
 }) {
   const meta = getStepType(type);
   const Icon = meta.icon;
@@ -46,7 +46,7 @@ export function StepTypePicker({
   value,
   onChange,
 }: {
-  value?: string;
+  value?: string | undefined;
   onChange: (type: ProcessStepTypeId) => void;
 }) {
   const meta = getStepType(value);
