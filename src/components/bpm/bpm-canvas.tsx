@@ -422,6 +422,38 @@ function BpmNodeShape({
             {node.name}
           </text>
         </>
+      ) : node.kind === "gateway" ? (
+        <>
+          {/* Decisão — losango moderno (estilo Camunda 8 / FigJam) */}
+          <path
+            d={`M ${node.width / 2} 2 L ${node.width - 2} ${node.height / 2} L ${node.width / 2} ${node.height - 2} L 2 ${node.height / 2} Z`}
+            fill="var(--card)"
+            stroke={
+              selected
+                ? "var(--primary)"
+                : "color-mix(in oklch, var(--border-strong, var(--border)) 100%, transparent)"
+            }
+            strokeWidth={selected ? 2.5 : 1.5}
+          />
+          <foreignObject
+            x={node.width * 0.18}
+            y={node.height / 2 - 18}
+            width={node.width * 0.64}
+            height={36}
+          >
+            <div className="flex h-9 flex-col items-center justify-center gap-0.5">
+              <GitBranch className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+            </div>
+          </foreignObject>
+          <text
+            x={node.width / 2}
+            y={node.height + 16}
+            textAnchor="middle"
+            className="fill-foreground text-[11px] font-medium"
+          >
+            {truncate(node.name, 26)}
+          </text>
+        </>
       ) : (
         <>
           <rect
@@ -432,12 +464,27 @@ function BpmNodeShape({
             stroke={selected ? "var(--primary)" : "var(--border)"}
             strokeWidth={selected ? 2 : 1}
           />
-          <rect width={4} height={node.height} rx={2} fill="var(--primary)" opacity={selected ? 1 : 0.35} />
-          <foreignObject x={14} y={12} width={node.width - 26} height={node.height - 20}>
+          <rect
+            width={4}
+            height={node.height}
+            rx={2}
+            fill={
+              node.kind === "approval"
+                ? "var(--color-emerald-500, var(--primary))"
+                : "var(--primary)"
+            }
+            opacity={selected ? 1 : 0.35}
+          />
+          <foreignObject x={14} y={10} width={node.width - 26} height={node.height - 16}>
             <div className="flex h-full flex-col justify-between">
-              <p className="line-clamp-2 text-[12px] font-medium leading-snug text-foreground">
-                {node.name}
-              </p>
+              <div className="flex items-start gap-1.5">
+                <span className="mt-[3px] flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+                  <StepGlyph node={node} />
+                </span>
+                <p className="line-clamp-2 text-[12px] font-medium leading-snug text-foreground">
+                  {node.name}
+                </p>
+              </div>
               <p className="truncate text-[10px] text-muted-foreground">
                 {[node.owner, node.duration].filter(Boolean).join(" · ") ||
                   "Sem responsável definido"}
@@ -446,6 +493,106 @@ function BpmNodeShape({
           </foreignObject>
         </>
       )}
+
+      {/* Build 008 — indicador discreto de inconsistência */}
+      {!!node.issues?.length && (
+        <g transform={`translate(${node.width - 12} -6)`}>
+          <circle
+            r={8}
+            fill="var(--card)"
+            stroke={
+              node.issues.some((i) => i.severity === "erro")
+                ? "color-mix(in oklch, red 60%, var(--border))"
+                : "color-mix(in oklch, orange 60%, var(--border))"
+            }
+            strokeWidth={1.5}
+          />
+          <foreignObject x={-8} y={-8} width={16} height={16}>
+            <div className="flex h-4 w-4 items-center justify-center">
+              <AlertTriangle
+                className={cn(
+                  "h-2.5 w-2.5",
+                  node.issues.some((i) => i.severity === "erro")
+                    ? "text-destructive"
+                    : "text-amber-600 dark:text-amber-400",
+                )}
+              />
+            </div>
+          </foreignObject>
+        </g>
+      )}
     </g>
   );
 }
+
+function truncate(value: string, max: number) {
+  return value.length > max ? `${value.slice(0, max - 1)}…` : value;
+}
+
+function StepGlyph({ node }: { node: BpmNode }) {
+  if (node.kind === "approval")
+    return <BadgeCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />;
+  const Icon = getStepType(node.stepType).icon;
+  return <Icon className="h-3.5 w-3.5 text-muted-foreground" />;
+}
+
+/** Build 008 — minimapa do diagrama (canto inferior direito). */
+function Minimap({
+  diagram,
+  selectedId,
+}: {
+  diagram: BpmDiagram;
+  selectedId: string | null;
+}) {
+  const b = diagramBounds(diagram);
+  const pad = 24;
+  const vbW = b.width + pad * 2;
+  const vbH = b.height + pad * 2;
+
+  return (
+    <div className="pointer-events-none absolute bottom-3 right-3 z-10 w-[164px] rounded-lg border bg-background/85 p-1.5 shadow-sm backdrop-blur">
+      <svg
+        viewBox={`${b.minX - pad} ${b.minY - pad} ${vbW} ${vbH}`}
+        className="h-[92px] w-full"
+        role="presentation"
+      >
+        {diagram.edges.map((edge) => {
+          const a = diagram.nodes.find((n) => n.id === edge.source);
+          const c = diagram.nodes.find((n) => n.id === edge.target);
+          if (!a || !c) return null;
+          return (
+            <line
+              key={edge.id}
+              x1={a.x + a.width / 2}
+              y1={a.y + a.height / 2}
+              x2={c.x + c.width / 2}
+              y2={c.y + c.height / 2}
+              stroke="var(--muted-foreground)"
+              strokeOpacity={0.3}
+              strokeWidth={Math.max(2, vbW / 220)}
+            />
+          );
+        })}
+        {diagram.nodes.map((n) => (
+          <rect
+            key={n.id}
+            x={n.x}
+            y={n.y}
+            width={n.width}
+            height={n.height}
+            rx={10}
+            fill={
+              selectedId === n.id
+                ? "var(--primary)"
+                : "color-mix(in oklch, var(--muted-foreground) 35%, transparent)"
+            }
+          />
+        ))}
+      </svg>
+      <p className="px-0.5 pb-0.5 text-center text-[9px] text-muted-foreground">
+        Mini mapa
+      </p>
+    </div>
+  );
+}
+
