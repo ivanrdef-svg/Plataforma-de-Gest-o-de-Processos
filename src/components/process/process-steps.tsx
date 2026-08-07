@@ -96,12 +96,18 @@ function StepCard({
             />
           </button>
           <div className="min-w-0 flex-1">
-            <input
-              value={step.name}
-              onChange={(e) => onChange({ name: e.target.value })}
-              placeholder="Nome da etapa"
-              className="w-full bg-transparent text-sm font-medium tracking-tight outline-none"
-            />
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                value={step.name}
+                onChange={(e) => onChange({ name: e.target.value })}
+                placeholder="Nome da etapa"
+                className="min-w-0 flex-1 bg-transparent text-sm font-medium tracking-tight outline-none"
+              />
+              <StepTypePicker
+                value={step.type}
+                onChange={(type) => onChange({ type })}
+              />
+            </div>
             {!open && (
               <p className="mt-0.5 flex flex-wrap items-center gap-x-3 text-[11px] text-muted-foreground">
                 {step.owner && (
@@ -122,9 +128,15 @@ function StepCard({
                     {step.outputs}
                   </span>
                 )}
+                {step.execution === "paralela" && (
+                  <span className="rounded-full border border-dashed px-1.5 text-[10px]">
+                    Paralela
+                  </span>
+                )}
               </p>
             )}
           </div>
+
 
           <div className="flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
             <Button
