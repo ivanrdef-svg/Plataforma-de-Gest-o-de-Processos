@@ -47,12 +47,23 @@ interface BpmCanvasProps {
   onMoveNode: (id: string, x: number, y: number) => void;
   onZoomChange?: ((zoom: number) => void) | undefined;
   insets?: { left: number; right: number; top: number; bottom: number } | undefined;
+  /** Build 008 — minimapa do diagrama no canto do canvas. */
+  showMinimap?: boolean | undefined;
   className?: string | undefined;
 }
 
 export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
   function BpmCanvas(
-    { diagram, selectedId, onSelect, onMoveNode, onZoomChange, insets, className },
+    {
+      diagram,
+      selectedId,
+      onSelect,
+      onMoveNode,
+      onZoomChange,
+      insets,
+      showMinimap,
+      className,
+    },
     ref,
   ) {
     const containerRef = useRef<HTMLDivElement>(null);
