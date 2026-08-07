@@ -101,7 +101,7 @@ export const NODE_SIZE = {
 const GAP_X = 96;
 const GAP_Y = 40;
 /** Colunas por faixa antes de quebrar a linha do diagrama. */
-const MAX_COLUMNS = 4;
+const MAX_COLUMNS = 6;
 const BAND_GAP_Y = 140;
 const ROW_HEIGHT = NODE_SIZE.task.height;
 
