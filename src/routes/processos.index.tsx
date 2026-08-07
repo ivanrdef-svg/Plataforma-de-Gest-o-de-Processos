@@ -223,7 +223,7 @@ function ProcessCenter() {
       contextBar={
         <span className="inline-flex items-center gap-1.5">
           <Workflow className="h-3.5 w-3.5" />
-          Engenharia de processos · {docs.length} processos · {kpis.etapas} etapas
+          Engenharia de processos · {docs.length} processos · {kpis['etapas']} etapas
           mapeadas
         </span>
       }

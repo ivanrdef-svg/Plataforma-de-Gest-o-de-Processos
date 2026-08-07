@@ -20,6 +20,7 @@ import { Route as KnowledgeIndexRouteImport } from './routes/knowledge.index'
 import { Route as KnowledgePackageIdRouteImport } from './routes/knowledge.$packageId'
 import { Route as PopIndexRouteImport } from './routes/pop.index'
 import { Route as PopPopIdRouteImport } from './routes/pop.$popId'
+import { Route as ProcessosIndexRouteImport } from './routes/processos.index'
 import { Route as WorkspacesIndexRouteImport } from './routes/workspaces.index'
 import { Route as WorkspacesWorkspaceIdRouteImport } from './routes/workspaces.$workspaceId'
 
@@ -78,6 +79,11 @@ const PopPopIdRoute = PopPopIdRouteImport.update({
   path: '/$popId',
   getParentRoute: () => PopRoute,
 } as any)
+const ProcessosIndexRoute = ProcessosIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ProcessosRoute,
+} as any)
 const WorkspacesIndexRoute = WorkspacesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -95,25 +101,26 @@ export interface FileRoutesByFullPath {
   '/favoritos': typeof FavoritosRoute
   '/knowledge': typeof KnowledgeRouteWithChildren
   '/pop': typeof PopRouteWithChildren
-  '/processos': typeof ProcessosRoute
+  '/processos': typeof ProcessosRouteWithChildren
   '/workspaces': typeof WorkspacesRouteWithChildren
   '/knowledge/$packageId': typeof KnowledgePackageIdRoute
   '/pop/$popId': typeof PopPopIdRoute
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRoute
   '/knowledge/': typeof KnowledgeIndexRoute
   '/pop/': typeof PopIndexRoute
+  '/processos/': typeof ProcessosIndexRoute
   '/workspaces/': typeof WorkspacesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/administracao': typeof AdministracaoRoute
   '/favoritos': typeof FavoritosRoute
-  '/processos': typeof ProcessosRoute
   '/knowledge/$packageId': typeof KnowledgePackageIdRoute
   '/pop/$popId': typeof PopPopIdRoute
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRoute
   '/knowledge': typeof KnowledgeIndexRoute
   '/pop': typeof PopIndexRoute
+  '/processos': typeof ProcessosIndexRoute
   '/workspaces': typeof WorkspacesIndexRoute
 }
 export interface FileRoutesById {
@@ -123,13 +130,14 @@ export interface FileRoutesById {
   '/favoritos': typeof FavoritosRoute
   '/knowledge': typeof KnowledgeRouteWithChildren
   '/pop': typeof PopRouteWithChildren
-  '/processos': typeof ProcessosRoute
+  '/processos': typeof ProcessosRouteWithChildren
   '/workspaces': typeof WorkspacesRouteWithChildren
   '/knowledge/$packageId': typeof KnowledgePackageIdRoute
   '/pop/$popId': typeof PopPopIdRoute
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRoute
   '/knowledge/': typeof KnowledgeIndexRoute
   '/pop/': typeof PopIndexRoute
+  '/processos/': typeof ProcessosIndexRoute
   '/workspaces/': typeof WorkspacesIndexRoute
 }
 export interface FileRouteTypes {
@@ -147,18 +155,19 @@ export interface FileRouteTypes {
     | '/workspaces/$workspaceId'
     | '/knowledge/'
     | '/pop/'
+    | '/processos/'
     | '/workspaces/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/administracao'
     | '/favoritos'
-    | '/processos'
     | '/knowledge/$packageId'
     | '/pop/$popId'
     | '/workspaces/$workspaceId'
     | '/knowledge'
     | '/pop'
+    | '/processos'
     | '/workspaces'
   id:
     | '__root__'
@@ -174,6 +183,7 @@ export interface FileRouteTypes {
     | '/workspaces/$workspaceId'
     | '/knowledge/'
     | '/pop/'
+    | '/processos/'
     | '/workspaces/'
   fileRoutesById: FileRoutesById
 }
@@ -183,7 +193,7 @@ export interface RootRouteChildren {
   FavoritosRoute: typeof FavoritosRoute
   KnowledgeRoute: typeof KnowledgeRouteWithChildren
   PopRoute: typeof PopRouteWithChildren
-  ProcessosRoute: typeof ProcessosRoute
+  ProcessosRoute: typeof ProcessosRouteWithChildren
   WorkspacesRoute: typeof WorkspacesRouteWithChildren
 }
 
@@ -266,6 +276,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PopPopIdRouteImport
       parentRoute: typeof PopRoute
     }
+    '/processos/': {
+      id: '/processos/'
+      path: '/'
+      fullPath: '/processos/'
+      preLoaderRoute: typeof ProcessosIndexRouteImport
+      parentRoute: typeof ProcessosRoute
+    }
     '/workspaces/': {
       id: '/workspaces/'
       path: '/'
@@ -309,6 +326,18 @@ const PopRouteChildren: PopRouteChildren = {
 
 const PopRouteWithChildren = PopRoute._addFileChildren(PopRouteChildren)
 
+interface ProcessosRouteChildren {
+  ProcessosIndexRoute: typeof ProcessosIndexRoute
+}
+
+const ProcessosRouteChildren: ProcessosRouteChildren = {
+  ProcessosIndexRoute: ProcessosIndexRoute,
+}
+
+const ProcessosRouteWithChildren = ProcessosRoute._addFileChildren(
+  ProcessosRouteChildren,
+)
+
 interface WorkspacesRouteChildren {
   WorkspacesWorkspaceIdRoute: typeof WorkspacesWorkspaceIdRoute
   WorkspacesIndexRoute: typeof WorkspacesIndexRoute
@@ -329,7 +358,7 @@ const rootRouteChildren: RootRouteChildren = {
   FavoritosRoute: FavoritosRoute,
   KnowledgeRoute: KnowledgeRouteWithChildren,
   PopRoute: PopRouteWithChildren,
-  ProcessosRoute: ProcessosRoute,
+  ProcessosRoute: ProcessosRouteWithChildren,
   WorkspacesRoute: WorkspacesRouteWithChildren,
 }
 export const routeTree = rootRouteImport
