@@ -81,6 +81,13 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doc.id]);
 
+  // Reenquadra o diagrama quando a área útil do canvas muda.
+  useEffect(() => {
+    const id = window.setTimeout(() => canvasRef.current?.fitToContent(), 220);
+    return () => window.clearTimeout(id);
+  }, [fullscreen, showSource, showProps]);
+
+
   const stale = useMemo(() => isDiagramStale(doc, diagram), [doc, diagram]);
   const selected =
     diagram?.nodes.find((n) => n.id === selectedId) ?? null;
