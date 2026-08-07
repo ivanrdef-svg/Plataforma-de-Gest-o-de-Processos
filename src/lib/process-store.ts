@@ -12,6 +12,15 @@ import {
   PROCESS_STEP_SEEDS,
   type ProcessSectionId,
 } from "@/config/process-structure";
+import {
+  PROCESS_MODEL_ORDER,
+  PROCESS_MODEL_SECTION_TEMPLATES,
+  RULE_SEEDS,
+  type ParticipantRole,
+  type ProcessExecutionMode,
+  type ProcessStepTypeId,
+  type RuleCriticality,
+} from "@/config/process-model";
 
 const STORAGE_KEY = "process-platform:process:v1";
 
@@ -58,6 +67,32 @@ export interface ProcessStep {
   outputs: string;
   duration: string;
   notes: string;
+  /* Build 007 — modelagem estruturada da etapa (todos opcionais: docs
+     criados em builds anteriores continuam válidos). */
+  type?: ProcessStepTypeId;
+  preconditions?: string;
+  postconditions?: string;
+  execution?: ProcessExecutionMode;
+  dependsOn?: string;
+}
+
+/** Build 007 — regra de negócio do processo. */
+export interface ProcessRule {
+  id: string;
+  name: string;
+  description: string;
+  application: string;
+  impact: string;
+  criticality: RuleCriticality;
+}
+
+/** Build 007 — participante do processo, ligado a etapas. */
+export interface ProcessParticipant {
+  id: string;
+  name: string;
+  role: ParticipantRole;
+  area: string;
+  stepIds: string[];
 }
 
 export interface ProcessDoc {
@@ -77,6 +112,9 @@ export interface ProcessDoc {
   favorite: boolean;
   sections: ProcessSection[];
   steps: ProcessStep[];
+  /* Build 007 — opcionais para manter compatibilidade com docs anteriores. */
+  rules?: ProcessRule[];
+  participants?: ProcessParticipant[];
   savedAt: string;
 }
 
@@ -202,8 +240,11 @@ export function createProcessDoc(name = "Novo Processo"): ProcessDoc {
       duration: s.duration,
       notes: "",
     })),
+    rules: RULE_SEEDS.map((r) => ({ id: rid("r"), ...r })),
+    participants: [],
     savedAt: now.toISOString(),
   };
+  doc.sections = withModelSections(doc.sections);
   state = { ...state, [id]: doc };
   persist();
   emit();
@@ -318,4 +359,153 @@ export function duplicateProcessDoc(id: string): ProcessDoc | undefined {
   persist();
   emit();
   return copy;
+}
+
+
+/* ------------------------------------------------------------------ */
+/* Build 007 — Process Modeling Engine                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Garante que o documento contenha todos os blocos do modelo organizacional,
+ * preservando integralmente o conteúdo já escrito e as seções customizadas.
+ */
+export function withModelSections(sections: ProcessSection[]): ProcessSection[] {
+  const byTemplate = new Map<string, ProcessSection>();
+  const custom: ProcessSection[] = [];
+  for (const section of sections) {
+    if (section.templateId && !byTemplate.has(section.templateId)) {
+      byTemplate.set(section.templateId, section);
+    } else {
+      custom.push(section);
+    }
+  }
+
+  const catalog = [...PROCESS_SECTION_TEMPLATES, ...PROCESS_MODEL_SECTION_TEMPLATES];
+  const ordered: ProcessSection[] = [];
+  for (const templateId of PROCESS_MODEL_ORDER) {
+    const existing = byTemplate.get(templateId);
+    if (existing) {
+      ordered.push(existing);
+      byTemplate.delete(templateId);
+      continue;
+    }
+    const template = catalog.find((t) => t.id === templateId);
+    if (!template) continue;
+    ordered.push({
+      id: rid("s"),
+      templateId: template.id,
+      title: template.title,
+      hint: template.hint,
+      content: template.content,
+      notes: "",
+    });
+  }
+
+  return [...ordered, ...byTemplate.values(), ...custom];
+}
+
+/** Aplica os blocos do modelo a um processo já existente (idempotente). */
+export function ensureProcessModel(docId: string) {
+  ensureHydrated();
+  const doc = state[docId];
+  if (!doc) return undefined;
+  const sections = withModelSections(doc.sections);
+  const missing = sections.length !== doc.sections.length;
+  if (!missing && doc.rules && doc.participants) return doc;
+  const next: ProcessDoc = {
+    ...doc,
+    sections,
+    rules: doc.rules ?? RULE_SEEDS.map((r) => ({ id: rid("r"), ...r })),
+    participants: doc.participants ?? [],
+  };
+  state = { ...state, [docId]: next };
+  persist();
+  emit();
+  return next;
+}
+
+export function addProcessRule(docId: string) {
+  const doc = state[docId];
+  if (!doc) return undefined;
+  const rule: ProcessRule = {
+    id: rid("r"),
+    name: "Nova regra de negócio",
+    description: "",
+    application: "",
+    impact: "",
+    criticality: "média",
+  };
+  return updateProcessDoc(docId, { rules: [...(doc.rules ?? []), rule] });
+}
+
+export function updateProcessRule(
+  docId: string,
+  ruleId: string,
+  patch: Partial<Omit<ProcessRule, "id">>,
+) {
+  const doc = state[docId];
+  if (!doc) return undefined;
+  return updateProcessDoc(docId, {
+    rules: (doc.rules ?? []).map((r) => (r.id === ruleId ? { ...r, ...patch } : r)),
+  });
+}
+
+export function removeProcessRule(docId: string, ruleId: string) {
+  const doc = state[docId];
+  if (!doc) return undefined;
+  return updateProcessDoc(docId, {
+    rules: (doc.rules ?? []).filter((r) => r.id !== ruleId),
+  });
+}
+
+export function addProcessParticipant(docId: string, seed?: Partial<ProcessParticipant>) {
+  const doc = state[docId];
+  if (!doc) return undefined;
+  const participant: ProcessParticipant = {
+    id: rid("p"),
+    name: seed?.name ?? "Novo participante",
+    role: seed?.role ?? "Executor",
+    area: seed?.area ?? "",
+    stepIds: seed?.stepIds ?? [],
+  };
+  return updateProcessDoc(docId, {
+    participants: [...(doc.participants ?? []), participant],
+  });
+}
+
+export function updateProcessParticipant(
+  docId: string,
+  participantId: string,
+  patch: Partial<Omit<ProcessParticipant, "id">>,
+) {
+  const doc = state[docId];
+  if (!doc) return undefined;
+  return updateProcessDoc(docId, {
+    participants: (doc.participants ?? []).map((p) =>
+      p.id === participantId ? { ...p, ...patch } : p,
+    ),
+  });
+}
+
+export function removeProcessParticipant(docId: string, participantId: string) {
+  const doc = state[docId];
+  if (!doc) return undefined;
+  return updateProcessDoc(docId, {
+    participants: (doc.participants ?? []).filter((p) => p.id !== participantId),
+  });
+}
+
+export function toggleParticipantStep(
+  docId: string,
+  participantId: string,
+  stepId: string,
+) {
+  const doc = state[docId];
+  const participant = doc?.participants?.find((p) => p.id === participantId);
+  if (!doc || !participant) return undefined;
+  const stepIds = participant.stepIds.includes(stepId)
+    ? participant.stepIds.filter((s) => s !== stepId)
+    : [...participant.stepIds, stepId];
+  return updateProcessParticipant(docId, participantId, { stepIds });
 }
