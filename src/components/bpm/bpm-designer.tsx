@@ -10,6 +10,8 @@ import {
   Sparkles,
   PanelLeft,
   PanelRight,
+  Map as MapIcon,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { BpmCanvas, type BpmCanvasHandle } from "@/components/bpm/bpm-canvas";
@@ -25,6 +27,7 @@ import {
   updateBpmNode,
   useBpmDiagram,
 } from "@/lib/bpm-store";
+import { diagramIssueSummary } from "@/config/bpm-model";
 import type { ProcessDoc } from "@/lib/process-store";
 import { cn } from "@/lib/utils";
 
@@ -73,6 +76,7 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
   const [fullscreen, setFullscreen] = useState(false);
   const [showSource, setShowSource] = useState(true);
   const [showProps, setShowProps] = useState(true);
+  const [showMinimap, setShowMinimap] = useState(true);
   const canvasRef = useRef<BpmCanvasHandle>(null);
 
   // Gera o fluxo inicial automaticamente ao abrir o Processo.
@@ -89,6 +93,13 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
 
 
   const stale = useMemo(() => isDiagramStale(doc, diagram), [doc, diagram]);
+  const issues = useMemo(
+    () =>
+      diagram
+        ? diagramIssueSummary(diagram)
+        : { total: 0, errors: 0, warnings: 0 },
+    [diagram],
+  );
   const selected =
     diagram?.nodes.find((n) => n.id === selectedId) ?? null;
 
@@ -153,6 +164,13 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
           onClick={() => setShowProps((v) => !v)}
         />
 
+        <ToolButton
+          label={showMinimap ? "Ocultar mini mapa" : "Mostrar mini mapa"}
+          icon={MapIcon}
+          active={showMinimap}
+          onClick={() => setShowMinimap((v) => !v)}
+        />
+
         <Separator orientation="vertical" className="h-5" />
 
         <ToolButton label="Atualizar diagrama" icon={RefreshCw} onClick={regenerate} />
@@ -174,7 +192,14 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
 
         <div className="ml-auto flex items-center gap-2 pr-1 text-[11px] text-muted-foreground">
           <Sparkles className="h-3.5 w-3.5 text-primary" />
-          Diagrama derivado do Processo · {doc.steps.length} etapas
+          Gerado a partir do Processo · {doc.steps.length} etapas
+          {issues.total > 0 && (
+            <span className="flex items-center gap-1 rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-amber-700 dark:text-amber-400">
+              <AlertTriangle className="h-3 w-3" />
+              {issues.total}{" "}
+              {issues.total === 1 ? "inconsistência" : "inconsistências"}
+            </span>
+          )}
         </div>
       </div>
 
@@ -204,6 +229,7 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
           selectedId={selectedId}
           onSelect={setSelectedId}
           onZoomChange={setZoom}
+          showMinimap={showMinimap}
           onMoveNode={(id, x, y) => updateBpmNode(doc.id, id, { x, y })}
           insets={{
             left: showSource ? 244 : 24,
