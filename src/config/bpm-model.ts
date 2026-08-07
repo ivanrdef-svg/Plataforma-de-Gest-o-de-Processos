@@ -100,6 +100,9 @@ export const NODE_SIZE = {
 
 const GAP_X = 96;
 const GAP_Y = 40;
+/** Colunas por faixa antes de quebrar a linha do diagrama. */
+const MAX_COLUMNS = 4;
+const BAND_GAP_Y = 140;
 const ROW_HEIGHT = NODE_SIZE.task.height;
 
 /** Assinatura determinística do modelo do processo. */
@@ -163,89 +166,112 @@ export function generateDiagramFromProcess(doc: ProcessDoc): BpmDiagram {
   const issues: BpmIssue[] = [];
 
   const layers = buildLayers(doc.steps);
-  const columnCount = layers.length + 2; // início + camadas + fim
 
-  const eventNode = (
-    id: string,
-    kind: "start" | "end",
-    name: string,
-    column: number,
-  ): BpmNode => ({
-    id,
-    kind,
-    name,
-    description:
-      kind === "start"
-        ? "Evento que dispara o processo."
-        : "Evento que encerra o processo.",
-    owner: kind === "start" ? doc.owner : "",
-    duration: "",
-    notes: "",
-    width: NODE_SIZE.event.width,
-    height: NODE_SIZE.event.height,
-    x: column * (NODE_SIZE.task.width + GAP_X) + (NODE_SIZE.task.width - NODE_SIZE.event.width) / 2,
-    y: 0,
-    laneId: laneIdFor(kind === "start" ? doc.owner : ""),
+  /* Colunas do fluxo: início → camadas de etapas → fim.
+     Para manter o diagrama legível, as colunas quebram em faixas
+     (MAX_COLUMNS por faixa) em vez de crescer indefinidamente à direita. */
+  type Slot = { id: string; kind: BpmNodeKind; step?: ProcessStep };
+  const columns: Slot[][] = [
+    [{ id: "start", kind: "start" }],
+    ...layers.map((layer) =>
+      layer.map((step) => ({
+        id: `task-${step.id}`,
+        kind: nodeKindFor(step),
+        step,
+      })),
+    ),
+    [{ id: "end", kind: "end" }],
+  ];
+
+  const COL_SLOT = NODE_SIZE.task.width;
+  const rowsOfColumns: Slot[][][] = [];
+  for (let i = 0; i < columns.length; i += MAX_COLUMNS) {
+    rowsOfColumns.push(columns.slice(i, i + MAX_COLUMNS));
+  }
+
+  // Posição vertical de cada faixa.
+  const bandTops: number[] = [];
+  let cursorY = 0;
+  rowsOfColumns.forEach((band) => {
+    const maxParallel = Math.max(1, ...band.map((c) => c.length));
+    bandTops.push(cursorY);
+    cursorY += maxParallel * ROW_HEIGHT + (maxParallel - 1) * GAP_Y + BAND_GAP_Y;
   });
-
-  // Altura total: a camada mais larga define o eixo vertical do canvas.
-  const maxParallel = Math.max(1, ...layers.map((l) => l.length));
-  const canvasHeight = maxParallel * ROW_HEIGHT + (maxParallel - 1) * GAP_Y;
-  const centerY = canvasHeight / 2;
-
-  const start = eventNode("start", "start", "Início", 0);
-  start.y = centerY - start.height / 2;
-  nodes.push(start);
 
   const nodeIdByStep = new Map<string, string>();
-  const layerNodeIds: string[][] = [];
+  const columnNodeIds: string[][] = [];
 
-  layers.forEach((layer, layerIndex) => {
-    const column = layerIndex + 1;
-    const layerHeight = layer.length * ROW_HEIGHT + (layer.length - 1) * GAP_Y;
-    const top = centerY - layerHeight / 2;
+  columns.forEach((column, columnIndex) => {
+    const bandIndex = Math.floor(columnIndex / MAX_COLUMNS);
+    const colInBand = columnIndex % MAX_COLUMNS;
+    const band = rowsOfColumns[bandIndex]!;
+    const bandParallel = Math.max(1, ...band.map((c) => c.length));
+    const bandHeight = bandParallel * ROW_HEIGHT + (bandParallel - 1) * GAP_Y;
+    const bandCenter = bandTops[bandIndex]! + bandHeight / 2;
+
+    const columnHeight = column.length * ROW_HEIGHT + (column.length - 1) * GAP_Y;
+    const top = bandCenter - columnHeight / 2;
     const ids: string[] = [];
 
-    layer.forEach((step, rowIndex) => {
-      const kind = nodeKindFor(step);
+    column.forEach((slot, rowIndex) => {
       const size =
-        kind === "gateway" ? NODE_SIZE.gateway : NODE_SIZE.task;
-      const id = `task-${step.id}`;
-      nodeIdByStep.set(step.id, id);
-      ids.push(id);
-
+        slot.kind === "gateway"
+          ? NODE_SIZE.gateway
+          : slot.kind === "start" || slot.kind === "end"
+            ? NODE_SIZE.event
+            : NODE_SIZE.task;
       const rowTop = top + rowIndex * (ROW_HEIGHT + GAP_Y);
-      nodes.push({
-        id,
-        kind,
-        stepId: step.id,
-        stepType: step.type ?? "atividade",
-        name: step.name || `Etapa ${layerIndex + 1}`,
-        description: step.description,
-        owner: step.owner,
-        duration: step.duration,
-        notes: step.notes,
-        inputs: step.inputs,
-        outputs: step.outputs,
-        width: size.width,
-        height: size.height,
-        x:
-          column * (NODE_SIZE.task.width + GAP_X) +
-          (NODE_SIZE.task.width - size.width) / 2,
-        y: rowTop + (ROW_HEIGHT - size.height) / 2,
-        laneId: laneIdFor(step.owner),
-      });
+      const x =
+        colInBand * (COL_SLOT + GAP_X) + (COL_SLOT - size.width) / 2;
+      const y = rowTop + (ROW_HEIGHT - size.height) / 2;
+      ids.push(slot.id);
+
+      if (slot.step) {
+        nodeIdByStep.set(slot.step.id, slot.id);
+        nodes.push({
+          id: slot.id,
+          kind: slot.kind,
+          stepId: slot.step.id,
+          stepType: slot.step.type ?? "atividade",
+          name: slot.step.name || `Etapa ${columnIndex}`,
+          description: slot.step.description,
+          owner: slot.step.owner,
+          duration: slot.step.duration,
+          notes: slot.step.notes,
+          inputs: slot.step.inputs,
+          outputs: slot.step.outputs,
+          width: size.width,
+          height: size.height,
+          x,
+          y,
+          laneId: laneIdFor(slot.step.owner),
+        });
+      } else {
+        const isStart = slot.kind === "start";
+        nodes.push({
+          id: slot.id,
+          kind: slot.kind,
+          name: isStart ? "Início" : "Fim",
+          description: isStart
+            ? "Evento que dispara o processo."
+            : "Evento que encerra o processo.",
+          owner: isStart ? doc.owner : "",
+          duration: "",
+          notes: "",
+          width: size.width,
+          height: size.height,
+          x,
+          y,
+          laneId: laneIdFor(isStart ? doc.owner : ""),
+        });
+      }
     });
 
-    layerNodeIds.push(ids);
+    columnNodeIds.push(ids);
   });
 
-  const end = eventNode("end", "end", "Fim", columnCount - 1);
-  end.y = centerY - end.height / 2;
-  nodes.push(end);
-
-  // Conexões de sequência entre camadas consecutivas.
-  const chain: string[][] = [["start"], ...layerNodeIds, ["end"]];
+  // Conexões de sequência entre colunas consecutivas.
+  const chain: string[][] = columnNodeIds;
   for (let i = 0; i < chain.length - 1; i++) {
     for (const source of chain[i]!) {
       for (const target of chain[i + 1]!) {
