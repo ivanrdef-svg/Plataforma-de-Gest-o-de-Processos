@@ -7,6 +7,11 @@ import {
   useGlobalSearch,
 } from "@/components/search/global-search-context";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Search, Sparkles } from "lucide-react";
 
 function TopBar() {
@@ -27,10 +32,20 @@ function TopBar() {
         </kbd>
       </button>
       <div className="ml-auto flex items-center gap-2">
-        <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
-          <Sparkles className="h-4 w-4" />
-          <span className="hidden sm:inline">Assistente</span>
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled
+              className="gap-1.5 text-muted-foreground"
+            >
+              <Sparkles className="h-4 w-4" />
+              <span className="hidden sm:inline">Assistente</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Em breve</TooltipContent>
+        </Tooltip>
       </div>
     </header>
   );
