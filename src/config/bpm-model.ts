@@ -72,8 +72,11 @@ export const NODE_SIZE = {
   event: { width: 72, height: 72 },
 } as const;
 
-const GAP_X = 84;
-const ROW_Y = 120;
+const GAP_X = 72;
+const GAP_Y = 96;
+const COLUMNS = 3;
+const ROW_Y = 40;
+
 
 /** Assinatura determinística das etapas do processo. */
 export function processSignature(doc: ProcessDoc): string {
