@@ -16,6 +16,7 @@ import { WorkspaceStatusBar } from "@/components/workspace/workspace-status-bar"
 import { WorkspaceContextBar } from "@/components/workspace/workspace-context-bar";
 import { WorkspaceMeta } from "@/components/workspace/workspace-meta";
 import { LifecycleBadge } from "@/components/lifecycle/lifecycle-badge";
+import { GovernanceTab } from "@/components/governance/governance-tab";
 import { LifecyclePanel, LifecycleTab } from "@/components/lifecycle/lifecycle-panel";
 import { useLifecycle, type LifecycleSeed } from "@/lib/lifecycle-store";
 import { PopSectionBlock } from "@/components/pop/pop-section-block";
@@ -317,6 +318,11 @@ function PopWorkspace() {
               </section>
             </div>
           ),
+        },
+        {
+          id: "governanca",
+          label: "Governança",
+          content: <GovernanceTab seed={lifecycleSeed} />,
         },
         {
           id: "historico",
