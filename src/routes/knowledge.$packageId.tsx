@@ -192,7 +192,7 @@ function KnowledgePackageWorkspace() {
         {
           id: "governanca",
           label: "Governança",
-          content: <GovernanceTab seed={lifecycleSeed} />,
+          content: <GovernanceTab seed={lifecycleSeed} lifecycleSeed={lifecycleSeed} />,
         },
         {
           id: "historico",
