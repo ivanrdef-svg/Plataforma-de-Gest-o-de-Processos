@@ -118,7 +118,8 @@ export const PLATFORM_MODULES: PlatformModule[] = [
     name: "Governança",
     description: "Políticas, papéis, aprovações e ciclo de vida dos objetos.",
     icon: ShieldCheck,
-    status: "planned",
+    route: "/governanca",
+    status: "available",
     group: "governanca",
   },
   {
