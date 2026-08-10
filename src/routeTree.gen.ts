@@ -17,6 +17,7 @@ import { Route as KnowledgeRouteImport } from './routes/knowledge'
 import { Route as PopRouteImport } from './routes/pop'
 import { Route as ProcessosRouteImport } from './routes/processos'
 import { Route as WorkspacesRouteImport } from './routes/workspaces'
+import { Route as GovernancaIndexRouteImport } from './routes/governanca.index'
 import { Route as KnowledgeIndexRouteImport } from './routes/knowledge.index'
 import { Route as KnowledgePackageIdRouteImport } from './routes/knowledge.$packageId'
 import { Route as PopIndexRouteImport } from './routes/pop.index'
@@ -66,6 +67,11 @@ const WorkspacesRoute = WorkspacesRouteImport.update({
   path: '/workspaces',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GovernancaIndexRoute = GovernancaIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => GovernancaRoute,
+} as any)
 const KnowledgeIndexRoute = KnowledgeIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -111,7 +117,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/administracao': typeof AdministracaoRoute
   '/favoritos': typeof FavoritosRoute
-  '/governanca': typeof GovernancaRoute
+  '/governanca': typeof GovernancaRouteWithChildren
   '/knowledge': typeof KnowledgeRouteWithChildren
   '/pop': typeof PopRouteWithChildren
   '/processos': typeof ProcessosRouteWithChildren
@@ -120,6 +126,7 @@ export interface FileRoutesByFullPath {
   '/pop/$popId': typeof PopPopIdRoute
   '/processos/$processId': typeof ProcessosProcessIdRoute
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRoute
+  '/governanca/': typeof GovernancaIndexRoute
   '/knowledge/': typeof KnowledgeIndexRoute
   '/pop/': typeof PopIndexRoute
   '/processos/': typeof ProcessosIndexRoute
@@ -129,11 +136,11 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/administracao': typeof AdministracaoRoute
   '/favoritos': typeof FavoritosRoute
-  '/governanca': typeof GovernancaRoute
   '/knowledge/$packageId': typeof KnowledgePackageIdRoute
   '/pop/$popId': typeof PopPopIdRoute
   '/processos/$processId': typeof ProcessosProcessIdRoute
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRoute
+  '/governanca': typeof GovernancaIndexRoute
   '/knowledge': typeof KnowledgeIndexRoute
   '/pop': typeof PopIndexRoute
   '/processos': typeof ProcessosIndexRoute
@@ -144,7 +151,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/administracao': typeof AdministracaoRoute
   '/favoritos': typeof FavoritosRoute
-  '/governanca': typeof GovernancaRoute
+  '/governanca': typeof GovernancaRouteWithChildren
   '/knowledge': typeof KnowledgeRouteWithChildren
   '/pop': typeof PopRouteWithChildren
   '/processos': typeof ProcessosRouteWithChildren
@@ -153,6 +160,7 @@ export interface FileRoutesById {
   '/pop/$popId': typeof PopPopIdRoute
   '/processos/$processId': typeof ProcessosProcessIdRoute
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRoute
+  '/governanca/': typeof GovernancaIndexRoute
   '/knowledge/': typeof KnowledgeIndexRoute
   '/pop/': typeof PopIndexRoute
   '/processos/': typeof ProcessosIndexRoute
@@ -173,6 +181,7 @@ export interface FileRouteTypes {
     | '/pop/$popId'
     | '/processos/$processId'
     | '/workspaces/$workspaceId'
+    | '/governanca/'
     | '/knowledge/'
     | '/pop/'
     | '/processos/'
@@ -182,11 +191,11 @@ export interface FileRouteTypes {
     | '/'
     | '/administracao'
     | '/favoritos'
-    | '/governanca'
     | '/knowledge/$packageId'
     | '/pop/$popId'
     | '/processos/$processId'
     | '/workspaces/$workspaceId'
+    | '/governanca'
     | '/knowledge'
     | '/pop'
     | '/processos'
@@ -205,6 +214,7 @@ export interface FileRouteTypes {
     | '/pop/$popId'
     | '/processos/$processId'
     | '/workspaces/$workspaceId'
+    | '/governanca/'
     | '/knowledge/'
     | '/pop/'
     | '/processos/'
@@ -215,7 +225,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdministracaoRoute: typeof AdministracaoRoute
   FavoritosRoute: typeof FavoritosRoute
-  GovernancaRoute: typeof GovernancaRoute
+  GovernancaRoute: typeof GovernancaRouteWithChildren
   KnowledgeRoute: typeof KnowledgeRouteWithChildren
   PopRoute: typeof PopRouteWithChildren
   ProcessosRoute: typeof ProcessosRouteWithChildren
@@ -280,6 +290,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspacesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/governanca/': {
+      id: '/governanca/'
+      path: '/'
+      fullPath: '/governanca/'
+      preLoaderRoute: typeof GovernancaIndexRouteImport
+      parentRoute: typeof GovernancaRoute
+    }
     '/knowledge/': {
       id: '/knowledge/'
       path: '/'
@@ -339,6 +356,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface GovernancaRouteChildren {
+  GovernancaIndexRoute: typeof GovernancaIndexRoute
+}
+
+const GovernancaRouteChildren: GovernancaRouteChildren = {
+  GovernancaIndexRoute: GovernancaIndexRoute,
+}
+
+const GovernancaRouteWithChildren = GovernancaRoute._addFileChildren(
+  GovernancaRouteChildren,
+)
+
 interface KnowledgeRouteChildren {
   KnowledgePackageIdRoute: typeof KnowledgePackageIdRoute
   KnowledgeIndexRoute: typeof KnowledgeIndexRoute
@@ -397,7 +426,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdministracaoRoute: AdministracaoRoute,
   FavoritosRoute: FavoritosRoute,
-  GovernancaRoute: GovernancaRoute,
+  GovernancaRoute: GovernancaRouteWithChildren,
   KnowledgeRoute: KnowledgeRouteWithChildren,
   PopRoute: PopRouteWithChildren,
   ProcessosRoute: ProcessosRouteWithChildren,
