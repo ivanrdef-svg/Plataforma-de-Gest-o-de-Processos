@@ -9,6 +9,7 @@ import { WorkspaceStatusBar } from "@/components/workspace/workspace-status-bar"
 import { WorkspaceContextBar } from "@/components/workspace/workspace-context-bar";
 import { WorkspaceMeta } from "@/components/workspace/workspace-meta";
 import { LifecycleBadge } from "@/components/lifecycle/lifecycle-badge";
+import { GovernanceTab } from "@/components/governance/governance-tab";
 import { LifecyclePanel, LifecycleTab } from "@/components/lifecycle/lifecycle-panel";
 import { useLifecycle, type LifecycleSeed } from "@/lib/lifecycle-store";
 import { WorkspaceHeaderActions } from "@/components/workspace/workspace-header-actions";
@@ -187,6 +188,11 @@ function KnowledgePackageWorkspace() {
               objectType={doc.type}
             />
           ),
+        },
+        {
+          id: "governanca",
+          label: "Governança",
+          content: <GovernanceTab seed={lifecycleSeed} lifecycleSeed={lifecycleSeed} />,
         },
         {
           id: "historico",
