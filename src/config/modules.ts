@@ -94,8 +94,10 @@ export const PLATFORM_MODULES: PlatformModule[] = [
     name: "Workflow",
     description: "Execução operacional dos processos modelados.",
     icon: ClipboardCheck,
-    status: "planned",
+    status: "available",
+    route: "/workflow",
     group: "execucao",
+
   },
   {
     id: "analytics",
