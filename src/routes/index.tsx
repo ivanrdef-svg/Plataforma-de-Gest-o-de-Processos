@@ -22,6 +22,7 @@ import { ConnectedKnowledge } from "@/components/home/connected-knowledge";
 import { ProcessesInProgress } from "@/components/home/processes-in-progress";
 import { AwaitingActions } from "@/components/home/awaiting-actions";
 import { GovernanceAttention } from "@/components/home/governance-attention";
+import { WorkflowExecutionWidget } from "@/components/home/workflow-execution-widget";
 import { CardQuickActions } from "@/components/workspace/card-quick-actions";
 
 export const Route = createFileRoute("/")({
@@ -151,6 +152,7 @@ function Launchpad() {
           <ProcessesInProgress />
 
           <GovernanceAttention />
+          <WorkflowExecutionWidget />
 
           <ConnectedKnowledge />
 
