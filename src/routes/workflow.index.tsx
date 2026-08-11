@@ -22,7 +22,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LifecycleBadge } from "@/components/lifecycle/lifecycle-badge";
-import { RelationshipBadges } from "@/components/relationships/relationship-badges";
+import { RelationshipIndicators } from "@/components/relationships/relationship-badges";
+import { useRelationshipStats } from "@/lib/relationship-store";
 import { workflowReadiness } from "@/components/workflow/workflow-execution";
 import { WORKFLOW_CENTER_STATS } from "@/config/workflow-model";
 import { stateFromLegacyStatus } from "@/config/lifecycle-model";
@@ -245,6 +246,11 @@ function WorkflowCenter() {
   );
 }
 
+function WorkflowConnections({ objectId }: { objectId: string }) {
+  const stats = useRelationshipStats(objectId);
+  return <RelationshipIndicators stats={stats} compact />;
+}
+
 function WorkflowCard({ doc }: { doc: WorkflowDoc }) {
   const { score } = workflowReadiness(doc);
   return (
@@ -295,7 +301,7 @@ function WorkflowCard({ doc }: { doc: WorkflowDoc }) {
           <Play className="mr-1 h-3 w-3" />
           {score}% pronto
         </Pill>
-        <RelationshipBadges objectId={doc.id} />
+        <WorkflowConnections objectId={doc.id} />
       </div>
     </article>
   );
