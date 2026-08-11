@@ -17,7 +17,7 @@ import {
   WORKFLOW_EXECUTION_TYPES,
   executionLabel,
 } from "@/config/workflow-model";
-import { getStepType } from "@/config/process-model";
+import { getStepType, type ProcessStepTypeId } from "@/config/process-model";
 import type { WorkflowStep } from "@/lib/workflow-store";
 import { cn } from "@/lib/utils";
 
@@ -115,11 +115,11 @@ export function WorkflowSteps({
                   {step.dependsOn ? ` · depende de ${step.dependsOn}` : ""}
                 </span>
               </span>
-              <StepTypeBadge
-                type={step.type}
-                label={executionLabel(step.type, type.label)}
-              />
-              <ResponsibilityBadge role={step.role} size="sm" />
+              <span className="hidden shrink-0 text-[11px] text-muted-foreground sm:inline">
+                {executionLabel(step.type, type.label)}
+              </span>
+              <StepTypeBadge type={step.type} />
+              <ResponsibilityBadge role={step.role} />
               <span
                 className={cn(
                   "hidden shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-medium sm:inline-block",
@@ -147,7 +147,7 @@ export function WorkflowSteps({
                   <Select
                     value={step.type ?? "atividade"}
                     onValueChange={(v) =>
-                      onChange(step.id, { type: v as WorkflowStep["type"] })
+                      onChange(step.id, { type: v as ProcessStepTypeId })
                     }
                   >
                     <SelectTrigger className="mt-1 h-8 text-xs">
