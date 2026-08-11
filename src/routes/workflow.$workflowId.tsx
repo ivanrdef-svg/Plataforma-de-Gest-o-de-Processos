@@ -33,7 +33,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { DEMO_ENVIRONMENT } from "@/config/workspace-demo";
 import { WORKFLOW_DEMO_HISTORY } from "@/config/workflow-model";
 import { useLifecycle, type LifecycleSeed } from "@/lib/lifecycle-store";
-import { getProcessDoc } from "@/lib/process-store";
+import { useProcessDocs } from "@/lib/process-store";
 import {
   addWorkflowParticipant,
   lifecycleStatusOf,
@@ -122,6 +122,7 @@ function WorkflowHistory() {
 function WorkflowWorkspace() {
   const { workflowId } = Route.useParams();
   const doc = useWorkflowDoc(workflowId);
+  const processes = useProcessDocs();
 
   const lifecycleSeed: LifecycleSeed = {
     objectId: doc?.id ?? "",
@@ -184,7 +185,7 @@ function WorkflowWorkspace() {
             label="Reimportar etapas do processo"
             icon={RefreshCw}
             onClick={() => {
-              const process = getProcessDoc(doc.processId);
+              const process = processes.find((p) => p.id === doc.processId);
               if (!process) {
                 toast.error("Processo de origem não encontrado");
                 return;
