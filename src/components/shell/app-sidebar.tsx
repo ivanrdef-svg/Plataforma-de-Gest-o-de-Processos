@@ -12,10 +12,11 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { BookOpen, Home, LayoutGrid, Search, Settings2, Star } from "lucide-react";
+import { BookOpen, Home, Inbox, LayoutGrid, Search, Settings2, Star } from "lucide-react";
 import { MODULE_GROUPS, PLATFORM_MODULES, type ModuleGroup } from "@/config/modules";
 import { cn } from "@/lib/utils";
 import { useGlobalSearch } from "@/components/search/global-search-context";
+import { useInbox } from "@/lib/inbox";
 
 const GROUP_ORDER: ModuleGroup[] = ["core", "execucao", "inteligencia", "governanca"];
 
@@ -24,6 +25,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const { open: openSearch } = useGlobalSearch();
+  const { stats } = useInbox();
 
   const isActive = (path: string) =>
     path === "/" ? pathname === "/" : pathname.startsWith(path);
@@ -59,6 +61,26 @@ export function AppSidebar() {
                 <SidebarMenuButton onClick={openSearch} tooltip="Pesquisa global">
                   <Search className="h-4 w-4" />
                   {!collapsed && <span>Pesquisar</span>}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/inbox")} tooltip="Inbox">
+                  <Link to="/inbox" className="flex items-center gap-2.5">
+                    <Inbox className="h-4 w-4" />
+                    {!collapsed && <span>Inbox</span>}
+                    {!collapsed && stats.abertas > 0 && (
+                      <span
+                        className={cn(
+                          "ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums",
+                          stats.atrasadas > 0
+                            ? "bg-destructive/10 text-destructive"
+                            : "bg-primary/10 text-primary",
+                        )}
+                      >
+                        {stats.abertas}
+                      </span>
+                    )}
+                  </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
@@ -125,7 +147,11 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {PLATFORM_MODULES.filter(
-                  (m) => m.group === group && m.id !== "workspaces" && m.id !== "knowledge",
+                  (m) =>
+                    m.group === group &&
+                    m.id !== "workspaces" &&
+                    m.id !== "knowledge" &&
+                    m.id !== "inbox",
                 ).map((module) => {
 
                   const Icon = module.icon;

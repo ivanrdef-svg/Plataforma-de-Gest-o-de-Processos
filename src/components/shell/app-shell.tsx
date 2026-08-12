@@ -13,6 +13,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Search, Sparkles } from "lucide-react";
+import { NotificationCenter } from "./notification-center";
 
 function TopBar() {
   const { open } = useGlobalSearch();
@@ -32,6 +33,7 @@ function TopBar() {
         </kbd>
       </button>
       <div className="ml-auto flex items-center gap-2">
+        <NotificationCenter />
         <Tooltip>
           <TooltipTrigger asChild>
             <Button

@@ -54,6 +54,11 @@ import {
 } from "@/lib/runtime-store";
 
 export const Route = createFileRoute("/execucao/$instanceId")({
+  /** Build 015 — deep link vindo da Inbox: abre direto a tarefa. */
+  validateSearch: (search: Record<string, unknown>): { task?: string } => {
+    const task = typeof search["task"] === "string" ? (search["task"] as string) : undefined;
+    return task ? { task } : {};
+  },
   component: RuntimeWorkspace,
   head: () => ({
     meta: [
@@ -76,6 +81,7 @@ export const Route = createFileRoute("/execucao/$instanceId")({
 
 function RuntimeWorkspace() {
   const { instanceId } = Route.useParams();
+  const { task: focusTaskId } = Route.useSearch();
   const now = useNow();
   useSlaMonitor();
   const instance = useWorkflowInstance(instanceId);
@@ -206,7 +212,9 @@ function RuntimeWorkspace() {
           {
             id: "tarefas",
             label: "Tarefas",
-            content: <RuntimeTasks instance={instance} />,
+            content: (
+              <RuntimeTasks instance={instance} initialTaskId={focusTaskId} />
+            ),
           },
           {
             id: "prazos",
@@ -236,7 +244,7 @@ function RuntimeWorkspace() {
             content: <RuntimeHistory instance={instance} />,
           },
         ]}
-        defaultTab="visao-geral"
+        defaultTab={focusTaskId ? "tarefas" : "visao-geral"}
         sidePanel={
           <div className="space-y-6">
             <section>
