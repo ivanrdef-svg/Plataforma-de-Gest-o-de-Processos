@@ -83,11 +83,37 @@ export function WorkflowMetadataPanel({
         />
       </Row>
 
+      {/* Build 014 — prazos e SLA da definição. */}
+      <div className="space-y-3 rounded-lg border bg-surface/40 p-3">
+        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          Prazos e SLA
+        </p>
+        <SlaField
+          label="SLA da execução"
+          amount={doc.slaAmount}
+          unit={doc.slaUnit}
+          onChange={(slaAmount, slaUnit) =>
+            setWorkflowSla(doc.id, { slaAmount, slaUnit })
+          }
+        />
+        <SlaField
+          label="Prazo padrão das tarefas"
+          hint="Usado quando a etapa não tem prazo próprio."
+          amount={doc.taskSlaAmount}
+          unit={doc.taskSlaUnit}
+          onChange={(taskSlaAmount, taskSlaUnit) =>
+            setWorkflowSla(doc.id, { taskSlaAmount, taskSlaUnit })
+          }
+        />
+        <p className="text-[10px] text-muted-foreground">{PAUSE_CLOCK_NOTE}</p>
+      </div>
+
       <div className="rounded-lg border bg-surface/40 px-3 py-2 text-[11px] text-muted-foreground">
         Processo de origem: <span className="text-foreground">{doc.processName}</span>
         <br />
         Criado em {doc.createdAt} · revisado em {doc.revisedAt}
       </div>
+
     </div>
   );
 }
