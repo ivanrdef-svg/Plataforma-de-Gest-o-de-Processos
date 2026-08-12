@@ -11,6 +11,13 @@ import {
   transitionsOf,
   validateExecutionRules,
 } from "@/lib/execution-rules";
+import { specLabel } from "@/config/sla-model";
+import {
+  defaultTaskSpecOf,
+  instanceSpecOf,
+  stepHasOwnSpec,
+  validateSlaRules,
+} from "@/lib/sla";
 import { cn } from "@/lib/utils";
 
 /**
@@ -24,7 +31,11 @@ export function WorkflowRules({ doc }: { doc: WorkflowDoc }) {
   const pending = doc.steps.filter((s) => !stepConfigured(s));
   const approvals = doc.steps.filter((s) => stepKind(s) === "aprovação");
   const decisions = doc.steps.filter((s) => stepKind(s) === "decisão");
-  const issues = validateExecutionRules(doc);
+  // Build 014 — a validação temporal soma-se à validação das regras.
+  const issues = [...validateExecutionRules(doc), ...validateSlaRules(doc)];
+  const instanceSpec = instanceSpecOf(doc);
+  const defaultSpec = defaultTaskSpecOf(doc);
+  const ownSpecs = doc.steps.filter(stepHasOwnSpec);
   const flow = decisionFlow(doc);
 
   return (
@@ -33,13 +44,51 @@ export function WorkflowRules({ doc }: { doc: WorkflowDoc }) {
         <Metric icon={GitBranch} label="Decisões" value={decisions.length} />
         <Metric icon={ShieldCheck} label="Aprovações" value={approvals.length} />
         <Metric icon={GitBranch} label="Condições" value={conditionals.length} />
-        <Metric icon={Timer} label="Prazos definidos" value={deadlines.length} />
+        <Metric
+          icon={Timer}
+          label="Prazos definidos"
+          value={deadlines.length + ownSpecs.length}
+        />
         <Metric
           icon={AlertTriangle}
           label="Etapas pendentes"
           value={pending.length}
           alert={pending.length > 0}
         />
+      </section>
+
+      <section className="rounded-xl border bg-card p-4">
+        <h3 className="text-sm font-medium">Prazos e SLA</h3>
+        <dl className="mt-3 grid gap-3 sm:grid-cols-3">
+          <div>
+            <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              SLA da execução
+            </dt>
+            <dd className="mt-1 text-xs font-medium">{specLabel(instanceSpec)}</dd>
+          </div>
+          <div>
+            <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Prazo padrão das tarefas
+            </dt>
+            <dd className="mt-1 text-xs font-medium">{specLabel(defaultSpec)}</dd>
+          </div>
+          <div>
+            <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Etapas com prazo próprio
+            </dt>
+            <dd className="mt-1 text-xs font-medium tabular-nums">{ownSpecs.length}</dd>
+          </div>
+        </dl>
+        {ownSpecs.length > 0 && (
+          <ul className="mt-3 space-y-1">
+            {ownSpecs.map((step) => (
+              <li key={step.id} className="text-[11px] text-muted-foreground">
+                <span className="text-foreground">{step.name}</span> ·{" "}
+                {step.slaAmount} {step.slaUnit ?? "horas"}
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section>
