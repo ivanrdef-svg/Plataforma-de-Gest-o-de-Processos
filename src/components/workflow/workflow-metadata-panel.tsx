@@ -7,9 +7,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SlaField } from "@/components/workflow/sla-field";
 import { WORKFLOW_STATUS_OPTIONS } from "@/config/workflow-model";
+import { PAUSE_CLOCK_NOTE } from "@/config/sla-model";
 import type { WorkflowStatus } from "@/config/workflow-model";
-import type { WorkflowDoc } from "@/lib/workflow-store";
+import { setWorkflowSla, type WorkflowDoc } from "@/lib/workflow-store";
+
 
 /** Build 011 — propriedades da definição de workflow (painel lateral). */
 export function WorkflowMetadataPanel({

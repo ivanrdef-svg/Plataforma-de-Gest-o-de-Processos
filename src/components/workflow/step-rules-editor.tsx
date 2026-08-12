@@ -141,7 +141,22 @@ export function StepRulesEditor({
             }
           />
         </label>
+
+        {/* Build 014 — prazo específico desta etapa. */}
+        <SlaField
+          label="Prazo da etapa"
+          hint={
+            defaultSpec
+              ? `Padrão do workflow: ${specLabel(defaultSpec)}.`
+              : "Sem prazo padrão definido no workflow."
+          }
+          placeholder={defaultSpec ? `${defaultSpec.amount}` : "Sem prazo"}
+          amount={step.slaAmount}
+          unit={step.slaUnit}
+          onChange={(amount, unit) => setStepSla(doc.id, step.id, amount, unit)}
+        />
       </div>
+
 
       {kind === "decisão" && (
         <section className="space-y-2">
