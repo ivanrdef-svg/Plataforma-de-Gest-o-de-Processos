@@ -155,6 +155,7 @@ function Launchpad() {
 
           <GovernanceAttention />
           <WorkflowExecutionWidget />
+          <RunningExecutions />
 
           <ConnectedKnowledge />
 
