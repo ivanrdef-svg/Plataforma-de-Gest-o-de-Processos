@@ -12,10 +12,11 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { BookOpen, Home, LayoutGrid, Search, Settings2, Star } from "lucide-react";
+import { BookOpen, Home, Inbox, LayoutGrid, Search, Settings2, Star } from "lucide-react";
 import { MODULE_GROUPS, PLATFORM_MODULES, type ModuleGroup } from "@/config/modules";
 import { cn } from "@/lib/utils";
 import { useGlobalSearch } from "@/components/search/global-search-context";
+import { useInbox } from "@/lib/inbox";
 
 const GROUP_ORDER: ModuleGroup[] = ["core", "execucao", "inteligencia", "governanca"];
 
