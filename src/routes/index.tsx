@@ -13,7 +13,6 @@ import { PageContainer, SectionHeader } from "@/components/layout/page";
 import { PLATFORM_MODULES } from "@/config/modules";
 import {
   DEMO_FAVORITES,
-  DEMO_TASKS,
   DEMO_WORKSPACES,
 } from "@/config/workspace-demo";
 import { useGlobalSearch } from "@/components/search/global-search-context";
