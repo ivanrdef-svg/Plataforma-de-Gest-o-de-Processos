@@ -33,6 +33,9 @@ import { RuntimeTasks } from "@/components/runtime/runtime-tasks";
 import { RuntimeProcess } from "@/components/runtime/runtime-process";
 import { RuntimeParticipants } from "@/components/runtime/runtime-participants";
 import { RuntimeHistory } from "@/components/runtime/runtime-history";
+import { RuntimeSla } from "@/components/runtime/runtime-sla";
+import { OverdueFlag, SlaStatusBadge } from "@/components/runtime/sla-badges";
+import { formatRemaining, useNow } from "@/lib/sla";
 import { DEMO_ENVIRONMENT } from "@/config/workspace-demo";
 import { lifecycleStatusOf, useWorkflowDoc } from "@/lib/workflow-store";
 import {
@@ -42,8 +45,11 @@ import {
   formatElapsed,
   instanceProgress,
   openTasks,
+  overdueTasks,
   pauseInstance,
   resumeInstance,
+  instanceSla,
+  useSlaMonitor,
   useWorkflowInstance,
 } from "@/lib/runtime-store";
 
@@ -70,6 +76,8 @@ export const Route = createFileRoute("/execucao/$instanceId")({
 
 function RuntimeWorkspace() {
   const { instanceId } = Route.useParams();
+  const now = useNow();
+  useSlaMonitor();
   const instance = useWorkflowInstance(instanceId);
   const workflow = useWorkflowDoc(instance?.workflowId ?? "");
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -90,6 +98,9 @@ function RuntimeWorkspace() {
   const progress = instanceProgress(instance);
   const active = currentTask(instance);
   const closed = instance.state === "concluída" || instance.state === "cancelada";
+
+  const sla = instanceSla(instance, now);
+  const late = overdueTasks(instance, now);
 
   const governanceSeed = {
     objectId: instance.workflowId,
@@ -119,6 +130,10 @@ function RuntimeWorkspace() {
               { label: "Responsável", value: instance.owner || "—" },
               { label: "Progresso", value: `${progress}%` },
               { label: "Tempo decorrido", value: formatElapsed(instance) },
+              {
+                label: "SLA",
+                value: <SlaStatusBadge status={sla.status} />,
+              },
             ]}
           />
         }
@@ -176,6 +191,9 @@ function RuntimeWorkspace() {
               { label: "Processo", items: [instance.processName] },
               { label: "Área", items: [instance.area] },
               { label: "Etapa atual", items: [active?.name ?? "—"] },
+              ...(late.length > 0
+                ? [{ label: "Atraso", items: [`${late.length} tarefa(s) atrasada(s)`] }]
+                : []),
             ]}
           />
         }
@@ -189,6 +207,11 @@ function RuntimeWorkspace() {
             id: "tarefas",
             label: "Tarefas",
             content: <RuntimeTasks instance={instance} />,
+          },
+          {
+            id: "prazos",
+            label: "Prazos",
+            content: <RuntimeSla instance={instance} />,
           },
           {
             id: "processo",
@@ -231,7 +254,17 @@ function RuntimeWorkspace() {
                   label="Atualização"
                   value={formatDateTime(instance.updatedAt)}
                 />
+                <Row
+                  label="SLA"
+                  value={sla.applicable ? formatRemaining(sla) : "Sem SLA definido"}
+                />
+                <Row label="Tarefas atrasadas" value={String(late.length)} />
               </dl>
+              {late.length > 0 && (
+                <div className="mt-3">
+                  <OverdueFlag />
+                </div>
+              )}
             </section>
             <Separator />
             <WorkspaceAiPanel />

@@ -8,6 +8,17 @@ import { Pill } from "@/components/ui/pill";
 import { Progress } from "@/components/ui/progress";
 import { InstanceStateBadge } from "@/components/runtime/runtime-badges";
 import {
+  OverdueFlag,
+  SlaCountdown,
+  SlaStatusBadge,
+} from "@/components/runtime/sla-badges";
+import {
+  SLA_CENTER_STATS,
+  SLA_FILTERS,
+  type SlaFilterId,
+} from "@/config/sla-model";
+import { useNow } from "@/lib/sla";
+import {
   RUNTIME_CENTER_STATS,
   RUNTIME_FILTERS,
   type RuntimeFilterId,
@@ -16,7 +27,12 @@ import {
   currentTask,
   formatDateTime,
   instanceProgress,
+  matchesSlaFilter,
   openTasks,
+  overdueTasks,
+  instanceSla,
+  slaSummary,
+  useSlaMonitor,
   useWorkflowInstances,
   type WorkflowInstance,
 } from "@/lib/runtime-store";
@@ -48,6 +64,9 @@ function RuntimeCenter() {
   const instances = useWorkflowInstances();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<RuntimeFilterId>("todas");
+  const [slaFilter, setSlaFilter] = useState<SlaFilterId>("sla-todos");
+  const now = useNow();
+  useSlaMonitor();
 
   const stats = useMemo(() => {
     return {
@@ -58,17 +77,26 @@ function RuntimeCenter() {
     } as Record<string, number>;
   }, [instances]);
 
+  const sla = useMemo(() => slaSummary(instances, now), [instances, now]);
+  const slaStats: Record<string, number> = {
+    "sla-no-prazo": sla.onTime,
+    "sla-risco": sla.atRisk,
+    "sla-vencido": sla.overdue,
+    "sla-fora": sla.finishedLate,
+  };
+
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return instances.filter((i) => {
       if (filter !== "todas" && i.state !== filter) return false;
+      if (!matchesSlaFilter(i, slaFilter, now)) return false;
       if (!q) return true;
       return [i.name, i.code, i.workflowName, i.processName, i.owner]
         .join(" ")
         .toLowerCase()
         .includes(q);
     });
-  }, [instances, query, filter]);
+  }, [instances, query, filter, slaFilter, now]);
 
   const recent = instances.slice(0, 3);
 
@@ -93,6 +121,27 @@ function RuntimeCenter() {
               </p>
               <p className="mt-1 text-2xl font-semibold tabular-nums">
                 {stats[s.id] ?? 0}
+              </p>
+            </div>
+          ))}
+        </section>
+
+        {/* Build 014 — indicadores temporais. */}
+        <section className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {SLA_CENTER_STATS.map((s) => (
+            <div key={s.id} className="rounded-xl border bg-surface/40 px-4 py-3">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                {s.label}
+              </p>
+              <p
+                className={cn(
+                  "mt-1 text-2xl font-semibold tabular-nums",
+                  s.id === "sla-vencido" && slaStats[s.id]
+                    ? "text-destructive"
+                    : undefined,
+                )}
+              >
+                {slaStats[s.id] ?? 0}
               </p>
             </div>
           ))}
@@ -151,6 +200,27 @@ function RuntimeCenter() {
           </div>
         </div>
 
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <span className="mr-1 text-[11px] uppercase tracking-wider text-muted-foreground">
+            SLA
+          </span>
+          {SLA_FILTERS.map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => setSlaFilter(f.id)}
+              className={cn(
+                "rounded-md px-2.5 py-1.5 text-xs transition-colors",
+                slaFilter === f.id
+                  ? "bg-muted font-medium text-foreground"
+                  : "text-muted-foreground hover:bg-muted/60",
+              )}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
         <section className="mt-4">
           {visible.length === 0 ? (
             <EmptyState
@@ -172,8 +242,11 @@ function RuntimeCenter() {
 }
 
 function InstanceCard({ instance }: { instance: WorkflowInstance }) {
+  const now = useNow();
   const progress = instanceProgress(instance);
   const active = currentTask(instance);
+  const sla = instanceSla(instance, now);
+  const late = overdueTasks(instance, now);
 
   return (
     <article className="rounded-xl border bg-card p-4 transition-colors hover:border-primary/30">
@@ -190,7 +263,11 @@ function InstanceCard({ instance }: { instance: WorkflowInstance }) {
             {instance.code} · {instance.workflowName} · {instance.owner}
           </p>
         </div>
-        <InstanceStateBadge state={instance.state} />
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+          {late.length > 0 && <OverdueFlag />}
+          {sla.applicable && <SlaStatusBadge status={sla.status} />}
+          <InstanceStateBadge state={instance.state} />
+        </div>
       </div>
 
       <Progress value={progress} className="mt-3 h-1.5" />
@@ -207,6 +284,7 @@ function InstanceCard({ instance }: { instance: WorkflowInstance }) {
             Etapa atual: {active.name}
           </Pill>
         )}
+        {sla.applicable && <SlaCountdown sla={sla} />}
         <span className="ml-auto text-[11px] text-muted-foreground">
           {formatDateTime(instance.updatedAt)}
         </span>

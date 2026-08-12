@@ -2,11 +2,14 @@ import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, ListChecks } from "lucide-react";
 import { SectionHeader } from "@/components/layout/page";
 import { TaskStateBadge } from "@/components/runtime/runtime-badges";
-import { useWorkflowInstances } from "@/lib/runtime-store";
+import { OverdueFlag } from "@/components/runtime/sla-badges";
+import { useNow } from "@/lib/sla";
+import { taskSla, useWorkflowInstances } from "@/lib/runtime-store";
 
 /** Build 012 — "Minhas tarefas" alimentado pelas instâncias em execução. */
 export function MyTasks() {
   const instances = useWorkflowInstances();
+  const now = useNow();
 
   const rows = instances.flatMap((instance) =>
     instance.tasks
@@ -44,7 +47,9 @@ export function MyTasks() {
         </p>
       ) : (
         <div className="divide-y rounded-xl border bg-card">
-          {list.map(({ instance, task }) => (
+          {list.map(({ instance, task }) => {
+            const sla = taskSla(task, now);
+            return (
             <Link
               key={task.id}
               to="/execucao/$instanceId"
@@ -59,9 +64,11 @@ export function MyTasks() {
                   {task.deadline ? ` · prazo ${task.deadline}` : ""}
                 </span>
               </span>
+              {sla.late && <OverdueFlag />}
               <TaskStateBadge state={task.state} />
             </Link>
-          ))}
+            );
+          })}
         </div>
       )}
     </section>

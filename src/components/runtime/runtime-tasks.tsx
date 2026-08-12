@@ -25,14 +25,23 @@ import {
 } from "@/config/execution-rules";
 import { Pill } from "@/components/ui/pill";
 import {
+  OverdueFlag,
+  SlaCountdown,
+  SlaStatusBadge,
+} from "@/components/runtime/sla-badges";
+import { useNow } from "@/lib/sla";
+import {
   blockTask,
   formatDateTime,
   resolveTask,
   startTask,
   taskKind,
+  taskSla,
+  taskSpec,
   type RuntimeTask,
   type WorkflowInstance,
 } from "@/lib/runtime-store";
+import { specLabel } from "@/config/sla-model";
 import { cn } from "@/lib/utils";
 
 /** Build 012 — lista de tarefas da instância + painel de execução da tarefa. */
@@ -43,6 +52,7 @@ export function RuntimeTasks({
   instance: WorkflowInstance;
   initialTaskId?: string | undefined;
 }) {
+  const now = useNow();
   const [openId, setOpenId] = useState<string | null>(initialTaskId ?? null);
   const task = instance.tasks.find((t) => t.id === openId) ?? null;
 
@@ -60,7 +70,9 @@ export function RuntimeTasks({
     <div className="space-y-2">
       {[...instance.tasks]
         .sort((a, b) => a.order - b.order)
-        .map((t) => (
+        .map((t) => {
+          const sla = taskSla(t, now);
+          return (
           <button
             key={t.id}
             type="button"
@@ -76,7 +88,11 @@ export function RuntimeTasks({
                 {t.owner || "sem responsável"} · {t.role}
                 {t.deadline ? ` · prazo ${t.deadline}` : ""}
               </span>
+              {sla.applicable && (
+                <SlaCountdown sla={sla} dueAt={t.dueAt} />
+              )}
             </span>
+            {sla.late && <OverdueFlag />}
             {t.blockedReason && t.state === "bloqueada" && (
               <Pill tone="bg-amber-500/10 text-amber-700 dark:text-amber-400" size="sm">
                 {t.blockedReason}
@@ -86,7 +102,8 @@ export function RuntimeTasks({
             {taskKind(t) !== "tarefa" && <ExecutionKindBadge kind={taskKind(t)} />}
             <TaskStateBadge state={t.state} />
           </button>
-        ))}
+          );
+        })}
 
       <TaskSheet
         instance={instance}
@@ -119,7 +136,9 @@ function TaskSheet({
         ["Processo", instance.processName],
         ["Responsável", task.owner || "—"],
         ["Papel", task.role],
-        ["Prazo", task.deadline || "—"],
+        ["Prazo definido", specLabel(taskSpec(task))],
+        ["Data limite", formatDateTime(task.dueAt)],
+        ["Iniciada em", formatDateTime(task.startedAt)],
         ["Criada em", formatDateTime(task.createdAt)],
         ["Concluída em", formatDateTime(task.completedAt)],
         ["Entradas", task.inputs || "—"],
@@ -157,6 +176,9 @@ function TaskSheet({
               {task.outcome && <OutcomeBadge outcome={task.outcome} size="md" />}
               {task.approvalState && (
                 <ApprovalStateBadge state={task.approvalState} size="md" />
+              )}
+              {task.dueAt && (
+                <SlaStatusBadge status={taskSla(task).status} size="md" />
               )}
               <Link
                 to="/processos/$processId"

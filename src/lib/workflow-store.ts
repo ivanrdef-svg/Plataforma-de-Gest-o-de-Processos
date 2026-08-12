@@ -20,6 +20,8 @@ import {
   type WorkflowStatus,
 } from "@/config/workflow-model";
 import type { ExecutionKind } from "@/config/execution-rules";
+import type { TimeUnit } from "@/config/sla-model";
+
 
 const STORAGE_KEY = "process-platform:workflow:v1";
 
@@ -67,7 +69,11 @@ export interface WorkflowStep {
   correctionStepId?: string;
   /** SE `condition` ENTÃO esta etapa. */
   conditionTargetStepId?: string;
+  /* --- Build 014: prazo específico da etapa (prevalece sobre o padrão) --- */
+  slaAmount?: number;
+  slaUnit?: TimeUnit;
 }
+
 
 
 export interface WorkflowParticipant {
@@ -98,7 +104,15 @@ export interface WorkflowDoc {
   steps: WorkflowStep[];
   participants: WorkflowParticipant[];
   savedAt: string;
+  /* --- Build 014: prazos e SLA (opcionais, retrocompatíveis) --- */
+  /** Tempo máximo de execução de uma instância. */
+  slaAmount?: number;
+  slaUnit?: TimeUnit;
+  /** Prazo padrão herdado por cada tarefa. */
+  taskSlaAmount?: number;
+  taskSlaUnit?: TimeUnit;
 }
+
 
 type StoreState = Record<string, WorkflowDoc>;
 
@@ -347,6 +361,75 @@ export function setOutcomeTransition(
   });
 }
 
+/* ------------------------------------------------------------------ */
+/* Build 014 — prazos e SLA                                            */
+/* ------------------------------------------------------------------ */
+
+export interface WorkflowSlaPatch {
+  slaAmount?: number | undefined;
+  slaUnit?: TimeUnit | undefined;
+  taskSlaAmount?: number | undefined;
+  taskSlaUnit?: TimeUnit | undefined;
+}
+
+/** Atualiza o SLA padrão da instância e das tarefas. */
+export function setWorkflowSla(docId: string, patch: WorkflowSlaPatch) {
+  const doc = state[docId];
+  if (!doc) return undefined;
+  const next: WorkflowDoc = { ...doc };
+  if ("slaAmount" in patch) {
+    if (patch.slaAmount === undefined || Number.isNaN(patch.slaAmount)) {
+      delete next.slaAmount;
+    } else {
+      next.slaAmount = patch.slaAmount;
+      next.slaUnit = next.slaUnit ?? "horas";
+    }
+  }
+  if ("slaUnit" in patch && patch.slaUnit) next.slaUnit = patch.slaUnit;
+  if ("taskSlaAmount" in patch) {
+    if (patch.taskSlaAmount === undefined || Number.isNaN(patch.taskSlaAmount)) {
+      delete next.taskSlaAmount;
+    } else {
+      next.taskSlaAmount = patch.taskSlaAmount;
+      next.taskSlaUnit = next.taskSlaUnit ?? "horas";
+    }
+  }
+  if ("taskSlaUnit" in patch && patch.taskSlaUnit) next.taskSlaUnit = patch.taskSlaUnit;
+
+  const updated: WorkflowDoc = {
+    ...next,
+    revisedAt: formatDate(),
+    savedAt: new Date().toISOString(),
+  };
+  state = { ...state, [docId]: updated };
+  persist();
+  emit();
+  return updated;
+}
+
+
+/** Prazo específico de uma etapa — `undefined` volta ao padrão do workflow. */
+export function setStepSla(
+  docId: string,
+  stepId: string,
+  amount: number | undefined,
+  unit: TimeUnit | undefined,
+) {
+  const doc = state[docId];
+  const step = doc?.steps.find((s) => s.id === stepId);
+  if (!doc || !step) return undefined;
+  const nextStep: WorkflowStep = { ...step };
+  if (amount === undefined || Number.isNaN(amount)) {
+    delete nextStep.slaAmount;
+    delete nextStep.slaUnit;
+  } else {
+    nextStep.slaAmount = amount;
+    nextStep.slaUnit = unit ?? step.slaUnit ?? "horas";
+  }
+  return updateWorkflowDoc(docId, {
+    steps: doc.steps.map((s) => (s.id === stepId ? nextStep : s)),
+  });
+}
 
 
 export function updateWorkflowParticipant(
@@ -432,7 +515,11 @@ export function syncWorkflowWithProcess(docId: string, process: ProcessDoc) {
       condition: existing?.condition ?? "",
       deadline: existing?.deadline ?? step.duration,
       expectedAction: existing?.expectedAction ?? "",
+      /* Build 014 — o prazo específico configurado pelo usuário é preservado. */
+      ...(existing?.slaAmount !== undefined ? { slaAmount: existing.slaAmount } : {}),
+      ...(existing?.slaUnit ? { slaUnit: existing.slaUnit } : {}),
     };
+
   });
   return updateWorkflowDoc(docId, {
     steps,
