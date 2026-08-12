@@ -24,6 +24,7 @@ import { GovernanceAttention } from "@/components/home/governance-attention";
 import { WorkflowExecutionWidget } from "@/components/home/workflow-execution-widget";
 import { RunningExecutions } from "@/components/home/running-executions";
 import { MyTasks } from "@/components/home/my-tasks";
+import { SlaAttention } from "@/components/home/sla-attention";
 import { CardQuickActions } from "@/components/workspace/card-quick-actions";
 
 export const Route = createFileRoute("/")({
@@ -151,6 +152,8 @@ function Launchpad() {
           <AwaitingActions />
 
           <ProcessesInProgress />
+
+          <SlaAttention />
 
           <GovernanceAttention />
           <WorkflowExecutionWidget />
