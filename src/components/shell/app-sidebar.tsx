@@ -25,6 +25,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const { open: openSearch } = useGlobalSearch();
+  const { stats } = useInbox();
 
   const isActive = (path: string) =>
     path === "/" ? pathname === "/" : pathname.startsWith(path);
@@ -60,6 +61,26 @@ export function AppSidebar() {
                 <SidebarMenuButton onClick={openSearch} tooltip="Pesquisa global">
                   <Search className="h-4 w-4" />
                   {!collapsed && <span>Pesquisar</span>}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/inbox")} tooltip="Inbox">
+                  <Link to="/inbox" className="flex items-center gap-2.5">
+                    <Inbox className="h-4 w-4" />
+                    {!collapsed && <span>Inbox</span>}
+                    {!collapsed && stats.abertas > 0 && (
+                      <span
+                        className={cn(
+                          "ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums",
+                          stats.atrasadas > 0
+                            ? "bg-destructive/10 text-destructive"
+                            : "bg-primary/10 text-primary",
+                        )}
+                      >
+                        {stats.abertas}
+                      </span>
+                    )}
+                  </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
