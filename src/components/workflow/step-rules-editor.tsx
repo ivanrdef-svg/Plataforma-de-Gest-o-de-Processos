@@ -9,6 +9,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ExecutionKindBadge } from "@/components/runtime/execution-badges";
+import { SlaField } from "@/components/workflow/sla-field";
+import { specLabel } from "@/config/sla-model";
+import { defaultTaskSpecOf } from "@/lib/sla";
 import {
   DECISION_HINTS,
   EXECUTION_KINDS,
@@ -24,6 +27,7 @@ import {
   addDecisionOption,
   removeDecisionOption,
   setOutcomeTransition,
+  setStepSla,
   updateDecisionOption,
   updateWorkflowStep,
   type WorkflowDoc,
@@ -46,6 +50,7 @@ export function StepRulesEditor({
   const kind = stepKind(step);
   const others = doc.steps.filter((s) => s.id !== step.id);
   const options = decisionOptions(step);
+  const defaultSpec = defaultTaskSpecOf(doc);
 
   return (
     <div className="col-span-full space-y-4 rounded-xl border bg-surface/40 p-4">
