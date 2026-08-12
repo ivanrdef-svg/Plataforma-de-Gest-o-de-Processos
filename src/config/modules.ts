@@ -11,6 +11,7 @@ import {
   ClipboardCheck,
   PlayCircle,
   LayoutGrid,
+  Inbox,
 } from "lucide-react";
 
 /**
@@ -99,6 +100,15 @@ export const PLATFORM_MODULES: PlatformModule[] = [
     route: "/workflow",
     group: "execucao",
 
+  },
+  {
+    id: "inbox",
+    name: "Inbox",
+    description: "Tarefas, aprovações, decisões e prazos que aguardam ação.",
+    icon: Inbox,
+    status: "available",
+    route: "/inbox",
+    group: "execucao",
   },
   {
     id: "runtime",
