@@ -19,8 +19,21 @@ import {
   EXECUTION_RULE_HINTS,
   type WorkflowStatus,
 } from "@/config/workflow-model";
+import type { ExecutionKind } from "@/config/execution-rules";
 
 const STORAGE_KEY = "process-platform:workflow:v1";
+
+/**
+ * Build 013 — opção de uma etapa de decisão. Cada opção aponta para a próxima
+ * etapa executável (por `stepId`), sem criar um motor paralelo de processos.
+ */
+export interface DecisionOption {
+  id: string;
+  label: string;
+  /** Próxima etapa quando esta opção for escolhida. Vazio = seguir a sequência. */
+  nextStepId: string;
+  note: string;
+}
 
 export interface WorkflowStep {
   id: string;
@@ -40,7 +53,22 @@ export interface WorkflowStep {
   condition: string;
   deadline: string;
   expectedAction: string;
+  /* --- Build 013: regras operacionais (todas opcionais, retrocompatíveis) --- */
+  /** Natureza executável: tarefa, aprovação ou decisão. */
+  kind?: ExecutionKind;
+  /** Aprovador responsável quando a etapa for uma aprovação. */
+  approver?: string;
+  /** Pergunta/critério exibido na etapa de decisão. */
+  decisionQuestion?: string;
+  decisionOptions?: DecisionOption[];
+  /** Resultado da tarefa → próxima etapa (`stepId`). */
+  outcomeTransitions?: Record<string, string>;
+  /** Etapa para onde a rejeição/correção devolve o fluxo. */
+  correctionStepId?: string;
+  /** SE `condition` ENTÃO esta etapa. */
+  conditionTargetStepId?: string;
 }
+
 
 export interface WorkflowParticipant {
   id: string;
@@ -265,6 +293,61 @@ export function updateWorkflowStep(
     steps: doc.steps.map((s) => (s.id === stepId ? { ...s, ...patch } : s)),
   });
 }
+
+/* ------------------------------------------------------------------ */
+/* Build 013 — regras de execução por etapa                            */
+/* ------------------------------------------------------------------ */
+
+export function addDecisionOption(
+  docId: string,
+  stepId: string,
+  label = "Nova opção",
+) {
+  const step = state[docId]?.steps.find((s) => s.id === stepId);
+  if (!step) return undefined;
+  const option: DecisionOption = { id: rid("op"), label, nextStepId: "", note: "" };
+  return updateWorkflowStep(docId, stepId, {
+    decisionOptions: [...(step.decisionOptions ?? []), option],
+  });
+}
+
+export function updateDecisionOption(
+  docId: string,
+  stepId: string,
+  optionId: string,
+  patch: Partial<Omit<DecisionOption, "id">>,
+) {
+  const step = state[docId]?.steps.find((s) => s.id === stepId);
+  if (!step) return undefined;
+  return updateWorkflowStep(docId, stepId, {
+    decisionOptions: (step.decisionOptions ?? []).map((o) =>
+      o.id === optionId ? { ...o, ...patch } : o,
+    ),
+  });
+}
+
+export function removeDecisionOption(docId: string, stepId: string, optionId: string) {
+  const step = state[docId]?.steps.find((s) => s.id === stepId);
+  if (!step) return undefined;
+  return updateWorkflowStep(docId, stepId, {
+    decisionOptions: (step.decisionOptions ?? []).filter((o) => o.id !== optionId),
+  });
+}
+
+export function setOutcomeTransition(
+  docId: string,
+  stepId: string,
+  outcome: string,
+  nextStepId: string,
+) {
+  const step = state[docId]?.steps.find((s) => s.id === stepId);
+  if (!step) return undefined;
+  return updateWorkflowStep(docId, stepId, {
+    outcomeTransitions: { ...(step.outcomeTransitions ?? {}), [outcome]: nextStepId },
+  });
+}
+
+
 
 export function updateWorkflowParticipant(
   docId: string,

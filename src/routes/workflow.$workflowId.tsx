@@ -254,6 +254,7 @@ function WorkflowWorkspace() {
             <WorkflowSteps
               key={doc.id}
               steps={doc.steps}
+              doc={doc}
               onChange={(id, p) => updateWorkflowStep(doc.id, id, p)}
             />
           ),

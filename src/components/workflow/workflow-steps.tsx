@@ -18,7 +18,8 @@ import {
   executionLabel,
 } from "@/config/workflow-model";
 import { getStepType, type ProcessStepTypeId } from "@/config/process-model";
-import type { WorkflowStep } from "@/lib/workflow-store";
+import { StepRulesEditor } from "./step-rules-editor";
+import type { WorkflowDoc, WorkflowStep } from "@/lib/workflow-store";
 import { cn } from "@/lib/utils";
 
 /**
@@ -78,10 +79,14 @@ export function stepConfigured(step: WorkflowStep) {
 export function WorkflowSteps({
   steps,
   onChange,
+  doc,
 }: {
   steps: WorkflowStep[];
   onChange: (id: string, patch: Partial<WorkflowStep>) => void;
+  /** Build 013 — quando presente, habilita a configuração das regras. */
+  doc?: WorkflowDoc;
 }) {
+
   const [open, setOpen] = useState<Record<string, boolean>>({});
 
   return (
@@ -247,11 +252,13 @@ export function WorkflowSteps({
                   area
                 />
 
+                {doc && <StepRulesEditor doc={doc} step={step} />}
+
                 <p className="col-span-full inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
                   <Link2 className="h-3 w-3" />
                   Etapa vinculada ao processo de origem.
                   <Timer className="ml-2 h-3 w-3" />
-                  Execução real disponível na próxima evolução.
+                  Regras aplicadas na execução da instância.
                 </p>
               </div>
             )}

@@ -16,8 +16,22 @@ import {
   type InstanceState,
   type TaskState,
 } from "@/config/runtime-model";
+import type {
+  ApprovalState,
+  ExecutionKind,
+  TaskOutcome,
+} from "@/config/execution-rules";
+import { snapshotStepRules } from "@/lib/execution-rules";
 
 const STORAGE_KEY = "process-platform:runtime:v1";
+
+export interface RuntimeTaskOption {
+  id: string;
+  label: string;
+  /** `stepId` da definição — resolvido para a tarefa correspondente. */
+  nextStepId: string;
+  note: string;
+}
 
 export interface RuntimeTask {
   id: string;
@@ -40,7 +54,23 @@ export interface RuntimeTask {
   expectedAction: string;
   notes: string;
   blockedReason?: string;
+  /* --- Build 013: regras operacionais (snapshot da definição) --- */
+  kind?: ExecutionKind;
+  approver?: string;
+  question?: string;
+  options?: RuntimeTaskOption[];
+  nextByOutcome?: Record<string, string>;
+  correctionStepId?: string;
+  condition?: string;
+  /* --- Build 013: resultado da execução --- */
+  outcome?: TaskOutcome;
+  approvalState?: ApprovalState;
+  justification?: string;
+  decisionLabel?: string;
+  correctionRequested?: boolean;
+  correctionReason?: string;
 }
+
 
 export interface RuntimeEvent {
   id: string;
@@ -175,6 +205,52 @@ export function openTasks(instance: WorkflowInstance): RuntimeTask[] {
   return instance.tasks.filter((t) => OPEN_TASK_STATES.includes(t.state));
 }
 
+/* ------------------------------------------------------------------ */
+/* Build 013 — leitura das regras operacionais                         */
+/* ------------------------------------------------------------------ */
+
+export function taskKind(task: RuntimeTask): ExecutionKind {
+  return task.kind ?? "tarefa";
+}
+
+export function isOpen(task: RuntimeTask): boolean {
+  return OPEN_TASK_STATES.includes(task.state);
+}
+
+export function pendingApprovals(instance: WorkflowInstance): RuntimeTask[] {
+  return instance.tasks.filter((t) => taskKind(t) === "aprovação" && isOpen(t));
+}
+
+export function pendingDecisions(instance: WorkflowInstance): RuntimeTask[] {
+  return instance.tasks.filter((t) => taskKind(t) === "decisão" && isOpen(t));
+}
+
+export function blockedTasks(instance: WorkflowInstance): RuntimeTask[] {
+  return instance.tasks.filter((t) => t.state === "bloqueada");
+}
+
+export function tasksAwaitingCorrection(instance: WorkflowInstance): RuntimeTask[] {
+  return instance.tasks.filter((t) => t.correctionRequested && isOpen(t));
+}
+
+/** Motivos que impedem a conclusão da instância. */
+export function completionBlockers(instance: WorkflowInstance): string[] {
+  const blockers: string[] = [];
+  const approvals = pendingApprovals(instance).length;
+  const decisions = pendingDecisions(instance).length;
+  const blocked = blockedTasks(instance).length;
+  const others = instance.tasks.filter(
+    (t) => isOpen(t) && taskKind(t) === "tarefa" && t.state !== "bloqueada",
+  ).length;
+  if (approvals) blockers.push(`${approvals} aprovação(ões) pendente(s)`);
+  if (decisions) blockers.push(`${decisions} decisão(ões) pendente(s)`);
+  if (blocked) blockers.push(`${blocked} tarefa(s) bloqueada(s)`);
+  if (others) blockers.push(`${others} tarefa(s) em aberto`);
+  return blockers;
+}
+
+
+
 export function formatElapsed(instance: WorkflowInstance): string {
   const start = new Date(instance.startedAt).getTime();
   const end = instance.completedAt
@@ -233,25 +309,39 @@ export function startInstanceFromWorkflow(doc: WorkflowDoc): WorkflowInstance {
   const iso = now.toISOString();
   const id = `exe-${now.getTime().toString(36)}`;
 
-  const tasks: RuntimeTask[] = doc.steps.map((step, index) => ({
-    id: rid("tk"),
-    stepId: step.id,
-    order: index,
-    name: step.name,
-    description: step.description,
-    ...(step.type ? { type: step.type } : {}),
-    owner: step.owner,
-    role: step.role,
-    state: index === 0 ? "em andamento" : "pendente",
-    createdAt: iso,
-    ...(index === 0 ? { startedAt: iso } : {}),
-    deadline: step.deadline || step.duration,
-    inputs: step.inputs,
-    outputs: step.outputs,
-    precondition: step.precondition,
-    expectedAction: step.expectedAction,
-    notes: "",
-  }));
+  const tasks: RuntimeTask[] = doc.steps.map((step, index) => {
+    const rules = snapshotStepRules(doc, step);
+    return {
+      id: rid("tk"),
+      stepId: step.id,
+      order: index,
+      name: step.name,
+      description: step.description,
+      ...(step.type ? { type: step.type } : {}),
+      owner: step.owner,
+      role: step.role,
+      state: index === 0 ? "em andamento" : "pendente",
+      createdAt: iso,
+      ...(index === 0 ? { startedAt: iso } : {}),
+      deadline: step.deadline || step.duration,
+      inputs: step.inputs,
+      outputs: step.outputs,
+      precondition: step.precondition,
+      expectedAction: step.expectedAction,
+      notes: "",
+      kind: rules.kind,
+      approver: rules.approver,
+      question: rules.question,
+      options: rules.options,
+      nextByOutcome: rules.nextByOutcome,
+      correctionStepId: rules.correctionStepId,
+      condition: rules.condition,
+      ...(rules.kind === "aprovação"
+        ? { approvalState: "pendente" as ApprovalState }
+        : {}),
+    } satisfies RuntimeTask;
+  });
+
 
   const events: RuntimeEvent[] = [
     event("Execução iniciada", `${doc.name} — ${doc.processName}.`),
@@ -372,6 +462,242 @@ export function completeTask(instanceId: string, taskId: string, note?: string) 
   }
   return next;
 }
+
+/* ------------------------------------------------------------------ */
+/* Build 013 — resultados, aprovações e decisões                       */
+/* ------------------------------------------------------------------ */
+
+function commit(
+  instanceId: string,
+  tasks: RuntimeTask[],
+  newEvents: RuntimeEvent[],
+): WorkflowInstance | undefined {
+  ensureHydrated();
+  const current = state[instanceId];
+  if (!current) return undefined;
+  let next: WorkflowInstance = {
+    ...current,
+    tasks,
+    events: [...current.events, ...newEvents],
+    updatedAt: new Date().toISOString(),
+  };
+  next = maybeComplete(next);
+  state = { ...state, [instanceId]: next };
+  persist();
+  emit();
+  return next;
+}
+
+export interface ResolveTaskInput {
+  outcome: TaskOutcome;
+  /** Opção escolhida quando a tarefa é uma decisão. */
+  optionId?: string;
+  justification?: string;
+  note?: string;
+}
+
+/**
+ * Aplica o resultado de uma tarefa, avalia a regra correspondente e determina
+ * a próxima etapa. Execuções lineares continuam com o comportamento da Build
+ * 012 (resultado "concluído" → próxima etapa na sequência).
+ */
+export function resolveTask(
+  instanceId: string,
+  taskId: string,
+  input: ResolveTaskInput,
+): WorkflowInstance | undefined {
+  ensureHydrated();
+  const instance = state[instanceId];
+  const task = instance?.tasks.find((t) => t.id === taskId);
+  if (!instance || !task) return undefined;
+
+  const iso = new Date().toISOString();
+  const kind = taskKind(task);
+  const option = input.optionId
+    ? task.options?.find((o) => o.id === input.optionId)
+    : undefined;
+  const outcome = input.outcome;
+  const justification = input.justification?.trim() ?? "";
+  const events: RuntimeEvent[] = [];
+
+  const backwards = outcome === "rejeitado" || outcome === "necessita correção";
+  const targetStepId = option
+    ? option.nextStepId
+    : backwards
+      ? (task.nextByOutcome?.[outcome] ?? task.correctionStepId ?? "")
+      : (task.nextByOutcome?.[outcome] ?? "");
+
+  let tasks = instance.tasks.map((t) =>
+    t.id === taskId
+      ? {
+          ...t,
+          state: "concluída" as TaskState,
+          completedAt: iso,
+          outcome,
+          ...(justification ? { justification } : {}),
+          ...(option ? { decisionLabel: option.label } : {}),
+          ...(kind === "aprovação"
+            ? {
+                approvalState: (outcome === "aprovado"
+                  ? "aprovada"
+                  : outcome === "rejeitado"
+                    ? "rejeitada"
+                    : "pendente") as ApprovalState,
+              }
+            : {}),
+          notes: input.note?.trim() ? input.note.trim() : t.notes,
+          correctionRequested: false,
+          ...(t.blockedReason ? { blockedReason: "" } : {}),
+        }
+      : t,
+  );
+
+  if (kind === "aprovação") {
+    events.push(
+      event(
+        outcome === "aprovado"
+          ? "Aprovação concedida"
+          : outcome === "rejeitado"
+            ? "Aprovação rejeitada"
+            : "Correção solicitada",
+        `${task.name} · aprovador ${task.approver || task.owner || "—"}${
+          justification ? ` — ${justification}` : ""
+        }`,
+      ),
+    );
+  } else if (kind === "decisão") {
+    events.push(
+      event(
+        "Decisão tomada",
+        `${task.name} · opção "${option?.label ?? "—"}"${
+          task.question ? ` · critério: ${task.question}` : ""
+        }`,
+      ),
+    );
+  } else {
+    events.push(
+      event("Tarefa concluída", `${task.name} · resultado ${outcome}`),
+    );
+  }
+
+  events.push(
+    event(
+      "Regra avaliada",
+      `${task.name} → ${outcome}${
+        task.condition ? ` · condição: ${task.condition}` : ""
+      }`,
+    ),
+  );
+
+  const target = targetStepId
+    ? tasks.find((t) => t.stepId === targetStepId)
+    : undefined;
+
+  if (target) {
+    if (backwards) {
+      tasks = tasks.map((t) => {
+        if (t.id !== target.id) return t;
+        const { completedAt: _c, outcome: _o, ...rest } = t;
+        return {
+          ...rest,
+          state: "em andamento" as TaskState,
+          startedAt: iso,
+          correctionRequested: true,
+          correctionReason: justification,
+        };
+      });
+      events.push(
+        event("Correção solicitada", `${target.name} — ${justification || "sem motivo"}`),
+      );
+      // A aprovação volta a ficar pendente para nova avaliação após a correção.
+      tasks = tasks.map((t) => {
+        if (t.id !== taskId) return t;
+        const { completedAt: _c, ...rest } = t;
+        return {
+          ...rest,
+          approvalState: "pendente" as ApprovalState,
+          state: "pendente" as TaskState,
+        };
+      });
+
+    } else {
+      tasks = tasks.map((t) =>
+        t.id === target.id && t.state === "pendente"
+          ? { ...t, state: "em andamento" as TaskState, startedAt: iso }
+          : t,
+      );
+      events.push(event("Tarefa iniciada", target.name));
+    }
+    events.push(
+      event(
+        "Transição executada",
+        `${task.name} → ${outcome} → ${target.name}`,
+      ),
+    );
+  } else if (!backwards) {
+    events.push(
+      event("Transição executada", `${task.name} → ${outcome} → fim do caminho`),
+    );
+  }
+
+  // Decisão: os caminhos não escolhidos saem da execução.
+  if (kind === "decisão" && option) {
+    const abandoned = (task.options ?? [])
+      .filter((o) => o.id !== option.id && o.nextStepId && o.nextStepId !== option.nextStepId)
+      .map((o) => o.nextStepId);
+    if (abandoned.length > 0) {
+      const affected = tasks.filter(
+        (t) => abandoned.includes(t.stepId) && t.state === "pendente",
+      );
+      if (affected.length > 0) {
+        tasks = tasks.map((t) =>
+          affected.some((a) => a.id === t.id)
+            ? { ...t, state: "cancelada" as TaskState, outcome: "não aplicável" as TaskOutcome }
+            : t,
+        );
+        events.push(
+          event(
+            "Caminho alterado",
+            `Caminho não seguido: ${affected.map((t) => t.name).join(", ")}.`,
+          ),
+        );
+      }
+    }
+  }
+
+  // Nenhuma tarefa em andamento? Retoma a próxima pendente da sequência.
+  const result = commit(instanceId, tasks, events);
+  if (!result || result.state === "concluída") return result;
+  const running = result.tasks.some((t) => t.state === "em andamento");
+  if (!running) {
+    const pending = result.tasks
+      .filter((t) => t.state === "pendente")
+      .sort((a, b) => a.order - b.order)[0];
+    if (pending) {
+      return patchTask(
+        instanceId,
+        pending.id,
+        { state: "em andamento", startedAt: new Date().toISOString() },
+        event("Tarefa iniciada", pending.name),
+      );
+    }
+  }
+  return result;
+}
+
+/** Solicitação explícita de correção a partir de uma aprovação. */
+export function requestCorrection(
+  instanceId: string,
+  taskId: string,
+  reason: string,
+) {
+  return resolveTask(instanceId, taskId, {
+    outcome: "necessita correção",
+    justification: reason,
+  });
+}
+
+
 
 export function blockTask(instanceId: string, taskId: string, reason: string) {
   const task = state[instanceId]?.tasks.find((t) => t.id === taskId);
