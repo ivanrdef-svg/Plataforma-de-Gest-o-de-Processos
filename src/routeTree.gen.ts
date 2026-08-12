@@ -14,6 +14,7 @@ import { Route as AdministracaoRouteImport } from './routes/administracao'
 import { Route as ExecucaoRouteImport } from './routes/execucao'
 import { Route as FavoritosRouteImport } from './routes/favoritos'
 import { Route as GovernancaRouteImport } from './routes/governanca'
+import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as KnowledgeRouteImport } from './routes/knowledge'
 import { Route as PopRouteImport } from './routes/pop'
 import { Route as ProcessosRouteImport } from './routes/processos'
@@ -56,6 +57,11 @@ const FavoritosRoute = FavoritosRouteImport.update({
 const GovernancaRoute = GovernancaRouteImport.update({
   id: '/governanca',
   path: '/governanca',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InboxRoute = InboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
   getParentRoute: () => rootRouteImport,
 } as any)
 const KnowledgeRoute = KnowledgeRouteImport.update({
@@ -155,6 +161,7 @@ export interface FileRoutesByFullPath {
   '/execucao': typeof ExecucaoRouteWithChildren
   '/favoritos': typeof FavoritosRoute
   '/governanca': typeof GovernancaRouteWithChildren
+  '/inbox': typeof InboxRoute
   '/knowledge': typeof KnowledgeRouteWithChildren
   '/pop': typeof PopRouteWithChildren
   '/processos': typeof ProcessosRouteWithChildren
@@ -178,6 +185,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/administracao': typeof AdministracaoRoute
   '/favoritos': typeof FavoritosRoute
+  '/inbox': typeof InboxRoute
   '/execucao/$instanceId': typeof ExecucaoInstanceIdRoute
   '/knowledge/$packageId': typeof KnowledgePackageIdRoute
   '/pop/$popId': typeof PopPopIdRoute
@@ -199,6 +207,7 @@ export interface FileRoutesById {
   '/execucao': typeof ExecucaoRouteWithChildren
   '/favoritos': typeof FavoritosRoute
   '/governanca': typeof GovernancaRouteWithChildren
+  '/inbox': typeof InboxRoute
   '/knowledge': typeof KnowledgeRouteWithChildren
   '/pop': typeof PopRouteWithChildren
   '/processos': typeof ProcessosRouteWithChildren
@@ -226,6 +235,7 @@ export interface FileRouteTypes {
     | '/execucao'
     | '/favoritos'
     | '/governanca'
+    | '/inbox'
     | '/knowledge'
     | '/pop'
     | '/processos'
@@ -249,6 +259,7 @@ export interface FileRouteTypes {
     | '/'
     | '/administracao'
     | '/favoritos'
+    | '/inbox'
     | '/execucao/$instanceId'
     | '/knowledge/$packageId'
     | '/pop/$popId'
@@ -269,6 +280,7 @@ export interface FileRouteTypes {
     | '/execucao'
     | '/favoritos'
     | '/governanca'
+    | '/inbox'
     | '/knowledge'
     | '/pop'
     | '/processos'
@@ -295,6 +307,7 @@ export interface RootRouteChildren {
   ExecucaoRoute: typeof ExecucaoRouteWithChildren
   FavoritosRoute: typeof FavoritosRoute
   GovernancaRoute: typeof GovernancaRouteWithChildren
+  InboxRoute: typeof InboxRoute
   KnowledgeRoute: typeof KnowledgeRouteWithChildren
   PopRoute: typeof PopRouteWithChildren
   ProcessosRoute: typeof ProcessosRouteWithChildren
@@ -337,6 +350,13 @@ declare module '@tanstack/react-router' {
       path: '/governanca'
       fullPath: '/governanca'
       preLoaderRoute: typeof GovernancaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inbox': {
+      id: '/inbox'
+      path: '/inbox'
+      fullPath: '/inbox'
+      preLoaderRoute: typeof InboxRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/knowledge': {
@@ -568,6 +588,7 @@ const rootRouteChildren: RootRouteChildren = {
   ExecucaoRoute: ExecucaoRouteWithChildren,
   FavoritosRoute: FavoritosRoute,
   GovernancaRoute: GovernancaRouteWithChildren,
+  InboxRoute: InboxRoute,
   KnowledgeRoute: KnowledgeRouteWithChildren,
   PopRoute: PopRouteWithChildren,
   ProcessosRoute: ProcessosRouteWithChildren,
