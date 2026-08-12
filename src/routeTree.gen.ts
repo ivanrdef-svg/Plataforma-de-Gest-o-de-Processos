@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdministracaoRouteImport } from './routes/administracao'
+import { Route as ExecucaoRouteImport } from './routes/execucao'
 import { Route as FavoritosRouteImport } from './routes/favoritos'
 import { Route as GovernancaRouteImport } from './routes/governanca'
 import { Route as KnowledgeRouteImport } from './routes/knowledge'
@@ -18,6 +19,8 @@ import { Route as PopRouteImport } from './routes/pop'
 import { Route as ProcessosRouteImport } from './routes/processos'
 import { Route as WorkflowRouteImport } from './routes/workflow'
 import { Route as WorkspacesRouteImport } from './routes/workspaces'
+import { Route as ExecucaoIndexRouteImport } from './routes/execucao.index'
+import { Route as ExecucaoInstanceIdRouteImport } from './routes/execucao.$instanceId'
 import { Route as GovernancaIndexRouteImport } from './routes/governanca.index'
 import { Route as KnowledgeIndexRouteImport } from './routes/knowledge.index'
 import { Route as KnowledgePackageIdRouteImport } from './routes/knowledge.$packageId'
@@ -38,6 +41,11 @@ const IndexRoute = IndexRouteImport.update({
 const AdministracaoRoute = AdministracaoRouteImport.update({
   id: '/administracao',
   path: '/administracao',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExecucaoRoute = ExecucaoRouteImport.update({
+  id: '/execucao',
+  path: '/execucao',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FavoritosRoute = FavoritosRouteImport.update({
@@ -74,6 +82,16 @@ const WorkspacesRoute = WorkspacesRouteImport.update({
   id: '/workspaces',
   path: '/workspaces',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ExecucaoIndexRoute = ExecucaoIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ExecucaoRoute,
+} as any)
+const ExecucaoInstanceIdRoute = ExecucaoInstanceIdRouteImport.update({
+  id: '/$instanceId',
+  path: '/$instanceId',
+  getParentRoute: () => ExecucaoRoute,
 } as any)
 const GovernancaIndexRoute = GovernancaIndexRouteImport.update({
   id: '/',
@@ -134,6 +152,7 @@ const WorkspacesWorkspaceIdRoute = WorkspacesWorkspaceIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/administracao': typeof AdministracaoRoute
+  '/execucao': typeof ExecucaoRouteWithChildren
   '/favoritos': typeof FavoritosRoute
   '/governanca': typeof GovernancaRouteWithChildren
   '/knowledge': typeof KnowledgeRouteWithChildren
@@ -141,11 +160,13 @@ export interface FileRoutesByFullPath {
   '/processos': typeof ProcessosRouteWithChildren
   '/workflow': typeof WorkflowRouteWithChildren
   '/workspaces': typeof WorkspacesRouteWithChildren
+  '/execucao/$instanceId': typeof ExecucaoInstanceIdRoute
   '/knowledge/$packageId': typeof KnowledgePackageIdRoute
   '/pop/$popId': typeof PopPopIdRoute
   '/processos/$processId': typeof ProcessosProcessIdRoute
   '/workflow/$workflowId': typeof WorkflowWorkflowIdRoute
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRoute
+  '/execucao/': typeof ExecucaoIndexRoute
   '/governanca/': typeof GovernancaIndexRoute
   '/knowledge/': typeof KnowledgeIndexRoute
   '/pop/': typeof PopIndexRoute
@@ -157,11 +178,13 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/administracao': typeof AdministracaoRoute
   '/favoritos': typeof FavoritosRoute
+  '/execucao/$instanceId': typeof ExecucaoInstanceIdRoute
   '/knowledge/$packageId': typeof KnowledgePackageIdRoute
   '/pop/$popId': typeof PopPopIdRoute
   '/processos/$processId': typeof ProcessosProcessIdRoute
   '/workflow/$workflowId': typeof WorkflowWorkflowIdRoute
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRoute
+  '/execucao': typeof ExecucaoIndexRoute
   '/governanca': typeof GovernancaIndexRoute
   '/knowledge': typeof KnowledgeIndexRoute
   '/pop': typeof PopIndexRoute
@@ -173,6 +196,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/administracao': typeof AdministracaoRoute
+  '/execucao': typeof ExecucaoRouteWithChildren
   '/favoritos': typeof FavoritosRoute
   '/governanca': typeof GovernancaRouteWithChildren
   '/knowledge': typeof KnowledgeRouteWithChildren
@@ -180,11 +204,13 @@ export interface FileRoutesById {
   '/processos': typeof ProcessosRouteWithChildren
   '/workflow': typeof WorkflowRouteWithChildren
   '/workspaces': typeof WorkspacesRouteWithChildren
+  '/execucao/$instanceId': typeof ExecucaoInstanceIdRoute
   '/knowledge/$packageId': typeof KnowledgePackageIdRoute
   '/pop/$popId': typeof PopPopIdRoute
   '/processos/$processId': typeof ProcessosProcessIdRoute
   '/workflow/$workflowId': typeof WorkflowWorkflowIdRoute
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRoute
+  '/execucao/': typeof ExecucaoIndexRoute
   '/governanca/': typeof GovernancaIndexRoute
   '/knowledge/': typeof KnowledgeIndexRoute
   '/pop/': typeof PopIndexRoute
@@ -197,6 +223,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/administracao'
+    | '/execucao'
     | '/favoritos'
     | '/governanca'
     | '/knowledge'
@@ -204,11 +231,13 @@ export interface FileRouteTypes {
     | '/processos'
     | '/workflow'
     | '/workspaces'
+    | '/execucao/$instanceId'
     | '/knowledge/$packageId'
     | '/pop/$popId'
     | '/processos/$processId'
     | '/workflow/$workflowId'
     | '/workspaces/$workspaceId'
+    | '/execucao/'
     | '/governanca/'
     | '/knowledge/'
     | '/pop/'
@@ -220,11 +249,13 @@ export interface FileRouteTypes {
     | '/'
     | '/administracao'
     | '/favoritos'
+    | '/execucao/$instanceId'
     | '/knowledge/$packageId'
     | '/pop/$popId'
     | '/processos/$processId'
     | '/workflow/$workflowId'
     | '/workspaces/$workspaceId'
+    | '/execucao'
     | '/governanca'
     | '/knowledge'
     | '/pop'
@@ -235,6 +266,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/administracao'
+    | '/execucao'
     | '/favoritos'
     | '/governanca'
     | '/knowledge'
@@ -242,11 +274,13 @@ export interface FileRouteTypes {
     | '/processos'
     | '/workflow'
     | '/workspaces'
+    | '/execucao/$instanceId'
     | '/knowledge/$packageId'
     | '/pop/$popId'
     | '/processos/$processId'
     | '/workflow/$workflowId'
     | '/workspaces/$workspaceId'
+    | '/execucao/'
     | '/governanca/'
     | '/knowledge/'
     | '/pop/'
@@ -258,6 +292,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdministracaoRoute: typeof AdministracaoRoute
+  ExecucaoRoute: typeof ExecucaoRouteWithChildren
   FavoritosRoute: typeof FavoritosRoute
   GovernancaRoute: typeof GovernancaRouteWithChildren
   KnowledgeRoute: typeof KnowledgeRouteWithChildren
@@ -281,6 +316,13 @@ declare module '@tanstack/react-router' {
       path: '/administracao'
       fullPath: '/administracao'
       preLoaderRoute: typeof AdministracaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/execucao': {
+      id: '/execucao'
+      path: '/execucao'
+      fullPath: '/execucao'
+      preLoaderRoute: typeof ExecucaoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/favoritos': {
@@ -331,6 +373,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/workspaces'
       preLoaderRoute: typeof WorkspacesRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/execucao/': {
+      id: '/execucao/'
+      path: '/'
+      fullPath: '/execucao/'
+      preLoaderRoute: typeof ExecucaoIndexRouteImport
+      parentRoute: typeof ExecucaoRoute
+    }
+    '/execucao/$instanceId': {
+      id: '/execucao/$instanceId'
+      path: '/$instanceId'
+      fullPath: '/execucao/$instanceId'
+      preLoaderRoute: typeof ExecucaoInstanceIdRouteImport
+      parentRoute: typeof ExecucaoRoute
     }
     '/governanca/': {
       id: '/governanca/'
@@ -411,6 +467,20 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface ExecucaoRouteChildren {
+  ExecucaoInstanceIdRoute: typeof ExecucaoInstanceIdRoute
+  ExecucaoIndexRoute: typeof ExecucaoIndexRoute
+}
+
+const ExecucaoRouteChildren: ExecucaoRouteChildren = {
+  ExecucaoInstanceIdRoute: ExecucaoInstanceIdRoute,
+  ExecucaoIndexRoute: ExecucaoIndexRoute,
+}
+
+const ExecucaoRouteWithChildren = ExecucaoRoute._addFileChildren(
+  ExecucaoRouteChildren,
+)
 
 interface GovernancaRouteChildren {
   GovernancaIndexRoute: typeof GovernancaIndexRoute
@@ -495,6 +565,7 @@ const WorkspacesRouteWithChildren = WorkspacesRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdministracaoRoute: AdministracaoRoute,
+  ExecucaoRoute: ExecucaoRouteWithChildren,
   FavoritosRoute: FavoritosRoute,
   GovernancaRoute: GovernancaRouteWithChildren,
   KnowledgeRoute: KnowledgeRouteWithChildren,
