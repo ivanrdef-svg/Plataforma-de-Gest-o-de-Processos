@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   AlertTriangle,
   ClipboardCheck,
+  PlayCircle,
   LayoutGrid,
 } from "lucide-react";
 
@@ -98,6 +99,15 @@ export const PLATFORM_MODULES: PlatformModule[] = [
     route: "/workflow",
     group: "execucao",
 
+  },
+  {
+    id: "runtime",
+    name: "Execução",
+    description: "Instâncias em andamento: tarefas, progresso e histórico.",
+    icon: PlayCircle,
+    status: "available",
+    route: "/execucao",
+    group: "execucao",
   },
   {
     id: "analytics",

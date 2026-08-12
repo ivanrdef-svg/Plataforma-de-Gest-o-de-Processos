@@ -1,6 +1,16 @@
-import { PlayCircle, ShieldAlert, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { ArrowUpRight, PlayCircle, ShieldAlert, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { StartWorkflowDialog } from "@/components/runtime/start-workflow-dialog";
+import { InstanceStateBadge } from "@/components/runtime/runtime-badges";
+import {
+  instanceProgress,
+  startInstanceFromWorkflow,
+  useWorkflowInstances,
+} from "@/lib/runtime-store";
 import type { WorkflowDoc } from "@/lib/workflow-store";
 import { stepConfigured } from "./workflow-steps";
 
@@ -33,6 +43,18 @@ export function workflowReadiness(doc: WorkflowDoc) {
 export function WorkflowExecution({ doc }: { doc: WorkflowDoc }) {
   const { checks, score } = workflowReadiness(doc);
   const ready = score === 100;
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const instances = useWorkflowInstances().filter((i) => i.workflowId === doc.id);
+
+  const start = () => {
+    const instance = startInstanceFromWorkflow(doc);
+    setOpen(false);
+    toast.success("Execução iniciada", {
+      description: `${instance.tasks.length} tarefas criadas.`,
+    });
+    navigate({ to: "/execucao/$instanceId", params: { instanceId: instance.id } });
+  };
 
   return (
     <div className="space-y-6">
@@ -41,8 +63,7 @@ export function WorkflowExecution({ doc }: { doc: WorkflowDoc }) {
           <div>
             <h3 className="text-sm font-medium">Prontidão para execução</h3>
             <p className="mt-1 text-xs text-muted-foreground">
-              O motor de execução será ativado em uma evolução futura da
-              plataforma.
+              Quanto mais completa a definição, mais confiável é a execução.
             </p>
           </div>
           <span className="text-3xl font-semibold tabular-nums">{score}%</span>
@@ -64,26 +85,76 @@ export function WorkflowExecution({ doc }: { doc: WorkflowDoc }) {
         </ul>
       </section>
 
-      <section className="rounded-xl border border-dashed bg-surface/40 p-5">
+      <section className="rounded-xl border bg-card p-5">
         <span className="inline-flex items-center gap-1.5 text-xs font-medium">
           <Sparkles className="h-3.5 w-3.5 text-primary" />
           Runtime de execução
         </span>
         <p className="mt-2 text-xs text-muted-foreground">
-          Instâncias, filas de trabalho, SLA e monitoramento em tempo real serão
-          construídos sobre esta definição, sem alterá-la.
+          Iniciar cria uma instância desta definição. As tarefas nascem das etapas
+          executáveis — a definição permanece intacta.
         </p>
-        <Button size="sm" variant="outline" className="mt-4 h-8" disabled>
+        <Button
+          size="sm"
+          className="mt-4 h-8"
+          disabled={doc.steps.length === 0}
+          onClick={() => setOpen(true)}
+        >
           <PlayCircle className="mr-1.5 h-3.5 w-3.5" />
-          Iniciar execução (em breve)
+          Iniciar Workflow
         </Button>
         {!ready && (
           <p className="mt-3 inline-flex items-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400">
             <ShieldAlert className="h-3 w-3" />
-            Complete a configuração das etapas antes da publicação.
+            Ainda há configuração pendente nas etapas.
           </p>
         )}
       </section>
+
+      <section className="rounded-xl border bg-card p-5">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-sm font-medium">Execuções desta definição</h3>
+          <Link
+            to="/execucao"
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+          >
+            Runtime Center
+            <ArrowUpRight className="h-3 w-3" />
+          </Link>
+        </div>
+        {instances.length === 0 ? (
+          <p className="mt-3 text-xs text-muted-foreground">
+            Nenhuma execução iniciada ainda.
+          </p>
+        ) : (
+          <ul className="mt-3 space-y-2">
+            {instances.map((i) => (
+              <li key={i.id}>
+                <Link
+                  to="/execucao/$instanceId"
+                  params={{ instanceId: i.id }}
+                  className="flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted/60"
+                >
+                  <span className="min-w-0 flex-1 truncate text-xs font-medium">
+                    {i.code} · {i.name}
+                  </span>
+                  <InstanceStateBadge state={i.state} />
+                  <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
+                    {instanceProgress(i)}%
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <StartWorkflowDialog
+        doc={doc}
+        open={open}
+        onOpenChange={setOpen}
+        onConfirm={start}
+      />
     </div>
   );
 }

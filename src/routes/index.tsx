@@ -23,6 +23,8 @@ import { ProcessesInProgress } from "@/components/home/processes-in-progress";
 import { AwaitingActions } from "@/components/home/awaiting-actions";
 import { GovernanceAttention } from "@/components/home/governance-attention";
 import { WorkflowExecutionWidget } from "@/components/home/workflow-execution-widget";
+import { RunningExecutions } from "@/components/home/running-executions";
+import { MyTasks } from "@/components/home/my-tasks";
 import { CardQuickActions } from "@/components/workspace/card-quick-actions";
 
 export const Route = createFileRoute("/")({
@@ -187,20 +189,8 @@ function Launchpad() {
         </div>
 
         <div className="space-y-10">
-          <section>
-            <SectionHeader title="Minhas tarefas" />
-            <div className="divide-y rounded-xl border bg-card">
-              {DEMO_TASKS.map((task) => (
-                <div key={task.id} className="flex items-center gap-3 px-4 py-3">
-                  <ListChecks className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <p className="min-w-0 truncate text-sm">{task.title}</p>
-                  <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
-                    {task.due}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </section>
+          <MyTasks />
+
 
           <section>
             <SectionHeader
