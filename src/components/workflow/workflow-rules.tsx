@@ -1,6 +1,16 @@
-import { AlertTriangle, CheckCircle2, GitBranch, Timer } from "lucide-react";
+import { AlertTriangle, CheckCircle2, GitBranch, ShieldCheck, Timer } from "lucide-react";
 import type { WorkflowDoc } from "@/lib/workflow-store";
 import { stepConfigured } from "./workflow-steps";
+import {
+  ExecutionKindBadge,
+  OutcomeBadge,
+} from "@/components/runtime/execution-badges";
+import {
+  decisionFlow,
+  stepKind,
+  transitionsOf,
+  validateExecutionRules,
+} from "@/lib/execution-rules";
 import { cn } from "@/lib/utils";
 
 /**
@@ -12,10 +22,16 @@ export function WorkflowRules({ doc }: { doc: WorkflowDoc }) {
   const preconditions = doc.steps.filter((s) => s.precondition.trim());
   const deadlines = doc.steps.filter((s) => s.deadline.trim());
   const pending = doc.steps.filter((s) => !stepConfigured(s));
+  const approvals = doc.steps.filter((s) => stepKind(s) === "aprovação");
+  const decisions = doc.steps.filter((s) => stepKind(s) === "decisão");
+  const issues = validateExecutionRules(doc);
+  const flow = decisionFlow(doc);
 
   return (
     <div className="space-y-6">
-      <section className="grid gap-3 sm:grid-cols-3">
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <Metric icon={GitBranch} label="Decisões" value={decisions.length} />
+        <Metric icon={ShieldCheck} label="Aprovações" value={approvals.length} />
         <Metric icon={GitBranch} label="Condições" value={conditionals.length} />
         <Metric icon={Timer} label="Prazos definidos" value={deadlines.length} />
         <Metric
@@ -24,6 +40,97 @@ export function WorkflowRules({ doc }: { doc: WorkflowDoc }) {
           value={pending.length}
           alert={pending.length > 0}
         />
+      </section>
+
+      <section>
+        <h3 className="text-sm font-medium">Consistência das regras</h3>
+        {issues.length === 0 ? (
+          <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Nenhuma inconsistência: todas as regras têm destino definido.
+          </p>
+        ) : (
+          <ul className="mt-2 space-y-2">
+            {issues.map((issue) => (
+              <li
+                key={issue.id}
+                className={cn(
+                  "flex items-start gap-2 rounded-lg border px-3 py-2 text-xs",
+                  issue.severity === "erro"
+                    ? "border-destructive/30 bg-destructive/5 text-destructive"
+                    : "border-amber-500/30 bg-amber-500/5 text-amber-700 dark:text-amber-400",
+                )}
+              >
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>
+                  <span className="font-medium">{issue.step}</span>
+                  <span className="opacity-80"> · {issue.message}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section>
+        <h3 className="text-sm font-medium">Fluxo de decisão</h3>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Resultado de cada etapa e para onde a execução segue.
+        </p>
+        <ul className="mt-2 space-y-2">
+          {flow.map((node) => (
+            <li key={node.stepId} className="rounded-lg border bg-card px-3 py-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-medium">{node.name || "Etapa sem nome"}</span>
+                <ExecutionKindBadge kind={node.kind} />
+              </div>
+              <ul className="mt-1.5 space-y-1">
+                {node.branches.map((branch) => (
+                  <li
+                    key={`${node.stepId}-${branch.label}`}
+                    className="text-[11px] text-muted-foreground"
+                  >
+                    <span className="font-medium text-foreground">{branch.label}</span>
+                    {" → "}
+                    {branch.target}
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section>
+        <h3 className="text-sm font-medium">Aprovações</h3>
+        {approvals.length === 0 ? (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Nenhuma etapa de aprovação configurada.
+          </p>
+        ) : (
+          <ul className="mt-2 space-y-2">
+            {approvals.map((step) => (
+              <li key={step.id} className="rounded-lg border bg-card px-3 py-2 text-xs">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium">{step.name}</span>
+                  <span className="text-muted-foreground">
+                    aprovador: {step.approver || step.owner || "—"}
+                  </span>
+                </div>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {transitionsOf(doc, step).map((t) => (
+                    <span key={t.outcome} className="inline-flex items-center gap-1">
+                      <OutcomeBadge outcome={t.outcome} />
+                      <span className="text-[11px] text-muted-foreground">
+                        → {t.nextStepName}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <RuleGroup

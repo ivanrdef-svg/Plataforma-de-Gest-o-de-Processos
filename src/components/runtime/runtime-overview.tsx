@@ -2,8 +2,12 @@ import { Link } from "@tanstack/react-router";
 import { CheckCircle2, CircleDot, Circle, AlertTriangle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { InstanceStateBadge } from "@/components/runtime/runtime-badges";
+import { ApprovalStateBadge } from "@/components/runtime/execution-badges";
 import {
+  completionBlockers,
   currentTask,
+  pendingApprovals,
+  pendingDecisions,
   formatDateTime,
   formatElapsed,
   instanceProgress,
@@ -16,6 +20,9 @@ export function RuntimeOverview({ instance }: { instance: WorkflowInstance }) {
   const active = currentTask(instance);
   const done = instance.tasks.filter((t) => t.state === "concluída").length;
   const blocked = instance.tasks.filter((t) => t.state === "bloqueada");
+  const approvals = pendingApprovals(instance);
+  const decisions = pendingDecisions(instance);
+  const blockers = instance.state === "concluída" ? [] : completionBlockers(instance);
 
   const rows: Array<[string, React.ReactNode]> = [
     ["Execução", instance.name],
@@ -51,6 +58,36 @@ export function RuntimeOverview({ instance }: { instance: WorkflowInstance }) {
 
   return (
     <div className="space-y-6">
+      {(approvals.length > 0 || decisions.length > 0 || blockers.length > 0) && (
+        <section className="rounded-xl border bg-surface/40 p-4">
+          <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
+            Pendências de execução
+          </span>
+          <ul className="mt-2 space-y-1.5 text-xs">
+            {approvals.map((t) => (
+              <li key={t.id} className="flex flex-wrap items-center gap-2">
+                <ApprovalStateBadge state={t.approvalState ?? "pendente"} />
+                <span className="font-medium">{t.name}</span>
+                <span className="text-muted-foreground">
+                  aprovador {t.approver || t.owner || "—"}
+                </span>
+              </li>
+            ))}
+            {decisions.map((t) => (
+              <li key={t.id} className="text-muted-foreground">
+                <span className="font-medium text-foreground">{t.name}</span> ·
+                decisão aguardando escolha
+              </li>
+            ))}
+          </ul>
+          {blockers.length > 0 && (
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Conclusão bloqueada por: {blockers.join(" · ")}.
+            </p>
+          )}
+        </section>
+      )}
+
       {instance.state === "concluída" && (
         <section className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-5 text-center">
           <CheckCircle2 className="mx-auto h-6 w-6 text-emerald-600 dark:text-emerald-400" />
