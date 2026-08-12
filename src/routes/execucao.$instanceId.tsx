@@ -54,6 +54,11 @@ import {
 } from "@/lib/runtime-store";
 
 export const Route = createFileRoute("/execucao/$instanceId")({
+  /** Build 015 — deep link vindo da Inbox: abre direto a tarefa. */
+  validateSearch: (search: Record<string, unknown>): { task?: string } => {
+    const task = typeof search["task"] === "string" ? (search["task"] as string) : undefined;
+    return task ? { task } : {};
+  },
   component: RuntimeWorkspace,
   head: () => ({
     meta: [

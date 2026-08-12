@@ -147,7 +147,11 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {PLATFORM_MODULES.filter(
-                  (m) => m.group === group && m.id !== "workspaces" && m.id !== "knowledge",
+                  (m) =>
+                    m.group === group &&
+                    m.id !== "workspaces" &&
+                    m.id !== "knowledge" &&
+                    m.id !== "inbox",
                 ).map((module) => {
 
                   const Icon = module.icon;
