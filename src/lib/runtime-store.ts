@@ -15,9 +15,12 @@ import {
 import { useEffect, useSyncExternalStore } from "react";
 import {
   appendWorkflowEvent,
+  currentWorkflowVersion,
+  publishedWorkflowVersion,
   recordWorkflowValidation,
   type WorkflowDoc,
 } from "@/lib/workflow-store";
+
 
 import type { ResponsibilityRole } from "@/config/governance-model";
 import type { ProcessStepTypeId } from "@/config/process-model";
