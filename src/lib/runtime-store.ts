@@ -145,6 +145,9 @@ export interface WorkflowInstance {
   name: string;
   workflowId: string;
   workflowName: string;
+  /* --- Build 017: versão da definição que originou a execução --- */
+  workflowVersion?: number;
+  workflowVersionId?: string;
   processId: string;
   processName: string;
   version: string;
@@ -442,6 +445,9 @@ export function startInstanceFromWorkflow(doc: WorkflowDoc): WorkflowInstance {
   const iso = now.toISOString();
   const id = `exe-${now.getTime().toString(36)}`;
 
+  /* Build 017 — a instância registra explicitamente a versão de origem. */
+  const originVersion = publishedWorkflowVersion(doc) ?? currentWorkflowVersion(doc);
+
   const docInstanceSpec = instanceSpecOf(doc);
   const docTaskSpec = defaultTaskSpecOf(doc);
 
@@ -528,6 +534,12 @@ export function startInstanceFromWorkflow(doc: WorkflowDoc): WorkflowInstance {
     name: `Execução · ${doc.processName}`,
     workflowId: doc.id,
     workflowName: doc.name,
+    ...(originVersion
+      ? {
+          workflowVersion: originVersion.number,
+          workflowVersionId: originVersion.versionId,
+        }
+      : {}),
     processId: doc.processId,
     processName: doc.processName,
     version: doc.version,
@@ -1309,6 +1321,13 @@ export function tryStartInstanceFromWorkflow(
   | { ok: false; reason: "arquivado" }
   | { ok: false; reason: "validation"; validation: WorkflowValidation } {
   if (doc.status === "arquivado") {
+    return { ok: false, reason: "arquivado" };
+  }
+  /* Build 017 — versão arquivada não origina novas execuções. */
+  if (
+    currentWorkflowVersion(doc)?.status === "arquivada" &&
+    !publishedWorkflowVersion(doc)
+  ) {
     return { ok: false, reason: "arquivado" };
   }
   const validation = validateWorkflow(doc, ctx);
