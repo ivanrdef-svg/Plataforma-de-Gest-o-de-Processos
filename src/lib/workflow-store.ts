@@ -493,6 +493,7 @@ export function updateWorkflowStep(
   stepId: string,
   patch: Partial<Omit<WorkflowStep, "id">>,
 ) {
+  if (!editable(docId)) return undefined;
   const doc = state[docId];
   if (!doc) return undefined;
   return updateWorkflowDoc(docId, {
@@ -566,6 +567,7 @@ export interface WorkflowSlaPatch {
 
 /** Atualiza o SLA padrão da instância e das tarefas. */
 export function setWorkflowSla(docId: string, patch: WorkflowSlaPatch) {
+  if (!editable(docId)) return undefined;
   const doc = state[docId];
   if (!doc) return undefined;
   const next: WorkflowDoc = { ...doc };
@@ -607,6 +609,7 @@ export function setStepSla(
   amount: number | undefined,
   unit: TimeUnit | undefined,
 ) {
+  if (!editable(docId)) return undefined;
   const doc = state[docId];
   const step = doc?.steps.find((s) => s.id === stepId);
   if (!doc || !step) return undefined;
@@ -629,6 +632,7 @@ export function updateWorkflowParticipant(
   participantId: string,
   patch: Partial<Omit<WorkflowParticipant, "id">>,
 ) {
+  if (!editable(docId)) return undefined;
   const doc = state[docId];
   if (!doc) return undefined;
   return updateWorkflowDoc(docId, {
@@ -656,6 +660,7 @@ export function addWorkflowParticipant(
   docId: string,
   values?: Partial<WorkflowParticipant>,
 ) {
+  if (!editable(docId)) return undefined;
   const doc = state[docId];
   if (!doc) return undefined;
   const participant: WorkflowParticipant = {
@@ -671,6 +676,7 @@ export function addWorkflowParticipant(
 }
 
 export function removeWorkflowParticipant(docId: string, participantId: string) {
+  if (!editable(docId)) return undefined;
   const doc = state[docId];
   if (!doc) return undefined;
   return updateWorkflowDoc(docId, {
@@ -683,6 +689,7 @@ export function removeWorkflowParticipant(docId: string, participantId: string) 
  * execução já feita pelo usuário (prazos, condições, ações esperadas).
  */
 export function syncWorkflowWithProcess(docId: string, process: ProcessDoc) {
+  if (!editable(docId)) return undefined;
   const doc = state[docId];
   if (!doc) return undefined;
   const byProcessStep = new Map(doc.steps.map((s) => [s.processStepId, s]));
