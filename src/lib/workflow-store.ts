@@ -425,6 +425,49 @@ export function createWorkflowFromProcess(process: ProcessDoc): WorkflowDoc {
   return doc;
 }
 
+/* ------------------------------------------------------------------ */
+/* Build 017 — leitura das versões                                     */
+/* ------------------------------------------------------------------ */
+
+/** Versões da definição, sempre com a migração lógica aplicada. */
+export function workflowVersions(doc: WorkflowDoc): WorkflowVersion[] {
+  return withVersioning(doc).versions ?? [];
+}
+
+/** Versão que o conteúdo atual do documento representa. */
+export function currentWorkflowVersion(doc: WorkflowDoc): WorkflowVersion | undefined {
+  const versions = workflowVersions(doc);
+  const current = withVersioning(doc).currentVersionNumber;
+  return versions.find((v) => v.number === current) ?? versions[versions.length - 1];
+}
+
+/** Versão publicada vigente — base das novas execuções. */
+export function publishedWorkflowVersion(
+  doc: WorkflowDoc,
+): WorkflowVersion | undefined {
+  return [...workflowVersions(doc)]
+    .reverse()
+    .find((v) => v.status === "publicada");
+}
+
+/** Rascunho ativo, se houver. */
+export function draftWorkflowVersion(doc: WorkflowDoc): WorkflowVersion | undefined {
+  return workflowVersions(doc).find((v) => v.status === "rascunho");
+}
+
+/** Somente rascunhos podem ser editados. */
+export function isWorkflowEditable(doc: WorkflowDoc): boolean {
+  return currentWorkflowVersion(doc)?.status === "rascunho";
+}
+
+/** Guarda interna de imutabilidade — usada pelos mutadores de conteúdo. */
+function editable(docId: string): boolean {
+  ensureHydrated();
+  const doc = state[docId];
+  return Boolean(doc && isWorkflowEditable(doc));
+}
+
+
 export function updateWorkflowDoc(
   id: string,
   patch: Partial<Omit<WorkflowDoc, "id">>,
