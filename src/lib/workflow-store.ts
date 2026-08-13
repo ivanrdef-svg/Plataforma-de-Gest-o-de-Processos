@@ -122,6 +122,13 @@ export interface WorkflowDoc {
   /** Eventos relevantes da definição (validação, publicação, bloqueios). */
   history?: WorkflowHistoryEvent[];
   publishedAt?: string;
+  /* --- Build 017: versionamento (opcionais, retrocompatíveis) --- */
+  /** Sequência de versões desta definição. Migrado sob demanda. */
+  versions?: WorkflowVersion[];
+  /** Número da versão que o conteúdo atual do documento representa. */
+  currentVersionNumber?: number;
+  /** Versão publicada vigente — base das novas execuções. */
+  publishedVersionNumber?: number;
 }
 
 /** Status derivado da validação — NÃO substitui o Lifecycle Engine. */
@@ -140,6 +147,41 @@ export interface WorkflowHistoryEvent {
   title: string;
   detail: string;
 }
+
+/* ------------------------------------------------------------------ */
+/* Build 017 — versões                                                 */
+/* ------------------------------------------------------------------ */
+
+/** Conteúdo congelado de uma versão publicada/arquivada (cópia profunda). */
+export interface WorkflowVersionContent {
+  description: string;
+  objective: string;
+  steps: WorkflowStep[];
+  participants: WorkflowParticipant[];
+  processId: string;
+  processName: string;
+  processVersion: string;
+  slaAmount?: number;
+  slaUnit?: TimeUnit;
+  taskSlaAmount?: number;
+  taskSlaUnit?: TimeUnit;
+}
+
+export interface WorkflowVersion {
+  /** `<workflowId>-v<n>` */
+  versionId: string;
+  number: number;
+  status: WorkflowVersionStatus;
+  summary: string;
+  createdAt: string;
+  publishedAt?: string;
+  archivedAt?: string;
+  /** Validação da própria versão (independente das demais). */
+  validation?: WorkflowValidationRecord;
+  /** Congelado no momento da publicação — garante imutabilidade real. */
+  content?: WorkflowVersionContent;
+}
+
 
 
 
