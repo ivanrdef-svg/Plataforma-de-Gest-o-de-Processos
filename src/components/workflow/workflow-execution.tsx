@@ -116,13 +116,18 @@ export function WorkflowExecution({ doc }: { doc: WorkflowDoc }) {
         <Button
           size="sm"
           className="mt-4 h-8"
-          disabled={doc.steps.length === 0 || !validation.canStart}
+          disabled={doc.steps.length === 0 || !validation.canStart || isArchived}
           onClick={() => setOpen(true)}
         >
           <PlayCircle className="mr-1.5 h-3.5 w-3.5" />
           Iniciar Workflow
         </Button>
-        {!validation.canStart ? (
+        {isArchived ? (
+          <p className="mt-3 inline-flex items-center gap-1.5 text-[11px] text-destructive">
+            <ShieldAlert className="h-3 w-3" />
+            Este Workflow está arquivado e não pode iniciar novas execuções.
+          </p>
+        ) : !validation.canStart ? (
           <p className="mt-3 inline-flex items-center gap-1.5 text-[11px] text-destructive">
             <ShieldAlert className="h-3 w-3" />
             {validation.errors.length} erro(s) de validação bloqueiam novas execuções
