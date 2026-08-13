@@ -14,6 +14,8 @@ import { specLabel } from "@/config/sla-model";
 import { defaultTaskSpecOf } from "@/lib/sla";
 import {
   DECISION_HINTS,
+  END_OF_WORKFLOW,
+  END_OF_WORKFLOW_LABEL,
   EXECUTION_KINDS,
   type ExecutionKind,
 } from "@/config/execution-rules";
@@ -204,6 +206,7 @@ export function StepRulesEditor({
                     value={option.nextStepId}
                     steps={others}
                     emptyLabel="Próxima etapa (padrão)"
+                    allowEnd
                     onChange={(v) =>
                       updateDecisionOption(doc.id, step.id, option.id, {
                         nextStepId: v,
@@ -249,6 +252,7 @@ export function StepRulesEditor({
                       ? `Padrão · ${transition.nextStepName}`
                       : "Padrão · fim da execução"
                   }
+                  allowEnd
                   onChange={(v) => setOutcomeTransition(doc.id, step.id, outcome, v)}
                 />
               </li>
@@ -265,11 +269,14 @@ function StepSelect({
   steps,
   emptyLabel,
   onChange,
+  allowEnd = false,
 }: {
   value: string;
   steps: WorkflowStep[];
   emptyLabel: string;
   onChange: (value: string) => void;
+  /** Build 016 — permite declarar que este caminho encerra o Workflow. */
+  allowEnd?: boolean;
 }) {
   return (
     <Select
@@ -288,6 +295,11 @@ function StepSelect({
             {s.name || "Etapa sem nome"}
           </SelectItem>
         ))}
+        {allowEnd && (
+          <SelectItem value={END_OF_WORKFLOW} className="text-xs">
+            {END_OF_WORKFLOW_LABEL}
+          </SelectItem>
+        )}
       </SelectContent>
     </Select>
   );

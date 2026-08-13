@@ -8,9 +8,10 @@ import { StartWorkflowDialog } from "@/components/runtime/start-workflow-dialog"
 import { InstanceStateBadge } from "@/components/runtime/runtime-badges";
 import {
   instanceProgress,
-  startInstanceFromWorkflow,
+  tryStartInstanceFromWorkflow,
   useWorkflowInstances,
 } from "@/lib/runtime-store";
+import { validateWorkflow } from "@/lib/workflow-validation";
 import type { WorkflowDoc } from "@/lib/workflow-store";
 import { stepConfigured } from "./workflow-steps";
 
@@ -46,14 +47,25 @@ export function WorkflowExecution({ doc }: { doc: WorkflowDoc }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const instances = useWorkflowInstances().filter((i) => i.workflowId === doc.id);
+  // Build 016 — definição inválida não gera instância.
+  const validation = validateWorkflow(doc);
 
   const start = () => {
-    const instance = startInstanceFromWorkflow(doc);
+    const result = tryStartInstanceFromWorkflow(doc);
     setOpen(false);
+    if (!result.ok) {
+      toast.error("Execução bloqueada", {
+        description: `${result.validation.errors.length} erro(s) de validação impedem o início.`,
+      });
+      return;
+    }
     toast.success("Execução iniciada", {
-      description: `${instance.tasks.length} tarefas criadas.`,
+      description: `${result.instance.tasks.length} tarefas criadas.`,
     });
-    navigate({ to: "/execucao/$instanceId", params: { instanceId: instance.id } });
+    navigate({
+      to: "/execucao/$instanceId",
+      params: { instanceId: result.instance.id },
+    });
   };
 
   return (
@@ -97,17 +109,25 @@ export function WorkflowExecution({ doc }: { doc: WorkflowDoc }) {
         <Button
           size="sm"
           className="mt-4 h-8"
-          disabled={doc.steps.length === 0}
+          disabled={doc.steps.length === 0 || !validation.canStart}
           onClick={() => setOpen(true)}
         >
           <PlayCircle className="mr-1.5 h-3.5 w-3.5" />
           Iniciar Workflow
         </Button>
-        {!ready && (
-          <p className="mt-3 inline-flex items-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400">
+        {!validation.canStart ? (
+          <p className="mt-3 inline-flex items-center gap-1.5 text-[11px] text-destructive">
             <ShieldAlert className="h-3 w-3" />
-            Ainda há configuração pendente nas etapas.
+            {validation.errors.length} erro(s) de validação bloqueiam novas execuções
+            — veja a aba Validação.
           </p>
+        ) : (
+          !ready && (
+            <p className="mt-3 inline-flex items-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400">
+              <ShieldAlert className="h-3 w-3" />
+              Ainda há configuração pendente nas etapas.
+            </p>
+          )
         )}
       </section>
 

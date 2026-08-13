@@ -25,6 +25,7 @@ import { WorkflowSteps } from "@/components/workflow/workflow-steps";
 import { WorkflowParticipants } from "@/components/workflow/workflow-participants";
 import { WorkflowRules } from "@/components/workflow/workflow-rules";
 import { WorkflowExecution } from "@/components/workflow/workflow-execution";
+import { WorkflowValidationTab } from "@/components/workflow/workflow-validation-tab";
 import { WorkflowMetadataPanel } from "@/components/workflow/workflow-metadata-panel";
 import { EmptyState } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
@@ -275,6 +276,11 @@ function WorkflowWorkspace() {
           ),
         },
         { id: "regras", label: "Regras", content: <WorkflowRules doc={doc} /> },
+        {
+          id: "validacao",
+          label: "Validação",
+          content: <WorkflowValidationTab doc={doc} />,
+        },
         {
           id: "execucao",
           label: "Execução",

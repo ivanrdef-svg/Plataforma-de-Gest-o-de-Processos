@@ -130,3 +130,19 @@ export const DECISION_HINTS = {
   condition: "SE valor > limite",
   target: "Etapa seguida quando a condição for verdadeira.",
 };
+
+/* ------------------------------------------------------------------ */
+/* Build 016 — encerramento explícito de um caminho                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Destino especial de transição: "esta opção/resultado encerra o Workflow".
+ * Diferente de destino vazio, que significa apenas "seguir a sequência".
+ */
+export const END_OF_WORKFLOW = "__end_of_workflow__";
+
+export const END_OF_WORKFLOW_LABEL = "Encerrar Workflow";
+
+export function isEndTarget(target: string | undefined): boolean {
+  return target === END_OF_WORKFLOW;
+}

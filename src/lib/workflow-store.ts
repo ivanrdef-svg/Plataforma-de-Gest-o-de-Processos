@@ -111,7 +111,31 @@ export interface WorkflowDoc {
   /** Prazo padrão herdado por cada tarefa. */
   taskSlaAmount?: number;
   taskSlaUnit?: TimeUnit;
+  /* --- Build 016: validação e publicação (opcionais, retrocompatíveis) --- */
+  /** Último resultado de validação registrado — dimensão independente do Lifecycle. */
+  validation?: WorkflowValidationRecord;
+  /** Eventos relevantes da definição (validação, publicação, bloqueios). */
+  history?: WorkflowHistoryEvent[];
+  publishedAt?: string;
 }
+
+/** Status derivado da validação — NÃO substitui o Lifecycle Engine. */
+export type WorkflowValidationStatus = "válido" | "válido com avisos" | "inválido";
+
+export interface WorkflowValidationRecord {
+  status: WorkflowValidationStatus;
+  errors: number;
+  warnings: number;
+  validatedAt: string;
+}
+
+export interface WorkflowHistoryEvent {
+  id: string;
+  at: string;
+  title: string;
+  detail: string;
+}
+
 
 
 type StoreState = Record<string, WorkflowDoc>;
@@ -572,4 +596,96 @@ export function lifecycleStatusOf(doc: WorkflowDoc): string {
     default:
       return "rascunho";
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* Build 016 — validação, histórico e publicação da definição          */
+/* ------------------------------------------------------------------ */
+
+/** Escrita direta: não altera `revisedAt` (validar não é revisar). */
+function writeRaw(id: string, patch: Partial<Omit<WorkflowDoc, "id">>) {
+  ensureHydrated();
+  const current = state[id];
+  if (!current) return undefined;
+  const next: WorkflowDoc = { ...current, ...patch, id };
+  state = { ...state, [id]: next };
+  persist();
+  emit();
+  return next;
+}
+
+const HISTORY_LIMIT = 60;
+
+/** Registra um evento relevante da definição (nunca a cada render). */
+export function appendWorkflowEvent(docId: string, title: string, detail: string) {
+  ensureHydrated();
+  const doc = state[docId];
+  if (!doc) return undefined;
+  const entry: WorkflowHistoryEvent = {
+    id: rid("wh"),
+    at: new Date().toISOString(),
+    title,
+    detail,
+  };
+  return writeRaw(docId, {
+    history: [entry, ...(doc.history ?? [])].slice(0, HISTORY_LIMIT),
+  });
+}
+
+/** Guarda o último resultado de validação e registra o evento correspondente. */
+export function recordWorkflowValidation(
+  docId: string,
+  result: { status: WorkflowValidationStatus; errors: number; warnings: number },
+  options: { silent?: boolean } = {},
+) {
+  ensureHydrated();
+  const doc = state[docId];
+  if (!doc) return undefined;
+  const record: WorkflowValidationRecord = {
+    status: result.status,
+    errors: result.errors,
+    warnings: result.warnings,
+    validatedAt: new Date().toISOString(),
+  };
+  const updated = writeRaw(docId, { validation: record });
+  if (!options.silent) {
+    appendWorkflowEvent(
+      docId,
+      result.errors > 0
+        ? "Workflow validado com erros"
+        : result.warnings > 0
+          ? "Workflow validado com avisos"
+          : "Workflow validado",
+      `${result.errors} erro(s) e ${result.warnings} aviso(s).`,
+    );
+  }
+  return updated;
+}
+
+/** Publicação controlada: só ocorre quando a validação não aponta erros. */
+export function publishWorkflow(
+  docId: string,
+  result: { status: WorkflowValidationStatus; errors: number; warnings: number },
+): { ok: true } | { ok: false; reason: "not-found" | "invalid" } {
+  ensureHydrated();
+  const doc = state[docId];
+  if (!doc) return { ok: false, reason: "not-found" };
+  recordWorkflowValidation(docId, result, { silent: true });
+  if (result.errors > 0) {
+    appendWorkflowEvent(
+      docId,
+      "Publicação bloqueada por validação",
+      `${result.errors} erro(s) impedem a publicação.`,
+    );
+    return { ok: false, reason: "invalid" };
+  }
+  updateWorkflowDoc(docId, { status: "publicado", publishedAt: new Date().toISOString() });
+  appendWorkflowEvent(
+    docId,
+    "Workflow publicado",
+    result.warnings > 0
+      ? `Publicado com ${result.warnings} aviso(s).`
+      : "Publicado sem erros e sem avisos.",
+  );
+  return { ok: true };
 }
