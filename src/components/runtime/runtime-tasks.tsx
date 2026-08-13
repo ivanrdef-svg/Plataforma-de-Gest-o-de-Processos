@@ -260,9 +260,23 @@ function TaskSheet({
               <Button
                 size="sm"
                 variant="outline"
-                disabled={closed || task.state !== "pendente"}
+                disabled={
+                  closed ||
+                  task.state !== "pendente" ||
+                  instance.tasks.some(
+                    (t) => t.state === "em andamento" && t.id !== task.id,
+                  )
+                }
                 onClick={() => {
-                  startTask(instance.id, task.id);
+                  const result = startTask(instance.id, task.id);
+                  if (!result.ok) {
+                    toast.error(
+                      result.reason === "already-running"
+                        ? "Já existe uma tarefa em andamento nesta execução — conclua-a antes de iniciar outra."
+                        : "Tarefa não encontrada nesta execução.",
+                    );
+                    return;
+                  }
                   toast.success("Tarefa iniciada", { description: task.name });
                 }}
               >
