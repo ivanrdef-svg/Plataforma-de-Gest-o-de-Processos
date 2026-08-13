@@ -345,13 +345,23 @@ function ExecutionPanel({
       });
       return;
     }
-    resolveTask(instance.id, task.id, {
+    const result = resolveTask(instance.id, task.id, {
       outcome,
       ...(optionId ? { optionId } : {}),
       justification: justification.trim(),
       note,
     });
-    toast.success("Resultado registrado", { description: `${task.name} · ${outcome}` });
+    if (!result.ok) {
+      toast.error("Não foi possível registrar o resultado desta tarefa.");
+      return;
+    }
+    if (result.stalled) {
+      toast.warning("Execução requer atenção", {
+        description: `O resultado "${outcome}" não possui destino configurado — a execução não avançará automaticamente.`,
+      });
+    } else {
+      toast.success("Resultado registrado", { description: `${task.name} · ${outcome}` });
+    }
     setJustification("");
     onDone();
   }
