@@ -21,6 +21,11 @@ import {
 } from "@/config/workflow-model";
 import type { ExecutionKind } from "@/config/execution-rules";
 import type { TimeUnit } from "@/config/sla-model";
+import {
+  versionIdOf,
+  type WorkflowVersionStatus,
+} from "@/config/workflow-version";
+
 
 
 const STORAGE_KEY = "process-platform:workflow:v1";
