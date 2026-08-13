@@ -822,7 +822,20 @@ export function recordWorkflowValidation(
     warnings: result.warnings,
     validatedAt: new Date().toISOString(),
   };
-  const updated = writeRaw(docId, { validation: record });
+  /* Build 017 — a validação também pertence à versão atual. */
+  const normalized = withVersioning(doc);
+  const updated = writeRaw(docId, {
+    validation: record,
+    versions: (normalized.versions ?? []).map((v) =>
+      v.number === normalized.currentVersionNumber ? { ...v, validation: record } : v,
+    ),
+    ...(normalized.versions ? {} : {}),
+    currentVersionNumber: normalized.currentVersionNumber ?? 1,
+    ...(normalized.publishedVersionNumber !== undefined
+      ? { publishedVersionNumber: normalized.publishedVersionNumber }
+      : {}),
+  });
+
   if (!options.silent) {
     appendWorkflowEvent(
       docId,
