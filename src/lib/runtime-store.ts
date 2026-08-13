@@ -708,12 +708,31 @@ function patchTask(
   return next;
 }
 
-export function startTask(instanceId: string, taskId: string) {
+/** Resultado do início de uma tarefa — recusa quando já há outra em andamento. */
+export type StartTaskResult =
+  | { ok: true; instance: WorkflowInstance | undefined }
+  | { ok: false; reason: "not-found" | "already-running" };
+
+/** true quando a instância já possui uma tarefa em andamento (exceto `exceptTaskId`). */
+export function hasRunningTask(instanceId: string, exceptTaskId?: string): boolean {
+  return Boolean(
+    state[instanceId]?.tasks.some(
+      (t) => t.state === "em andamento" && t.id !== exceptTaskId,
+    ),
+  );
+}
+
+export function startTask(instanceId: string, taskId: string): StartTaskResult {
+  ensureHydrated();
   const task = state[instanceId]?.tasks.find((t) => t.id === taskId);
-  if (!task) return undefined;
+  if (!task) return { ok: false, reason: "not-found" };
+  // C1 — apenas uma tarefa ativa por vez em cada execução.
+  if (hasRunningTask(instanceId, taskId)) {
+    return { ok: false, reason: "already-running" };
+  }
   const iso = new Date().toISOString();
   const patch = startPatch(task, iso);
-  return patchTask(
+  const instance = patchTask(
     instanceId,
     taskId,
     patch,
@@ -724,7 +743,9 @@ export function startTask(instanceId: string, taskId: string) {
         : task.name,
     ),
   );
+  return { ok: true, instance };
 }
+
 
 export function completeTask(instanceId: string, taskId: string, note?: string) {
   const instance = state[instanceId];
@@ -798,6 +819,11 @@ export interface ResolveTaskInput {
   note?: string;
 }
 
+/** Resultado da resolução de uma tarefa. `stalled` = regra sem destino válido. */
+export type ResolveTaskResult =
+  | { ok: true; instance: WorkflowInstance | undefined; stalled: boolean }
+  | { ok: false; reason: "not-found" };
+
 /**
  * Aplica o resultado de uma tarefa, avalia a regra correspondente e determina
  * a próxima etapa. Execuções lineares continuam com o comportamento da Build
@@ -807,11 +833,11 @@ export function resolveTask(
   instanceId: string,
   taskId: string,
   input: ResolveTaskInput,
-): WorkflowInstance | undefined {
+): ResolveTaskResult {
   ensureHydrated();
   const instance = state[instanceId];
   const task = instance?.tasks.find((t) => t.id === taskId);
-  if (!instance || !task) return undefined;
+  if (!instance || !task) return { ok: false, reason: "not-found" };
 
   const iso = new Date().toISOString();
   const kind = taskKind(task);
@@ -940,7 +966,16 @@ export function resolveTask(
     events.push(
       event("Transição executada", `${task.name} → ${outcome} → fim do caminho`),
     );
+    events.push(
+      event(
+        "Execução requer atenção",
+        `O resultado "${outcome}" de "${task.name}" não possui destino configurado — a execução não avançará automaticamente.`,
+      ),
+    );
   }
+
+  // C2 — sem destino resolvido, a execução não avança por ordem.
+  const stalled = !target && !backwards;
 
   // Decisão: os caminhos não escolhidos saem da execução.
   if (kind === "decisão" && option) {
@@ -969,23 +1004,28 @@ export function resolveTask(
 
   // Nenhuma tarefa em andamento? Retoma a próxima pendente da sequência.
   const result = commit(instanceId, tasks, events);
-  if (!result || result.state === "concluída") return result;
+  if (!result || result.state === "concluída") {
+    return { ok: true, instance: result, stalled };
+  }
   const running = result.tasks.some((t) => t.state === "em andamento");
-  if (!running) {
+  if (!running && !stalled) {
     const pending = result.tasks
       .filter((t) => t.state === "pendente")
       .sort((a, b) => a.order - b.order)[0];
     if (pending) {
-      return patchTask(
-        instanceId,
-        pending.id,
-        startPatch(pending, new Date().toISOString()),
-
-        event("Tarefa iniciada", pending.name),
-      );
+      return {
+        ok: true,
+        instance: patchTask(
+          instanceId,
+          pending.id,
+          startPatch(pending, new Date().toISOString()),
+          event("Tarefa iniciada", pending.name),
+        ),
+        stalled,
+      };
     }
   }
-  return result;
+  return { ok: true, instance: result, stalled };
 }
 
 /** Solicitação explícita de correção a partir de uma aprovação. */
