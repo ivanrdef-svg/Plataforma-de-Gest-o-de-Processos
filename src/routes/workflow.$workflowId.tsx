@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ChevronLeft,
   Copy,
+  GitBranch,
+  Lock,
   Download,
   RefreshCw,
   Save,
@@ -26,6 +28,12 @@ import { WorkflowParticipants } from "@/components/workflow/workflow-participant
 import { WorkflowRules } from "@/components/workflow/workflow-rules";
 import { WorkflowExecution } from "@/components/workflow/workflow-execution";
 import { WorkflowValidationTab } from "@/components/workflow/workflow-validation-tab";
+import {
+  WorkflowVersions,
+  createVersionWithFeedback,
+} from "@/components/workflow/workflow-versions";
+import { Pill } from "@/components/ui/pill";
+import { IMMUTABLE_VERSION_MESSAGE, VERSION_TONE } from "@/config/workflow-version";
 import { WorkflowMetadataPanel } from "@/components/workflow/workflow-metadata-panel";
 import { EmptyState } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
@@ -37,6 +45,8 @@ import { useLifecycle, type LifecycleSeed } from "@/lib/lifecycle-store";
 import { useProcessDocs } from "@/lib/process-store";
 import {
   addWorkflowParticipant,
+  currentWorkflowVersion,
+  isWorkflowEditable,
   lifecycleStatusOf,
   removeWorkflowParticipant,
   syncWorkflowWithProcess,
@@ -120,6 +130,30 @@ function WorkflowHistory() {
   );
 }
 
+/** Build 017 — aviso de imutabilidade exibido nas abas editáveis. */
+function ImmutableNotice({ doc }: { doc: WorkflowDoc }) {
+  return (
+    <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed bg-muted/40 px-4 py-3">
+      <p className="inline-flex items-start gap-2 text-xs text-muted-foreground">
+        <Lock className="mt-px h-3.5 w-3.5 shrink-0" />
+        <span>
+          {IMMUTABLE_VERSION_MESSAGE} Para alterar esta definição, crie uma nova
+          versão — a versão publicada permanece intacta.
+        </span>
+      </p>
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-8"
+        onClick={() => createVersionWithFeedback(doc)}
+      >
+        <GitBranch className="mr-1.5 h-3.5 w-3.5" />
+        Nova versão
+      </Button>
+    </div>
+  );
+}
+
 function WorkflowWorkspace() {
   const { workflowId } = Route.useParams();
   const doc = useWorkflowDoc(workflowId);
@@ -148,6 +182,17 @@ function WorkflowWorkspace() {
   }
 
   const patch = (values: Partial<WorkflowDoc>) => updateWorkflowDoc(doc.id, values);
+  const version = currentWorkflowVersion(doc);
+  const editable = isWorkflowEditable(doc);
+  const editableTab = (content: JSX.Element) =>
+    editable ? (
+      content
+    ) : (
+      <div>
+        <ImmutableNotice doc={doc} />
+        <div className="pointer-events-none opacity-60">{content}</div>
+      </div>
+    );
 
   return (
     <WorkspaceLayout
@@ -159,7 +204,16 @@ function WorkflowWorkspace() {
             { label: "Código", value: doc.code },
             { label: "Tipo", value: "Workflow" },
             { label: "Processo", value: doc.processName },
-            { label: "Versão", value: doc.version },
+            {
+              label: "Versão",
+              value: version ? (
+                <Pill tone={VERSION_TONE[version.status]} size="sm" shape="full">
+                  V{version.number} · {version.status}
+                </Pill>
+              ) : (
+                doc.version
+              ),
+            },
             {
               label: "Estado",
               value: <LifecycleBadge state={lifecycle.state} size="sm" />,
@@ -186,6 +240,12 @@ function WorkflowWorkspace() {
             label="Reimportar etapas do processo"
             icon={RefreshCw}
             onClick={() => {
+              if (!editable) {
+                toast.error("Versão imutável", {
+                  description: "Crie uma nova versão para alterar as etapas.",
+                });
+                return;
+              }
               const process = processes.find((p) => p.id === doc.processId);
               if (!process) {
                 toast.error("Processo de origem não encontrado");
@@ -196,6 +256,11 @@ function WorkflowWorkspace() {
                 description: "Configuração de execução preservada.",
               });
             }}
+          />
+          <ActionButton
+            label="Criar nova versão"
+            icon={GitBranch}
+            onClick={() => createVersionWithFeedback(doc)}
           />
           <ActionButton
             label="Duplicar"
@@ -251,19 +316,19 @@ function WorkflowWorkspace() {
         {
           id: "etapas",
           label: "Etapas",
-          content: (
+          content: editableTab(
             <WorkflowSteps
               key={doc.id}
               steps={doc.steps}
               doc={doc}
               onChange={(id, p) => updateWorkflowStep(doc.id, id, p)}
-            />
+            />,
           ),
         },
         {
           id: "participantes",
           label: "Participantes",
-          content: (
+          content: editableTab(
             <WorkflowParticipants
               doc={doc}
               onChange={(id, p) => updateWorkflowParticipant(doc.id, id, p)}
@@ -272,10 +337,15 @@ function WorkflowWorkspace() {
               }
               onAdd={() => addWorkflowParticipant(doc.id)}
               onRemove={(id) => removeWorkflowParticipant(doc.id, id)}
-            />
+            />,
           ),
         },
         { id: "regras", label: "Regras", content: <WorkflowRules doc={doc} /> },
+        {
+          id: "versoes",
+          label: "Versões",
+          content: <WorkflowVersions doc={doc} />,
+        },
         {
           id: "validacao",
           label: "Validação",
@@ -332,7 +402,7 @@ function WorkflowWorkspace() {
         <WorkspaceStatusBar
           status={DEMO_ENVIRONMENT.status}
           lastSync={DEMO_ENVIRONMENT.lastSync}
-          version={`${doc.version} · ${DEMO_ENVIRONMENT.version}`}
+          version={`${version ? `V${version.number}` : doc.version} · ${DEMO_ENVIRONMENT.version}`}
           environment={DEMO_ENVIRONMENT.environment}
         />
       }
