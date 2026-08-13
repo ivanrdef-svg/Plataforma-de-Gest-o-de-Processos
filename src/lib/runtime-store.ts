@@ -708,12 +708,31 @@ function patchTask(
   return next;
 }
 
-export function startTask(instanceId: string, taskId: string) {
+/** Resultado do início de uma tarefa — recusa quando já há outra em andamento. */
+export type StartTaskResult =
+  | { ok: true; instance: WorkflowInstance | undefined }
+  | { ok: false; reason: "not-found" | "already-running" };
+
+/** true quando a instância já possui uma tarefa em andamento (exceto `exceptTaskId`). */
+export function hasRunningTask(instanceId: string, exceptTaskId?: string): boolean {
+  return Boolean(
+    state[instanceId]?.tasks.some(
+      (t) => t.state === "em andamento" && t.id !== exceptTaskId,
+    ),
+  );
+}
+
+export function startTask(instanceId: string, taskId: string): StartTaskResult {
+  ensureHydrated();
   const task = state[instanceId]?.tasks.find((t) => t.id === taskId);
-  if (!task) return undefined;
+  if (!task) return { ok: false, reason: "not-found" };
+  // C1 — apenas uma tarefa ativa por vez em cada execução.
+  if (hasRunningTask(instanceId, taskId)) {
+    return { ok: false, reason: "already-running" };
+  }
   const iso = new Date().toISOString();
   const patch = startPatch(task, iso);
-  return patchTask(
+  const instance = patchTask(
     instanceId,
     taskId,
     patch,
@@ -724,7 +743,9 @@ export function startTask(instanceId: string, taskId: string) {
         : task.name,
     ),
   );
+  return { ok: true, instance };
 }
+
 
 export function completeTask(instanceId: string, taskId: string, note?: string) {
   const instance = state[instanceId];
