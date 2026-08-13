@@ -405,7 +405,19 @@ export function createWorkflowFromProcess(process: ProcessDoc): WorkflowDoc {
     steps,
     participants,
     savedAt: now.toISOString(),
+    /* Build 017 — todo workflow nasce na Versão 1 (Rascunho). */
+    versions: [
+      {
+        versionId: versionIdOf(id, 1),
+        number: 1,
+        status: "rascunho",
+        summary: "Versão inicial da definição.",
+        createdAt: now.toISOString(),
+      },
+    ],
+    currentVersionNumber: 1,
   };
+
 
   state = { ...state, [id]: doc };
   persist();
