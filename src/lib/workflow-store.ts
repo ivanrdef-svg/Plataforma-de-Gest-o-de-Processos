@@ -829,7 +829,6 @@ export function recordWorkflowValidation(
     versions: (normalized.versions ?? []).map((v) =>
       v.number === normalized.currentVersionNumber ? { ...v, validation: record } : v,
     ),
-    ...(normalized.versions ? {} : {}),
     currentVersionNumber: normalized.currentVersionNumber ?? 1,
     ...(normalized.publishedVersionNumber !== undefined
       ? { publishedVersionNumber: normalized.publishedVersionNumber }
@@ -867,13 +866,118 @@ export function publishWorkflow(
     );
     return { ok: false, reason: "invalid" };
   }
-  updateWorkflowDoc(docId, { status: "publicado", publishedAt: new Date().toISOString() });
+  /* Build 017 — a publicação congela o conteúdo da versão atual. */
+  const normalized = withVersioning(state[docId]!);
+  const number = normalized.currentVersionNumber ?? 1;
+  const publishedAt = new Date().toISOString();
+  updateWorkflowDoc(docId, {
+    status: "publicado",
+    publishedAt,
+    publishedVersionNumber: number,
+    versions: (normalized.versions ?? []).map((v) =>
+      v.number === number
+        ? {
+            ...v,
+            status: "publicada" as WorkflowVersionStatus,
+            publishedAt,
+            content: contentOf(normalized),
+          }
+        : v,
+    ),
+  });
   appendWorkflowEvent(
     docId,
-    "Workflow publicado",
+    `Versão ${number} publicada`,
     result.warnings > 0
       ? `Publicado com ${result.warnings} aviso(s).`
       : "Publicado sem erros e sem avisos.",
+  );
+  return { ok: true };
+}
+
+/* ------------------------------------------------------------------ */
+/* Build 017 — criação e arquivamento de versões                       */
+/* ------------------------------------------------------------------ */
+
+export type NewVersionResult =
+  | { ok: true; version: WorkflowVersion }
+  | { ok: false; reason: "not-found" | "draft-exists" | "no-published" };
+
+/**
+ * Cria um novo rascunho a partir da versão publicada vigente (ou da versão
+ * atual). A cópia é profunda: alterar a nova versão nunca altera a anterior.
+ */
+export function createWorkflowVersion(docId: string): NewVersionResult {
+  ensureHydrated();
+  const raw = state[docId];
+  if (!raw) return { ok: false, reason: "not-found" };
+  const doc = withVersioning(raw);
+  const versions = doc.versions ?? [];
+  if (versions.some((v) => v.status === "rascunho")) {
+    return { ok: false, reason: "draft-exists" };
+  }
+  const base =
+    versions.find((v) => v.number === doc.publishedVersionNumber) ??
+    [...versions].reverse().find((v) => v.status === "publicada") ??
+    versions[versions.length - 1];
+  if (!base) return { ok: false, reason: "no-published" };
+
+  const number = Math.max(...versions.map((v) => v.number)) + 1;
+  const content = deepCopy(base.content ?? contentOf(doc));
+  const version: WorkflowVersion = {
+    versionId: versionIdOf(docId, number),
+    number,
+    status: "rascunho",
+    summary: `Nova versão criada a partir da versão ${base.number}.`,
+    createdAt: new Date().toISOString(),
+  };
+
+  updateWorkflowDoc(docId, {
+    ...content,
+    status: "em configuração",
+    versions: [...versions, version],
+    currentVersionNumber: number,
+  });
+  appendWorkflowEvent(
+    docId,
+    `Versão ${number} criada`,
+    `Rascunho gerado a partir da versão ${base.number}. A versão anterior permanece imutável.`,
+  );
+  return { ok: true, version };
+}
+
+/** Arquiva uma versão publicada: ela deixa de originar novas execuções. */
+export function archiveWorkflowVersion(
+  docId: string,
+  number: number,
+): { ok: true } | { ok: false; reason: "not-found" | "invalid-status" } {
+  ensureHydrated();
+  const raw = state[docId];
+  if (!raw) return { ok: false, reason: "not-found" };
+  const doc = withVersioning(raw);
+  const versions = doc.versions ?? [];
+  const target = versions.find((v) => v.number === number);
+  if (!target) return { ok: false, reason: "not-found" };
+  if (target.status !== "publicada") return { ok: false, reason: "invalid-status" };
+
+  const archivedAt = new Date().toISOString();
+  const nextVersions = versions.map((v) =>
+    v.number === number
+      ? { ...v, status: "arquivada" as WorkflowVersionStatus, archivedAt }
+      : v,
+  );
+  const isCurrent = (doc.currentVersionNumber ?? 1) === number;
+  updateWorkflowDoc(docId, {
+    versions: nextVersions,
+    ...(doc.publishedVersionNumber === number
+      ? { publishedVersionNumber: undefined }
+      : {}),
+    ...(isCurrent ? { status: "arquivado" as const } : {}),
+  });
+  appendWorkflowEvent(
+    docId,
+    `Versão ${number} arquivada`,
+    "Não inicia novas execuções. Execuções existentes seguem inalteradas.",
   );
   return { ok: true };
 }
