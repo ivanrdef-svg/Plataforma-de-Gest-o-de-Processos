@@ -295,7 +295,7 @@ function WorkflowWorkspace() {
               <RelationshipsTab
                 objectId={doc.id}
                 objectName={doc.name}
-                objectType="Processo"
+                objectType="Workflow"
               />
             </div>
           ),
