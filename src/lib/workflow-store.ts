@@ -192,6 +192,62 @@ let hydrated = false;
 let snapshotCache: WorkflowDoc[] | null = null;
 const listeners = new Set<() => void>();
 
+/** Cópia profunda simples — evita referências compartilhadas entre versões. */
+function deepCopy<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+/** Conteúdo estrutural atual do documento (para congelar em uma versão). */
+function contentOf(doc: WorkflowDoc): WorkflowVersionContent {
+  return deepCopy({
+    description: doc.description,
+    objective: doc.objective,
+    steps: doc.steps,
+    participants: doc.participants,
+    processId: doc.processId,
+    processName: doc.processName,
+    processVersion: doc.processVersion,
+    ...(doc.slaAmount !== undefined ? { slaAmount: doc.slaAmount } : {}),
+    ...(doc.slaUnit ? { slaUnit: doc.slaUnit } : {}),
+    ...(doc.taskSlaAmount !== undefined ? { taskSlaAmount: doc.taskSlaAmount } : {}),
+    ...(doc.taskSlaUnit ? { taskSlaUnit: doc.taskSlaUnit } : {}),
+  });
+}
+
+/**
+ * Build 017 — migração lógica NÃO destrutiva: workflows criados antes desta
+ * build recebem uma representação compatível da sua versão atual (V1).
+ * Nenhum dado existente é alterado, duplicado ou removido.
+ */
+function withVersioning(doc: WorkflowDoc): WorkflowDoc {
+  if (doc.versions && doc.versions.length > 0) return doc;
+  const status: WorkflowVersionStatus =
+    doc.status === "publicado"
+      ? "publicada"
+      : doc.status === "arquivado"
+        ? "arquivada"
+        : "rascunho";
+  const version: WorkflowVersion = {
+    versionId: versionIdOf(doc.id, 1),
+    number: 1,
+    status,
+    summary: "Versão inicial da definição.",
+    createdAt: doc.savedAt ?? new Date().toISOString(),
+    ...(status !== "rascunho"
+      ? { publishedAt: doc.publishedAt ?? doc.savedAt ?? new Date().toISOString() }
+      : {}),
+    ...(status === "arquivada" ? { archivedAt: doc.savedAt ?? "" } : {}),
+    ...(doc.validation ? { validation: doc.validation } : {}),
+    ...(status === "rascunho" ? {} : { content: contentOf(doc) }),
+  };
+  return {
+    ...doc,
+    versions: [version],
+    currentVersionNumber: 1,
+    ...(status === "publicada" ? { publishedVersionNumber: 1 } : {}),
+  };
+}
+
 function ensureHydrated() {
   if (hydrated || typeof window === "undefined") return;
   try {
@@ -200,8 +256,18 @@ function ensureHydrated() {
   } catch {
     state = {};
   }
+  const migrated: StoreState = {};
+  let changed = false;
+  for (const [id, doc] of Object.entries(state)) {
+    const next = withVersioning(doc);
+    if (next !== doc) changed = true;
+    migrated[id] = next;
+  }
+  state = migrated;
   hydrated = true;
+  if (changed) persist();
 }
+
 
 function persist() {
   if (typeof window === "undefined") return;
