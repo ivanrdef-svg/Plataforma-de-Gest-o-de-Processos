@@ -819,6 +819,11 @@ export interface ResolveTaskInput {
   note?: string;
 }
 
+/** Resultado da resolução de uma tarefa. `stalled` = regra sem destino válido. */
+export type ResolveTaskResult =
+  | { ok: true; instance: WorkflowInstance | undefined; stalled: boolean }
+  | { ok: false; reason: "not-found" };
+
 /**
  * Aplica o resultado de uma tarefa, avalia a regra correspondente e determina
  * a próxima etapa. Execuções lineares continuam com o comportamento da Build
@@ -828,11 +833,11 @@ export function resolveTask(
   instanceId: string,
   taskId: string,
   input: ResolveTaskInput,
-): WorkflowInstance | undefined {
+): ResolveTaskResult {
   ensureHydrated();
   const instance = state[instanceId];
   const task = instance?.tasks.find((t) => t.id === taskId);
-  if (!instance || !task) return undefined;
+  if (!instance || !task) return { ok: false, reason: "not-found" };
 
   const iso = new Date().toISOString();
   const kind = taskKind(task);
