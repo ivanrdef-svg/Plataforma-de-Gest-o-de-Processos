@@ -449,7 +449,7 @@ export function startInstanceFromWorkflow(doc: WorkflowDoc): WorkflowInstance {
   const id = `exe-${now.getTime().toString(36)}`;
 
   /* Build 017 — a instância registra explicitamente a versão de origem. */
-  const originVersion = publishedWorkflowVersion(doc) ?? currentWorkflowVersion(doc);
+  const originVersion = currentWorkflowVersion(doc) ?? publishedWorkflowVersion(doc);
 
   const docInstanceSpec = instanceSpecOf(doc);
   const docTaskSpec = defaultTaskSpecOf(doc);
