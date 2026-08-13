@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ChevronLeft,
@@ -184,7 +185,7 @@ function WorkflowWorkspace() {
   const patch = (values: Partial<WorkflowDoc>) => updateWorkflowDoc(doc.id, values);
   const version = currentWorkflowVersion(doc);
   const editable = isWorkflowEditable(doc);
-  const editableTab = (content: JSX.Element) =>
+  const editableTab = (content: ReactElement) =>
     editable ? (
       content
     ) : (
