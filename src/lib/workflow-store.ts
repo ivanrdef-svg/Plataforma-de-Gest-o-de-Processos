@@ -967,13 +967,15 @@ export function archiveWorkflowVersion(
       : v,
   );
   const isCurrent = (doc.currentVersionNumber ?? 1) === number;
-  updateWorkflowDoc(docId, {
+  const updated = updateWorkflowDoc(docId, {
     versions: nextVersions,
-    ...(doc.publishedVersionNumber === number
-      ? { publishedVersionNumber: undefined }
-      : {}),
     ...(isCurrent ? { status: "arquivado" as const } : {}),
   });
+  if (updated && doc.publishedVersionNumber === number) {
+    const cleaned: WorkflowDoc = { ...updated };
+    delete cleaned.publishedVersionNumber;
+    writeRaw(docId, cleaned);
+  }
   appendWorkflowEvent(
     docId,
     `Versão ${number} arquivada`,
