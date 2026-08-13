@@ -1297,13 +1297,20 @@ export function allSlaOccurrences(
 /**
  * Porta de entrada do Runtime: uma definição com erros de validação NUNCA
  * gera instância. Não substitui `startInstanceFromWorkflow` — apenas a protege.
+ *
+ * Build H4-E1: workflows arquivados também são bloqueados, com motivo distinto
+ * para a UI poder exibir mensagem específica.
  */
 export function tryStartInstanceFromWorkflow(
   doc: WorkflowDoc,
   ctx: ValidationContext = {},
 ):
   | { ok: true; instance: WorkflowInstance; validation: WorkflowValidation }
-  | { ok: false; validation: WorkflowValidation } {
+  | { ok: false; reason: "arquivado" }
+  | { ok: false; reason: "validation"; validation: WorkflowValidation } {
+  if (doc.status === "arquivado") {
+    return { ok: false, reason: "arquivado" };
+  }
   const validation = validateWorkflow(doc, ctx);
   recordWorkflowValidation(
     doc.id,
@@ -1320,7 +1327,7 @@ export function tryStartInstanceFromWorkflow(
       "Execução bloqueada por validação",
       `${validation.errors.length} erro(s) impedem o início de novas execuções.`,
     );
-    return { ok: false, validation };
+    return { ok: false, reason: "validation", validation };
   }
   return { ok: true, instance: startInstanceFromWorkflow(doc), validation };
 }
