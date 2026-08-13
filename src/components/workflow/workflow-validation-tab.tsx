@@ -18,6 +18,7 @@ import {
   type WorkflowValidation,
 } from "@/lib/workflow-validation";
 import {
+  isWorkflowEditable,
   publishWorkflow,
   recordWorkflowValidation,
   type WorkflowDoc,
@@ -57,6 +58,10 @@ export function WorkflowValidationTab({ doc }: { doc: WorkflowDoc }) {
       toast.success("Workflow publicado", {
         description: "A definição está disponível para execução.",
       });
+    } else if (result.reason === "immutable") {
+      toast.error("Versão já publicada", {
+        description: "Crie uma nova versão para publicar alterações.",
+      });
     } else {
       toast.error("Publicação bloqueada", {
         description: "Corrija os erros de validação antes de publicar.",
@@ -92,7 +97,7 @@ export function WorkflowValidationTab({ doc }: { doc: WorkflowDoc }) {
             <Button
               size="sm"
               className="h-8"
-              disabled={!validation.canPublish}
+              disabled={!validation.canPublish || !isWorkflowEditable(doc)}
               onClick={publish}
             >
               <BadgeCheck className="mr-1.5 h-3.5 w-3.5" />

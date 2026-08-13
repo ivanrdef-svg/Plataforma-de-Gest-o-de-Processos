@@ -26,11 +26,13 @@ import { RelationshipIndicators } from "@/components/relationships/relationship-
 import { useRelationshipStats } from "@/lib/relationship-store";
 import { workflowReadiness } from "@/components/workflow/workflow-execution";
 import { WORKFLOW_CENTER_STATS } from "@/config/workflow-model";
+import { VERSION_TONE } from "@/config/workflow-version";
 import { stateFromLegacyStatus } from "@/config/lifecycle-model";
 import { useProcessDocs } from "@/lib/process-store";
 import {
   createWorkflowFromProcess,
   lifecycleStatusOf,
+  currentWorkflowVersion,
   updateWorkflowDoc,
   useWorkflowDocs,
   type WorkflowDoc,
@@ -253,6 +255,7 @@ function WorkflowConnections({ objectId }: { objectId: string }) {
 
 function WorkflowCard({ doc }: { doc: WorkflowDoc }) {
   const { score } = workflowReadiness(doc);
+  const version = currentWorkflowVersion(doc);
   return (
     <article className="group relative rounded-xl border bg-card p-4 transition-colors hover:border-primary/30">
       <div className="flex items-start justify-between gap-3">
@@ -284,6 +287,15 @@ function WorkflowCard({ doc }: { doc: WorkflowDoc }) {
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <LifecycleBadge state={stateFromLegacyStatus(lifecycleStatusOf(doc))} size="sm" />
+        {version && (
+          <Pill
+            tone={VERSION_TONE[version.status]}
+            size="sm"
+            title={`Versão ${version.number} — ${version.status}`}
+          >
+            V{version.number} · {version.status}
+          </Pill>
+        )}
         <Pill tone="bg-muted text-muted-foreground" size="sm">
           {doc.steps.length} etapas
         </Pill>
