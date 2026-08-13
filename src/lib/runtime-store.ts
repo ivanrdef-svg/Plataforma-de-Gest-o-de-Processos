@@ -1,3 +1,8 @@
+import {
+  validateWorkflow,
+  type ValidationContext,
+  type WorkflowValidation,
+} from "@/lib/workflow-validation";
 /**
  * Build 012 — armazenamento local das instâncias de execução (Workflow Runtime).
  *
@@ -8,7 +13,12 @@
  */
 
 import { useEffect, useSyncExternalStore } from "react";
-import type { WorkflowDoc } from "@/lib/workflow-store";
+import {
+  appendWorkflowEvent,
+  recordWorkflowValidation,
+  type WorkflowDoc,
+} from "@/lib/workflow-store";
+
 import type { ResponsibilityRole } from "@/config/governance-model";
 import type { ProcessStepTypeId } from "@/config/process-model";
 import {
@@ -1266,4 +1276,39 @@ export function allSlaOccurrences(
       (instance.slaOccurrences ?? []).map((occurrence) => ({ instance, occurrence })),
     )
     .sort((a, b) => b.occurrence.at.localeCompare(a.occurrence.at));
+}
+
+/* ------------------------------------------------------------------ */
+/* Build 016 — bloqueio de execução de definições inválidas            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Porta de entrada do Runtime: uma definição com erros de validação NUNCA
+ * gera instância. Não substitui `startInstanceFromWorkflow` — apenas a protege.
+ */
+export function tryStartInstanceFromWorkflow(
+  doc: WorkflowDoc,
+  ctx: ValidationContext = {},
+):
+  | { ok: true; instance: WorkflowInstance; validation: WorkflowValidation }
+  | { ok: false; validation: WorkflowValidation } {
+  const validation = validateWorkflow(doc, ctx);
+  recordWorkflowValidation(
+    doc.id,
+    {
+      status: validation.status,
+      errors: validation.errors.length,
+      warnings: validation.warnings.length,
+    },
+    { silent: true },
+  );
+  if (!validation.canStart) {
+    appendWorkflowEvent(
+      doc.id,
+      "Execução bloqueada por validação",
+      `${validation.errors.length} erro(s) impedem o início de novas execuções.`,
+    );
+    return { ok: false, validation };
+  }
+  return { ok: true, instance: startInstanceFromWorkflow(doc), validation };
 }

@@ -7,11 +7,15 @@
  */
 
 import {
+  END_OF_WORKFLOW,
+  END_OF_WORKFLOW_LABEL,
   OUTCOMES_BY_KIND,
   defaultExecutionKind,
+  isEndTarget,
   type ExecutionKind,
   type TaskOutcome,
 } from "@/config/execution-rules";
+
 import type { DecisionOption, WorkflowDoc, WorkflowStep } from "@/lib/workflow-store";
 
 export function stepKind(step: WorkflowStep): ExecutionKind {
@@ -46,7 +50,10 @@ export function outcomesOf(step: WorkflowStep): TaskOutcome[] {
   return OUTCOMES_BY_KIND[stepKind(step)];
 }
 
-/** Resultado → próxima etapa, considerando os padrões implícitos. */
+/**
+ * Resultado → próxima etapa, considerando os padrões implícitos.
+ * Build 016: pode retornar `END_OF_WORKFLOW` quando o encerramento é explícito.
+ */
 export function resolveNextStepId(
   doc: WorkflowDoc,
   step: WorkflowStep,
@@ -58,6 +65,23 @@ export function resolveNextStepId(
     return correctionStepId(doc, step);
   }
   return nextSequentialStepId(doc, step);
+}
+
+/** Destino de uma opção de decisão, respeitando o encerramento explícito. */
+export function optionTargetId(
+  doc: WorkflowDoc,
+  step: WorkflowStep,
+  option: DecisionOption,
+): string {
+  if (isEndTarget(option.nextStepId)) return END_OF_WORKFLOW;
+  return option.nextStepId || nextSequentialStepId(doc, step);
+}
+
+/** Rótulo legível de um destino de transição. */
+export function targetLabel(doc: WorkflowDoc, target: string): string {
+  if (isEndTarget(target)) return END_OF_WORKFLOW_LABEL;
+  if (!target) return "Fim do caminho";
+  return stepName(doc, target) || "Etapa inexistente";
 }
 
 export interface StepTransition {
@@ -75,11 +99,12 @@ export function transitionsOf(doc: WorkflowDoc, step: WorkflowStep): StepTransit
     return {
       outcome,
       nextStepId,
-      nextStepName: nextStepId ? stepName(doc, nextStepId) : "Fim da execução",
+      nextStepName: targetLabel(doc, nextStepId),
       implicit: !explicit,
     };
   });
 }
+
 
 /** Snapshot das regras aplicado a uma tarefa no momento em que a instância nasce. */
 export interface StepRuleSnapshot {
@@ -106,7 +131,7 @@ export function snapshotStepRules(
     options: decisionOptions(step).map((o) => ({
       id: o.id,
       label: o.label,
-      nextStepId: o.nextStepId || nextSequentialStepId(doc, step),
+      nextStepId: optionTargetId(doc, step, o),
       note: o.note,
     })),
     nextByOutcome,
@@ -169,12 +194,23 @@ export function validateExecutionRules(doc: WorkflowDoc): RuleIssue[] {
             message: "Opção de decisão sem rótulo.",
           });
         }
-        if (!option.nextStepId && !nextSequentialStepId(doc, step)) {
+        if (isEndTarget(option.nextStepId)) {
+          /* Encerramento explícito — configuração válida. */
+        } else if (option.nextStepId) {
+          if (!doc.steps.some((s) => s.id === option.nextStepId)) {
+            issues.push({
+              id: `${option.id}-destino-inexistente`,
+              severity: "erro",
+              step: step.name,
+              message: `Opção "${option.label}" aponta para uma etapa inexistente.`,
+            });
+          }
+        } else if (!nextSequentialStepId(doc, step)) {
           issues.push({
             id: `${option.id}-destino`,
             severity: "erro",
             step: step.name,
-            message: `Opção "${option.label}" sem próxima etapa.`,
+            message: `Opção "${option.label}" sem próxima etapa e sem encerramento explícito. Escolha uma etapa ou marque "${END_OF_WORKFLOW_LABEL}".`,
           });
         }
       });
@@ -206,7 +242,7 @@ export function validateExecutionRules(doc: WorkflowDoc): RuleIssue[] {
     }
 
     Object.entries(step.outcomeTransitions ?? {}).forEach(([outcome, target]) => {
-      if (target && !doc.steps.some((s) => s.id === target)) {
+      if (target && !isEndTarget(target) && !doc.steps.some((s) => s.id === target)) {
         issues.push({
           id: `${step.id}-${outcome}-inexistente`,
           severity: "erro",
@@ -215,7 +251,28 @@ export function validateExecutionRules(doc: WorkflowDoc): RuleIssue[] {
         });
       }
     });
+
+    /* Build 016 — fim intencional x transição sem destino.
+       O caminho "para frente" precisa terminar em uma etapa existente ou em
+       um encerramento explícito. Em fluxos lineares antigos, o último passo
+       concluído sempre encerrou a execução: isso é determinável com segurança
+       e vira apenas um aviso para tornar a intenção explícita. */
+    outcomesOf(step).forEach((outcome) => {
+      if (outcome === "rejeitado" || outcome === "necessita correção") return;
+      const target = resolveNextStepId(doc, step, outcome);
+      if (target) return;
+      const linearEnd = kind === "tarefa" && index === doc.steps.length - 1;
+      issues.push({
+        id: `${step.id}-${outcome}-sem-destino`,
+        severity: linearEnd ? "atenção" : "erro",
+        step: step.name,
+        message: linearEnd
+          ? `O resultado "${outcome}" encerra a execução por ser a última etapa — marque "${END_OF_WORKFLOW_LABEL}" para deixar explícito.`
+          : `O resultado "${outcome}" não tem destino nem encerramento explícito.`,
+      });
+    });
   });
+
   return issues;
 }
 
@@ -234,10 +291,9 @@ export function decisionFlow(doc: WorkflowDoc): FlowNode[] {
       kind === "decisão"
         ? decisionOptions(step).map((o) => ({
             label: o.label || "opção sem rótulo",
-            target: o.nextStepId
-              ? stepName(doc, o.nextStepId)
-              : stepName(doc, nextSequentialStepId(doc, step)) || "Fim da execução",
+            target: targetLabel(doc, optionTargetId(doc, step, o)),
           }))
+
         : transitionsOf(doc, step).map((t) => ({
             label: t.outcome,
             target: t.nextStepName || "Fim da execução",
