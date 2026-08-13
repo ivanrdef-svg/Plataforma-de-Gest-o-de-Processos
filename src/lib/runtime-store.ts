@@ -972,6 +972,14 @@ export function resolveTask(
         `${task.name} → ${outcome} → ${target.name}`,
       ),
     );
+  } else if (isEndTarget(targetStepId)) {
+    // Build 016 — encerramento explícito: fim intencional, não é falta de regra.
+    events.push(
+      event(
+        "Caminho encerrado",
+        `${task.name} → ${outcome} → encerramento previsto do workflow.`,
+      ),
+    );
   } else if (!backwards) {
     events.push(
       event("Transição executada", `${task.name} → ${outcome} → fim do caminho`),
@@ -985,7 +993,9 @@ export function resolveTask(
   }
 
   // C2 — sem destino resolvido, a execução não avança por ordem.
-  const stalled = !target && !backwards;
+  // Build 016 — o encerramento explícito não é uma parada anômala.
+  const stalled = !target && !backwards && !isEndTarget(targetStepId);
+
 
   // Decisão: os caminhos não escolhidos saem da execução.
   if (kind === "decisão" && option) {
