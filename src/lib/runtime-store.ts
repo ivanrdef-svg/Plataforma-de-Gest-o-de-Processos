@@ -26,11 +26,13 @@ import {
   type InstanceState,
   type TaskState,
 } from "@/config/runtime-model";
+import { isEndTarget } from "@/config/execution-rules";
 import type {
   ApprovalState,
   ExecutionKind,
   TaskOutcome,
 } from "@/config/execution-rules";
+
 import { snapshotStepRules } from "@/lib/execution-rules";
 import {
   SLA_FILTER_STATUSES,
