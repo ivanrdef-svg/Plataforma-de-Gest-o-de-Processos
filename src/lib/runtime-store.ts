@@ -966,7 +966,16 @@ export function resolveTask(
     events.push(
       event("Transição executada", `${task.name} → ${outcome} → fim do caminho`),
     );
+    events.push(
+      event(
+        "Execução requer atenção",
+        `O resultado "${outcome}" de "${task.name}" não possui destino configurado — a execução não avançará automaticamente.`,
+      ),
+    );
   }
+
+  // C2 — sem destino resolvido, a execução não avança por ordem.
+  const stalled = !target && !backwards;
 
   // Decisão: os caminhos não escolhidos saem da execução.
   if (kind === "decisão" && option) {
@@ -995,23 +1004,28 @@ export function resolveTask(
 
   // Nenhuma tarefa em andamento? Retoma a próxima pendente da sequência.
   const result = commit(instanceId, tasks, events);
-  if (!result || result.state === "concluída") return result;
+  if (!result || result.state === "concluída") {
+    return { ok: true, instance: result, stalled };
+  }
   const running = result.tasks.some((t) => t.state === "em andamento");
-  if (!running) {
+  if (!running && !stalled) {
     const pending = result.tasks
       .filter((t) => t.state === "pendente")
       .sort((a, b) => a.order - b.order)[0];
     if (pending) {
-      return patchTask(
-        instanceId,
-        pending.id,
-        startPatch(pending, new Date().toISOString()),
-
-        event("Tarefa iniciada", pending.name),
-      );
+      return {
+        ok: true,
+        instance: patchTask(
+          instanceId,
+          pending.id,
+          startPatch(pending, new Date().toISOString()),
+          event("Tarefa iniciada", pending.name),
+        ),
+        stalled,
+      };
     }
   }
-  return result;
+  return { ok: true, instance: result, stalled };
 }
 
 /** Solicitação explícita de correção a partir de uma aprovação. */
