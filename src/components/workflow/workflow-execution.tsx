@@ -44,6 +44,7 @@ export function workflowReadiness(doc: WorkflowDoc) {
 export function WorkflowExecution({ doc }: { doc: WorkflowDoc }) {
   const { checks, score } = workflowReadiness(doc);
   const ready = score === 100;
+  const isArchived = doc.status === "arquivado";
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const instances = useWorkflowInstances().filter((i) => i.workflowId === doc.id);
@@ -54,9 +55,15 @@ export function WorkflowExecution({ doc }: { doc: WorkflowDoc }) {
     const result = tryStartInstanceFromWorkflow(doc);
     setOpen(false);
     if (!result.ok) {
-      toast.error("Execução bloqueada", {
-        description: `${result.validation.errors.length} erro(s) de validação impedem o início.`,
-      });
+      if (result.reason === "arquivado") {
+        toast.error("Execução bloqueada", {
+          description: "Este Workflow está arquivado e não pode iniciar novas execuções.",
+        });
+      } else {
+        toast.error("Execução bloqueada", {
+          description: `${result.validation.errors.length} erro(s) de validação impedem o início.`,
+        });
+      }
       return;
     }
     toast.success("Execução iniciada", {
