@@ -128,6 +128,12 @@ function RuntimeWorkspace() {
               { label: "Código", value: instance.code },
               { label: "Tipo", value: "Execução" },
               { label: "Workflow", value: instance.workflowName },
+              {
+                label: "Versão de origem",
+                value: instance.workflowVersion
+                  ? `V${instance.workflowVersion}`
+                  : instance.version,
+              },
               { label: "Versão", value: instance.version },
               {
                 label: "Estado",
