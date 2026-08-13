@@ -853,10 +853,12 @@ export function recordWorkflowValidation(
 export function publishWorkflow(
   docId: string,
   result: { status: WorkflowValidationStatus; errors: number; warnings: number },
-): { ok: true } | { ok: false; reason: "not-found" | "invalid" } {
+): { ok: true } | { ok: false; reason: "not-found" | "invalid" | "immutable" } {
   ensureHydrated();
   const doc = state[docId];
   if (!doc) return { ok: false, reason: "not-found" };
+  /* Build 017 — só um rascunho pode ser publicado. */
+  if (!isWorkflowEditable(doc)) return { ok: false, reason: "immutable" };
   recordWorkflowValidation(docId, result, { silent: true });
   if (result.errors > 0) {
     appendWorkflowEvent(
