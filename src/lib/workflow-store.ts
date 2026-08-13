@@ -974,7 +974,9 @@ export function archiveWorkflowVersion(
   if (updated && doc.publishedVersionNumber === number) {
     const cleaned: WorkflowDoc = { ...updated };
     delete cleaned.publishedVersionNumber;
-    writeRaw(docId, cleaned);
+    state = { ...state, [docId]: cleaned };
+    persist();
+    emit();
   }
   appendWorkflowEvent(
     docId,
