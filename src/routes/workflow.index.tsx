@@ -26,6 +26,7 @@ import { RelationshipIndicators } from "@/components/relationships/relationship-
 import { useRelationshipStats } from "@/lib/relationship-store";
 import { workflowReadiness } from "@/components/workflow/workflow-execution";
 import { WORKFLOW_CENTER_STATS } from "@/config/workflow-model";
+import { VERSION_TONE } from "@/config/workflow-version";
 import { stateFromLegacyStatus } from "@/config/lifecycle-model";
 import { useProcessDocs } from "@/lib/process-store";
 import {
