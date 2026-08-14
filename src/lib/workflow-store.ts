@@ -468,6 +468,13 @@ function editable(docId: string): boolean {
 }
 
 
+/**
+ * Build 017.1 — chaves que NÃO pertencem ao conteúdo de uma versão e por isso
+ * continuam liberadas quando a versão atual não é rascunho (ciclo de vida e
+ * favoritar). Todo o resto é recusado.
+ */
+const LOCKED_SAFE_KEYS = new Set<keyof WorkflowDoc>(["status", "favorite"]);
+
 export function updateWorkflowDoc(
   id: string,
   patch: Partial<Omit<WorkflowDoc, "id">>,
@@ -475,6 +482,12 @@ export function updateWorkflowDoc(
   ensureHydrated();
   const current = state[id];
   if (!current) return undefined;
+  /* Build 017.1 — versão publicada/arquivada é imutável, inclusive por fora
+     dos fluxos oficiais. Os fluxos internos usam `writeVersioned`. */
+  if (!isWorkflowEditable(current)) {
+    const keys = Object.keys(patch) as (keyof WorkflowDoc)[];
+    if (!keys.every((k) => LOCKED_SAFE_KEYS.has(k))) return undefined;
+  }
   const next: WorkflowDoc = {
     ...current,
     ...patch,
@@ -789,6 +802,15 @@ function writeRaw(id: string, patch: Partial<Omit<WorkflowDoc, "id">>) {
   return next;
 }
 
+/** Escrita interna dos fluxos oficiais de versão (ignora a trava de edição). */
+function writeVersioned(id: string, patch: Partial<Omit<WorkflowDoc, "id">>) {
+  return writeRaw(id, {
+    ...patch,
+    revisedAt: formatDate(),
+    savedAt: new Date().toISOString(),
+  });
+}
+
 const HISTORY_LIMIT = 60;
 
 /** Registra um evento relevante da definição (nunca a cada render). */
@@ -872,7 +894,7 @@ export function publishWorkflow(
   const normalized = withVersioning(state[docId]!);
   const number = normalized.currentVersionNumber ?? 1;
   const publishedAt = new Date().toISOString();
-  updateWorkflowDoc(docId, {
+  writeVersioned(docId, {
     status: "publicado",
     publishedAt,
     publishedVersionNumber: number,
@@ -934,7 +956,7 @@ export function createWorkflowVersion(docId: string): NewVersionResult {
     createdAt: new Date().toISOString(),
   };
 
-  updateWorkflowDoc(docId, {
+  writeVersioned(docId, {
     ...content,
     status: "em configuração",
     versions: [...versions, version],
@@ -969,7 +991,7 @@ export function archiveWorkflowVersion(
       : v,
   );
   const isCurrent = (doc.currentVersionNumber ?? 1) === number;
-  const updated = updateWorkflowDoc(docId, {
+  const updated = writeVersioned(docId, {
     versions: nextVersions,
     ...(isCurrent ? { status: "arquivado" as const } : {}),
   });

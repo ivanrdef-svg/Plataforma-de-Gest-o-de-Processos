@@ -441,7 +441,12 @@ function write(
   return next;
 }
 
-/** Cria a instância de execução a partir de uma definição de Workflow. */
+/**
+ * Cria a instância de execução a partir de uma definição de Workflow.
+ *
+ * Build 017.1 — etapas, participantes e SLA vêm SEMPRE do conteúdo congelado
+ * da versão publicada; o rascunho em edição nunca é executado.
+ */
 export function startInstanceFromWorkflow(doc: WorkflowDoc): WorkflowInstance {
   ensureHydrated();
   const now = new Date();
@@ -449,15 +454,27 @@ export function startInstanceFromWorkflow(doc: WorkflowDoc): WorkflowInstance {
   const id = `exe-${now.getTime().toString(36)}`;
 
   /* Build 017 — a instância registra explicitamente a versão de origem. */
-  const originVersion = currentWorkflowVersion(doc) ?? publishedWorkflowVersion(doc);
+  const originVersion = publishedWorkflowVersion(doc) ?? currentWorkflowVersion(doc);
 
-  const docInstanceSpec = instanceSpecOf(doc);
-  const docTaskSpec = defaultTaskSpecOf(doc);
+  /* Fonte de verdade da execução: conteúdo congelado da versão publicada. */
+  let source: WorkflowDoc = doc;
+  const frozen = originVersion?.content;
+  if (frozen) {
+    const merged: WorkflowDoc = { ...doc };
+    delete merged.slaAmount;
+    delete merged.slaUnit;
+    delete merged.taskSlaAmount;
+    delete merged.taskSlaUnit;
+    source = { ...merged, ...frozen };
+  }
 
-  const tasks: RuntimeTask[] = doc.steps.map((step, index) => {
-    const rules = snapshotStepRules(doc, step);
+  const docInstanceSpec = instanceSpecOf(source);
+  const docTaskSpec = defaultTaskSpecOf(source);
+
+  const tasks: RuntimeTask[] = source.steps.map((step, index) => {
+    const rules = snapshotStepRules(source, step);
     // Build 014 — o prazo específico da etapa prevalece sobre o padrão.
-    const spec = stepSpecOf(doc, step);
+    const spec = stepSpecOf(source, step);
     const due = index === 0 && spec ? dueDateFrom(iso, spec) : undefined;
     return {
       id: rid("tk"),
@@ -494,7 +511,7 @@ export function startInstanceFromWorkflow(doc: WorkflowDoc): WorkflowInstance {
 
 
   const events: RuntimeEvent[] = [
-    event("Execução iniciada", `${doc.name} — ${doc.processName}.`),
+    event("Execução iniciada", `${doc.name} — ${source.processName}.`),
     event("Tarefas criadas", `${tasks.length} tarefas geradas a partir das etapas.`),
   ];
   const first = tasks[0];
@@ -519,7 +536,7 @@ export function startInstanceFromWorkflow(doc: WorkflowDoc): WorkflowInstance {
       ),
     );
   }
-  const specificSteps = doc.steps.filter((s) => s.slaAmount && s.slaAmount > 0);
+  const specificSteps = source.steps.filter((s) => s.slaAmount && s.slaAmount > 0);
   if (specificSteps.length > 0) {
     events.push(
       event(
@@ -534,7 +551,7 @@ export function startInstanceFromWorkflow(doc: WorkflowDoc): WorkflowInstance {
   const instance: WorkflowInstance = {
     id,
     code: nextCode(),
-    name: `Execução · ${doc.processName}`,
+    name: `Execução · ${source.processName}`,
     workflowId: doc.id,
     workflowName: doc.name,
     ...(originVersion
@@ -543,8 +560,8 @@ export function startInstanceFromWorkflow(doc: WorkflowDoc): WorkflowInstance {
           workflowVersionId: originVersion.versionId,
         }
       : {}),
-    processId: doc.processId,
-    processName: doc.processName,
+    processId: source.processId,
+    processName: source.processName,
     version: doc.version,
     state: "em execução",
     owner: doc.owner,
@@ -1322,6 +1339,7 @@ export function tryStartInstanceFromWorkflow(
 ):
   | { ok: true; instance: WorkflowInstance; validation: WorkflowValidation }
   | { ok: false; reason: "arquivado" }
+  | { ok: false; reason: "no-published-version" }
   | { ok: false; reason: "validation"; validation: WorkflowValidation } {
   if (doc.status === "arquivado") {
     return { ok: false, reason: "arquivado" };
@@ -1332,6 +1350,10 @@ export function tryStartInstanceFromWorkflow(
     !publishedWorkflowVersion(doc)
   ) {
     return { ok: false, reason: "arquivado" };
+  }
+  /* Build 017.1 — sem versão publicada não há o que executar (nunca o rascunho). */
+  if (!publishedWorkflowVersion(doc)) {
+    return { ok: false, reason: "no-published-version" };
   }
   const validation = validateWorkflow(doc, ctx);
   recordWorkflowValidation(
