@@ -1,9 +1,10 @@
 import type { ReactElement } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   ChevronLeft,
   Copy,
   GitBranch,
+  LayoutTemplate,
   Lock,
   Download,
   RefreshCw,
@@ -59,6 +60,8 @@ import {
   useWorkflowDoc,
   type WorkflowDoc,
 } from "@/lib/workflow-store";
+import { createTemplateFromWorkflow } from "@/lib/template-store";
+import { useWorkflowTemplates } from "@/lib/template-store";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/workflow/$workflowId")({
@@ -160,6 +163,8 @@ function WorkflowWorkspace() {
   const { workflowId } = Route.useParams();
   const doc = useWorkflowDoc(workflowId);
   const processes = useProcessDocs();
+  const templates = useWorkflowTemplates();
+  const navigate = useNavigate();
 
   const lifecycleSeed: LifecycleSeed = {
     objectId: doc?.id ?? "",
@@ -265,6 +270,27 @@ function WorkflowWorkspace() {
             onClick={() => createVersionWithFeedback(doc)}
           />
           <ActionButton
+            label="Criar Template a partir da versão publicada"
+            icon={LayoutTemplate}
+            onClick={() => {
+              const result = createTemplateFromWorkflow(doc);
+              if (!result.ok) {
+                toast.error("Nenhuma versão publicada", {
+                  description:
+                    "Crie o Template a partir de uma versão publicada — publique o Workflow primeiro.",
+                });
+                return;
+              }
+              toast.success("Template criado", {
+                description: `${result.template.name} está em rascunho no Template Center.`,
+              });
+              navigate({
+                to: "/templates/$templateId",
+                params: { templateId: result.template.id },
+              });
+            }}
+          />
+          <ActionButton
             label="Duplicar"
             icon={Copy}
             onClick={() =>
@@ -314,7 +340,31 @@ function WorkflowWorkspace() {
         />
       }
       tabs={[
-        { id: "resumo", label: "Resumo", content: <WorkflowSummary doc={doc} /> },
+        {
+          id: "resumo",
+          label: "Resumo",
+          content: (
+            <div className="space-y-6">
+              {doc.templateOrigin && (
+                <p className="text-[11px] text-muted-foreground">
+                  Criado a partir do Template:{" "}
+                  {templates.some((t) => t.id === doc.templateOrigin?.templateId) ? (
+                    <Link
+                      to="/templates/$templateId"
+                      params={{ templateId: doc.templateOrigin.templateId }}
+                      className="underline underline-offset-2 hover:text-foreground"
+                    >
+                      {doc.templateOrigin.templateName}
+                    </Link>
+                  ) : (
+                    <span>{doc.templateOrigin.templateName} (template indisponível)</span>
+                  )}
+                </p>
+              )}
+              <WorkflowSummary doc={doc} />
+            </div>
+          ),
+        },
         {
           id: "etapas",
           label: "Etapas",
