@@ -25,6 +25,8 @@ import {
   versionIdOf,
   type WorkflowVersionStatus,
 } from "@/config/workflow-version";
+import type { ImpactLevel } from "@/config/publication-model";
+import { validateWorkflow } from "@/lib/workflow-validation";
 
 
 
@@ -180,6 +182,24 @@ export interface WorkflowVersion {
   validation?: WorkflowValidationRecord;
   /** Congelado no momento da publicação — garante imutabilidade real. */
   content?: WorkflowVersionContent;
+  /* --- Build 018: governança da publicação (opcionais, retrocompatíveis) --- */
+  /** Resumo humano do que mudou nesta versão. */
+  changeSummary?: string;
+  /** Impacto declarado pelo responsável — nunca calculado automaticamente. */
+  impactLevel?: ImpactLevel;
+  /** Trilha da publicação, preservada mesmo após o arquivamento. */
+  publication?: WorkflowPublicationRecord;
+}
+
+/** Build 018 — registro de governança gerado no momento da publicação. */
+export interface WorkflowPublicationRecord {
+  version: number;
+  publishedAt: string;
+  changeSummary: string;
+  impactLevel?: ImpactLevel;
+  validationStatus: WorkflowValidationStatus;
+  errors: number;
+  warnings: number;
 }
 
 
@@ -871,40 +891,117 @@ export function recordWorkflowValidation(
   return updated;
 }
 
-/** Publicação controlada: só ocorre quando a validação não aponta erros. */
-export function publishWorkflow(
+/* ------------------------------------------------------------------ */
+/* Build 018 — governança da publicação                                */
+/* ------------------------------------------------------------------ */
+
+/** Atualiza um campo de governança da versão atual (somente rascunho). */
+function patchCurrentVersion(
   docId: string,
-  result: { status: WorkflowValidationStatus; errors: number; warnings: number },
-): { ok: true } | { ok: false; reason: "not-found" | "invalid" | "immutable" } {
+  patch: Partial<Omit<WorkflowVersion, "versionId" | "number">>,
+): boolean {
   ensureHydrated();
-  const doc = state[docId];
-  if (!doc) return { ok: false, reason: "not-found" };
+  const raw = state[docId];
+  if (!raw) return false;
+  const doc = withVersioning(raw);
+  const number = doc.currentVersionNumber ?? 1;
+  const target = (doc.versions ?? []).find((v) => v.number === number);
+  if (!target || target.status !== "rascunho") return false;
+  writeVersioned(docId, {
+    versions: (doc.versions ?? []).map((v) =>
+      v.number === number ? { ...v, ...patch } : v,
+    ),
+    currentVersionNumber: number,
+  });
+  return true;
+}
+
+/** Resumo das alterações da versão em rascunho (texto livre, opcional). */
+export function setWorkflowChangeSummary(docId: string, text: string): boolean {
+  return patchCurrentVersion(docId, { changeSummary: text });
+}
+
+/** Impacto declarado da versão em rascunho. */
+export function setWorkflowImpactLevel(docId: string, level: ImpactLevel): boolean {
+  return patchCurrentVersion(docId, { impactLevel: level });
+}
+
+export type PublishResult =
+  | { ok: true; version: number }
+  | {
+      ok: false;
+      reason: "not-found" | "invalid" | "immutable" | "no-version";
+      errors?: number;
+    };
+
+/**
+ * Publicação controlada e ATÔMICA.
+ *
+ * Build 018 — a validação é sempre RECALCULADA aqui (evita publicar com um
+ * resultado obsoleto) reutilizando a função central da Build 016. A escrita
+ * congela conteúdo, validação, trilha de publicação e status em uma única
+ * operação.
+ */
+export function publishWorkflow(docId: string): PublishResult {
+  ensureHydrated();
+  const raw = state[docId];
+  if (!raw) return { ok: false, reason: "not-found" };
   /* Build 017 — só um rascunho pode ser publicado. */
-  if (!isWorkflowEditable(doc)) return { ok: false, reason: "immutable" };
+  if (!isWorkflowEditable(raw)) return { ok: false, reason: "immutable" };
+
+  const normalized = withVersioning(raw);
+  const number = normalized.currentVersionNumber ?? 1;
+  const target = (normalized.versions ?? []).find((v) => v.number === number);
+  if (!target) return { ok: false, reason: "no-version" };
+
+  /* Revalidação obrigatória sobre o estado atual da versão. */
+  const validation = validateWorkflow(normalized);
+  const result = {
+    status: validation.status as WorkflowValidationStatus,
+    errors: validation.errors.length,
+    warnings: validation.warnings.length,
+  };
   recordWorkflowValidation(docId, result, { silent: true });
+
   if (result.errors > 0) {
     appendWorkflowEvent(
       docId,
       "Publicação bloqueada por validação",
       `${result.errors} erro(s) impedem a publicação.`,
     );
-    return { ok: false, reason: "invalid" };
+    return { ok: false, reason: "invalid", errors: result.errors };
   }
-  /* Build 017 — a publicação congela o conteúdo da versão atual. */
-  const normalized = withVersioning(state[docId]!);
-  const number = normalized.currentVersionNumber ?? 1;
+
+  const current = withVersioning(state[docId]!);
   const publishedAt = new Date().toISOString();
+  const validationRecord: WorkflowValidationRecord = {
+    ...result,
+    validatedAt: publishedAt,
+  };
+  const publication: WorkflowPublicationRecord = {
+    version: number,
+    publishedAt,
+    changeSummary: (target.changeSummary ?? "").trim(),
+    ...(target.impactLevel ? { impactLevel: target.impactLevel } : {}),
+    validationStatus: result.status,
+    errors: result.errors,
+    warnings: result.warnings,
+  };
+
   writeVersioned(docId, {
     status: "publicado",
     publishedAt,
     publishedVersionNumber: number,
-    versions: (normalized.versions ?? []).map((v) =>
+    validation: validationRecord,
+    versions: (current.versions ?? []).map((v) =>
       v.number === number
         ? {
             ...v,
             status: "publicada" as WorkflowVersionStatus,
             publishedAt,
-            content: contentOf(normalized),
+            validation: validationRecord,
+            content: contentOf(current),
+            publication,
           }
         : v,
     ),
@@ -912,11 +1009,17 @@ export function publishWorkflow(
   appendWorkflowEvent(
     docId,
     `Versão ${number} publicada`,
-    result.warnings > 0
-      ? `Publicado com ${result.warnings} aviso(s).`
-      : "Publicado sem erros e sem avisos.",
+    [
+      result.warnings > 0
+        ? `Publicado com ${result.warnings} aviso(s).`
+        : "Publicado sem erros e sem avisos.",
+      `Impacto: ${publication.impactLevel ?? "não informado"}.`,
+      publication.changeSummary ? `Resumo: ${publication.changeSummary}` : "",
+    ]
+      .filter(Boolean)
+      .join(" "),
   );
-  return { ok: true };
+  return { ok: true, version: number };
 }
 
 /* ------------------------------------------------------------------ */
