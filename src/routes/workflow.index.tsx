@@ -260,14 +260,21 @@ function WorkflowCard({ doc }: { doc: WorkflowDoc }) {
   const version = currentWorkflowVersion(doc);
   /* Build 018 — indicador derivado de publicação (sem dashboard novo). */
   const readiness = publicationReadiness(doc);
-  const publicationLabel =
-    version?.status === "publicada"
-      ? `Publicado V${version.number}`
-      : version?.status === "arquivada"
-        ? `Arquivada V${version.number}`
-        : readiness.canPublish
-          ? "Pronto para publicação"
-          : "Requer correções";
+  /* Build 018.1 — o estado operacional (versão publicada) e o estado do
+     rascunho em edição são comunicados separadamente. */
+  const published = publishedWorkflowVersion(doc);
+  const draft =
+    version && version.status === "rascunho" && version.id !== published?.id
+      ? version
+      : undefined;
+  const draftLabel = `Rascunho V${draft?.number} · ${
+    readiness.canPublish ? "Pronto para publicação" : "Requer correções"
+  }`;
+  const archivedLabel =
+    !published && version?.status === "arquivada"
+      ? `Arquivada V${version.number}`
+      : undefined;
+
   return (
     <article className="group relative rounded-xl border bg-card p-4 transition-colors hover:border-primary/30">
       <div className="flex items-start justify-between gap-3">
