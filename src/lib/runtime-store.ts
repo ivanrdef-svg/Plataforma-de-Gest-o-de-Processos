@@ -511,7 +511,7 @@ export function startInstanceFromWorkflow(doc: WorkflowDoc): WorkflowInstance {
 
 
   const events: RuntimeEvent[] = [
-    event("Execução iniciada", `${doc.name} — ${doc.processName}.`),
+    event("Execução iniciada", `${doc.name} — ${source.processName}.`),
     event("Tarefas criadas", `${tasks.length} tarefas geradas a partir das etapas.`),
   ];
   const first = tasks[0];
@@ -536,7 +536,7 @@ export function startInstanceFromWorkflow(doc: WorkflowDoc): WorkflowInstance {
       ),
     );
   }
-  const specificSteps = doc.steps.filter((s) => s.slaAmount && s.slaAmount > 0);
+  const specificSteps = source.steps.filter((s) => s.slaAmount && s.slaAmount > 0);
   if (specificSteps.length > 0) {
     events.push(
       event(
@@ -551,7 +551,7 @@ export function startInstanceFromWorkflow(doc: WorkflowDoc): WorkflowInstance {
   const instance: WorkflowInstance = {
     id,
     code: nextCode(),
-    name: `Execução · ${doc.processName}`,
+    name: `Execução · ${source.processName}`,
     workflowId: doc.id,
     workflowName: doc.name,
     ...(originVersion
@@ -560,8 +560,8 @@ export function startInstanceFromWorkflow(doc: WorkflowDoc): WorkflowInstance {
           workflowVersionId: originVersion.versionId,
         }
       : {}),
-    processId: doc.processId,
-    processName: doc.processName,
+    processId: source.processId,
+    processName: source.processName,
     version: doc.version,
     state: "em execução",
     owner: doc.owner,
