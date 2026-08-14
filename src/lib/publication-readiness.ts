@@ -11,7 +11,7 @@ import {
   READINESS_HINT,
   type ReadinessState,
 } from "@/config/publication-model";
-import { stepKind, decisionOptions } from "@/lib/execution-rules";
+import { stepKind } from "@/lib/execution-rules";
 import { validateWorkflow, type WorkflowValidation } from "@/lib/workflow-validation";
 import {
   currentWorkflowVersion,
@@ -81,14 +81,25 @@ export function publicationReadiness(
   const rules = fromIssues(validation, "regras");
   const sla = fromIssues(validation, "sla");
 
+  /* Build 018.1 — os itens de aprovação/decisão NÃO recalculam a regra:
+     eles apenas filtram as issues já produzidas por validateWorkflow(),
+     usando a etapa (location) como chave estável. */
   const approvals = doc.steps.filter((s) => stepKind(s) === "aprovação");
   const decisions = doc.steps.filter((s) => stepKind(s) === "decisão");
-  const approvalsMissing = approvals.filter(
-    (s) => !(s.approver ?? s.owner ?? "").trim(),
-  ).length;
-  const decisionsMissing = decisions.filter(
-    (s) => decisionOptions(s).filter((o) => o.label.trim()).length < 2,
-  ).length;
+
+  const byLocation = (names: string[]) => {
+    const set = new Set(names.filter(Boolean));
+    const match = (i: (typeof validation.errors)[number]) =>
+      i.source === "regras" && set.has(i.location);
+    return {
+      errors: validation.errors.filter(match).length,
+      warnings: validation.warnings.filter(match).length,
+    };
+  };
+
+  const approvalIssues = byLocation(approvals.map((s) => s.name));
+  const decisionIssues = byLocation(decisions.map((s) => s.name));
+
 
   const version = currentWorkflowVersion(doc);
 
@@ -120,37 +131,30 @@ export function publicationReadiness(
     {
       id: "aprovacoes",
       label: "Aprovações configuradas",
-      status:
-        approvals.length === 0
-          ? "neutro"
-          : approvalsMissing > 0
-            ? "erro"
-            : "ok",
+      status: approvals.length === 0 ? "neutro" : statusOf(approvalIssues),
       detail:
         approvals.length === 0
           ? "Nenhuma etapa de aprovação nesta definição."
-          : approvalsMissing > 0
-            ? `${approvalsMissing} aprovação(ões) sem aprovador definido.`
-            : `${approvals.length} aprovação(ões) com aprovador definido.`,
+          : detailOf(
+              approvalIssues,
+              `${approvals.length} aprovação(ões) sem pendências de validação.`,
+            ),
       tab: "regras",
     },
     {
       id: "decisoes",
       label: "Decisões configuradas",
-      status:
-        decisions.length === 0
-          ? "neutro"
-          : decisionsMissing > 0
-            ? "erro"
-            : "ok",
+      status: decisions.length === 0 ? "neutro" : statusOf(decisionIssues),
       detail:
         decisions.length === 0
           ? "Nenhuma etapa de decisão nesta definição."
-          : decisionsMissing > 0
-            ? `${decisionsMissing} decisão(ões) sem opções suficientes.`
-            : `${decisions.length} decisão(ões) com opções configuradas.`,
+          : detailOf(
+              decisionIssues,
+              `${decisions.length} decisão(ões) sem pendências de validação.`,
+            ),
       tab: "regras",
     },
+
     {
       id: "referencias",
       label: "Referências válidas",
