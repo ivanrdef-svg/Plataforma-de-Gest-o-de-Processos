@@ -19,7 +19,6 @@ import {
 } from "@/lib/workflow-validation";
 import {
   isWorkflowEditable,
-  publishWorkflow,
   recordWorkflowValidation,
   type WorkflowDoc,
 } from "@/lib/workflow-store";
@@ -48,27 +47,6 @@ export function WorkflowValidationTab({ doc }: { doc: WorkflowDoc }) {
     }
   };
 
-  const publish = () => {
-    const result = publishWorkflow(doc.id, {
-      status: validation.status,
-      errors: validation.errors.length,
-      warnings: validation.warnings.length,
-    });
-    if (result.ok) {
-      toast.success("Workflow publicado", {
-        description: "A definição está disponível para execução.",
-      });
-    } else if (result.reason === "immutable") {
-      toast.error("Versão já publicada", {
-        description: "Crie uma nova versão para publicar alterações.",
-      });
-    } else {
-      toast.error("Publicação bloqueada", {
-        description: "Corrija os erros de validação antes de publicar.",
-      });
-    }
-  };
-
   return (
     <div className="space-y-6">
       <section className="rounded-xl border bg-card p-5">
@@ -94,15 +72,12 @@ export function WorkflowValidationTab({ doc }: { doc: WorkflowDoc }) {
               <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
               Validar
             </Button>
-            <Button
-              size="sm"
-              className="h-8"
-              disabled={!validation.canPublish || !isWorkflowEditable(doc)}
-              onClick={publish}
-            >
-              <BadgeCheck className="mr-1.5 h-3.5 w-3.5" />
-              Publicar
-            </Button>
+            {isWorkflowEditable(doc) && (
+              <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <BadgeCheck className="h-3.5 w-3.5" />
+                A publicação acontece na aba Publicação.
+              </span>
+            )}
           </div>
         </div>
 
