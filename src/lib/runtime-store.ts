@@ -441,7 +441,12 @@ function write(
   return next;
 }
 
-/** Cria a instância de execução a partir de uma definição de Workflow. */
+/**
+ * Cria a instância de execução a partir de uma definição de Workflow.
+ *
+ * Build 017.1 — etapas, participantes e SLA vêm SEMPRE do conteúdo congelado
+ * da versão publicada; o rascunho em edição nunca é executado.
+ */
 export function startInstanceFromWorkflow(doc: WorkflowDoc): WorkflowInstance {
   ensureHydrated();
   const now = new Date();
@@ -449,15 +454,20 @@ export function startInstanceFromWorkflow(doc: WorkflowDoc): WorkflowInstance {
   const id = `exe-${now.getTime().toString(36)}`;
 
   /* Build 017 — a instância registra explicitamente a versão de origem. */
-  const originVersion = currentWorkflowVersion(doc) ?? publishedWorkflowVersion(doc);
+  const originVersion = publishedWorkflowVersion(doc) ?? currentWorkflowVersion(doc);
 
-  const docInstanceSpec = instanceSpecOf(doc);
-  const docTaskSpec = defaultTaskSpecOf(doc);
+  /* Fonte de verdade da execução: conteúdo congelado da versão publicada. */
+  const source: WorkflowDoc = originVersion?.content
+    ? { ...doc, ...originVersion.content }
+    : doc;
 
-  const tasks: RuntimeTask[] = doc.steps.map((step, index) => {
-    const rules = snapshotStepRules(doc, step);
+  const docInstanceSpec = instanceSpecOf(source);
+  const docTaskSpec = defaultTaskSpecOf(source);
+
+  const tasks: RuntimeTask[] = source.steps.map((step, index) => {
+    const rules = snapshotStepRules(source, step);
     // Build 014 — o prazo específico da etapa prevalece sobre o padrão.
-    const spec = stepSpecOf(doc, step);
+    const spec = stepSpecOf(source, step);
     const due = index === 0 && spec ? dueDateFrom(iso, spec) : undefined;
     return {
       id: rid("tk"),
