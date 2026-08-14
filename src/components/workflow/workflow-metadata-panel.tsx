@@ -1,16 +1,8 @@
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Pill } from "@/components/ui/pill";
 import { SlaField } from "@/components/workflow/sla-field";
-import { WORKFLOW_STATUS_OPTIONS } from "@/config/workflow-model";
 import { PAUSE_CLOCK_NOTE } from "@/config/sla-model";
-import type { WorkflowStatus } from "@/config/workflow-model";
 import { setWorkflowSla, type WorkflowDoc } from "@/lib/workflow-store";
 
 
@@ -37,21 +29,15 @@ export function WorkflowMetadataPanel({
       </Row>
 
       <Row label="Status">
-        <Select
-          value={doc.status}
-          onValueChange={(v) => onChange({ status: v as WorkflowStatus })}
-        >
-          <SelectTrigger className="h-8 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {WORKFLOW_STATUS_OPTIONS.map((s) => (
-              <SelectItem key={s} value={s} className="text-xs">
-                {s}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Build 017.1 — somente leitura: publicar/arquivar acontece na aba Versões. */}
+        <div className="mt-1 flex items-center gap-2">
+          <Pill tone="bg-muted text-muted-foreground" size="sm" shape="full">
+            {doc.status}
+          </Pill>
+          <span className="text-[10px] text-muted-foreground">
+            Alterado na aba Versões
+          </span>
+        </div>
       </Row>
 
       <Row label="Responsável">

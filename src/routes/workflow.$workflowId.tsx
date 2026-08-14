@@ -394,7 +394,9 @@ function WorkflowWorkspace() {
         <div className="space-y-6">
           <LifecyclePanel seed={lifecycleSeed} showTimeline={false} />
           <Separator />
-          <WorkflowMetadataPanel key={doc.id} doc={doc} onChange={patch} />
+          {editableTab(
+            <WorkflowMetadataPanel key={doc.id} doc={doc} onChange={patch} />,
+          )}
           <Separator />
           <WorkspaceAiPanel />
         </div>
