@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronLeft, LayoutTemplate, Search } from "lucide-react";
-import { AppShell } from "@/components/shell/app-shell";
 import { EmptyState } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -96,8 +95,7 @@ function TemplateCenter() {
     workflows.filter((w) => w.templateOrigin?.templateId === templateId).length;
 
   return (
-    <AppShell>
-      <div className="px-6 py-8 md:px-10">
+    <div className="px-6 py-8 md:px-10">
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-xl font-semibold tracking-tight">Template Center</h1>
@@ -197,8 +195,7 @@ function TemplateCenter() {
             </div>
           )}
         </section>
-      </div>
-    </AppShell>
+    </div>
   );
 }
 
