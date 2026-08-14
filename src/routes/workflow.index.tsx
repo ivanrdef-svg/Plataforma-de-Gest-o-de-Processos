@@ -332,17 +332,33 @@ function WorkflowCard({ doc }: { doc: WorkflowDoc }) {
           <Play className="mr-1 h-3 w-3" />
           {score}% pronto
         </Pill>
-        <Pill
-          tone={
-            version?.status === "publicada"
-              ? VERSION_TONE.publicada
-              : READINESS_TONE[readiness.state]
-          }
-          size="sm"
-          title={readiness.hint}
-        >
-          {publicationLabel}
-        </Pill>
+        {published && (
+          <Pill
+            tone={VERSION_TONE.publicada}
+            size="sm"
+            title={`Versão ${published.number} publicada — usada por novas execuções.`}
+          >
+            Publicado V{published.number}
+          </Pill>
+        )}
+        {draft && (
+          <Pill
+            tone={READINESS_TONE[readiness.state]}
+            size="sm"
+            title={readiness.hint}
+          >
+            {draftLabel}
+          </Pill>
+        )}
+        {archivedLabel && (
+          <Pill
+            tone={VERSION_TONE.arquivada}
+            size="sm"
+            title="Nenhuma versão publicada vigente."
+          >
+            {archivedLabel}
+          </Pill>
+        )}
         <WorkflowConnections objectId={doc.id} />
       </div>
     </article>
