@@ -1339,6 +1339,7 @@ export function tryStartInstanceFromWorkflow(
 ):
   | { ok: true; instance: WorkflowInstance; validation: WorkflowValidation }
   | { ok: false; reason: "arquivado" }
+  | { ok: false; reason: "no-published-version" }
   | { ok: false; reason: "validation"; validation: WorkflowValidation } {
   if (doc.status === "arquivado") {
     return { ok: false, reason: "arquivado" };
@@ -1349,6 +1350,10 @@ export function tryStartInstanceFromWorkflow(
     !publishedWorkflowVersion(doc)
   ) {
     return { ok: false, reason: "arquivado" };
+  }
+  /* Build 017.1 — sem versão publicada não há o que executar (nunca o rascunho). */
+  if (!publishedWorkflowVersion(doc)) {
+    return { ok: false, reason: "no-published-version" };
   }
   const validation = validateWorkflow(doc, ctx);
   recordWorkflowValidation(
