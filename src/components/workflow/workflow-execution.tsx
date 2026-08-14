@@ -12,7 +12,11 @@ import {
   useWorkflowInstances,
 } from "@/lib/runtime-store";
 import { validateWorkflow } from "@/lib/workflow-validation";
-import type { WorkflowDoc } from "@/lib/workflow-store";
+import {
+  currentWorkflowVersion,
+  publishedWorkflowVersion,
+  type WorkflowDoc,
+} from "@/lib/workflow-store";
 import { stepConfigured } from "./workflow-steps";
 
 /**
@@ -50,6 +54,12 @@ export function WorkflowExecution({ doc }: { doc: WorkflowDoc }) {
   const instances = useWorkflowInstances().filter((i) => i.workflowId === doc.id);
   // Build 016 — definição inválida não gera instância.
   const validation = validateWorkflow(doc);
+  // Build 017.1 — a execução usa sempre a versão publicada, nunca o rascunho.
+  const published = publishedWorkflowVersion(doc);
+  const current = currentWorkflowVersion(doc);
+  const viewingDraft = Boolean(
+    published && current && current.number !== published.number,
+  );
 
   const start = () => {
     const result = tryStartInstanceFromWorkflow(doc);
@@ -58,6 +68,11 @@ export function WorkflowExecution({ doc }: { doc: WorkflowDoc }) {
       if (result.reason === "arquivado") {
         toast.error("Execução bloqueada", {
           description: "Este Workflow está arquivado e não pode iniciar novas execuções.",
+        });
+      } else if (result.reason === "no-published-version") {
+        toast.error("Nenhuma versão publicada", {
+          description:
+            "Este Workflow não possui uma versão publicada disponível para execução.",
         });
       } else {
         toast.error("Execução bloqueada", {
@@ -110,22 +125,33 @@ export function WorkflowExecution({ doc }: { doc: WorkflowDoc }) {
           Runtime de execução
         </span>
         <p className="mt-2 text-xs text-muted-foreground">
-          Iniciar cria uma instância desta definição. As tarefas nascem das etapas
-          executáveis — a definição permanece intacta.
+          Iniciar cria uma instância da versão publicada. As tarefas nascem das
+          etapas congeladas nessa versão — a definição permanece intacta.
         </p>
+        {viewingDraft && published && (
+          <p className="mt-2 text-[11px] text-amber-600 dark:text-amber-400">
+            Você está vendo o rascunho V{current?.number}. A execução usará a versão
+            publicada V{published.number}, não o rascunho em edição.
+          </p>
+        )}
         <Button
           size="sm"
           className="mt-4 h-8"
-          disabled={doc.steps.length === 0 || !validation.canStart || isArchived}
+          disabled={!published || !validation.canStart || isArchived}
           onClick={() => setOpen(true)}
         >
           <PlayCircle className="mr-1.5 h-3.5 w-3.5" />
-          Iniciar Workflow
+          {published ? `Iniciar Workflow · V${published.number} publicada` : "Iniciar Workflow"}
         </Button>
         {isArchived ? (
           <p className="mt-3 inline-flex items-center gap-1.5 text-[11px] text-destructive">
             <ShieldAlert className="h-3 w-3" />
             Este Workflow está arquivado e não pode iniciar novas execuções.
+          </p>
+        ) : !published ? (
+          <p className="mt-3 inline-flex items-center gap-1.5 text-[11px] text-destructive">
+            <ShieldAlert className="h-3 w-3" />
+            Este Workflow não possui uma versão publicada disponível para execução.
           </p>
         ) : !validation.canStart ? (
           <p className="mt-3 inline-flex items-center gap-1.5 text-[11px] text-destructive">
