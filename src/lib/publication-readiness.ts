@@ -131,37 +131,30 @@ export function publicationReadiness(
     {
       id: "aprovacoes",
       label: "Aprovações configuradas",
-      status:
-        approvals.length === 0
-          ? "neutro"
-          : approvalsMissing > 0
-            ? "erro"
-            : "ok",
+      status: approvals.length === 0 ? "neutro" : statusOf(approvalIssues),
       detail:
         approvals.length === 0
           ? "Nenhuma etapa de aprovação nesta definição."
-          : approvalsMissing > 0
-            ? `${approvalsMissing} aprovação(ões) sem aprovador definido.`
-            : `${approvals.length} aprovação(ões) com aprovador definido.`,
+          : detailOf(
+              approvalIssues,
+              `${approvals.length} aprovação(ões) sem pendências de validação.`,
+            ),
       tab: "regras",
     },
     {
       id: "decisoes",
       label: "Decisões configuradas",
-      status:
-        decisions.length === 0
-          ? "neutro"
-          : decisionsMissing > 0
-            ? "erro"
-            : "ok",
+      status: decisions.length === 0 ? "neutro" : statusOf(decisionIssues),
       detail:
         decisions.length === 0
           ? "Nenhuma etapa de decisão nesta definição."
-          : decisionsMissing > 0
-            ? `${decisionsMissing} decisão(ões) sem opções suficientes.`
-            : `${decisions.length} decisão(ões) com opções configuradas.`,
+          : detailOf(
+              decisionIssues,
+              `${decisions.length} decisão(ões) sem pendências de validação.`,
+            ),
       tab: "regras",
     },
+
     {
       id: "referencias",
       label: "Referências válidas",
