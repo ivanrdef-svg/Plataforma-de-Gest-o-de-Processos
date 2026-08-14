@@ -35,6 +35,7 @@ import {
   createWorkflowFromProcess,
   lifecycleStatusOf,
   currentWorkflowVersion,
+  publishedWorkflowVersion,
   updateWorkflowDoc,
   useWorkflowDocs,
   type WorkflowDoc,
@@ -264,7 +265,7 @@ function WorkflowCard({ doc }: { doc: WorkflowDoc }) {
      rascunho em edição são comunicados separadamente. */
   const published = publishedWorkflowVersion(doc);
   const draft =
-    version && version.status === "rascunho" && version.id !== published?.id
+    version && version.status === "rascunho" && version.number !== published?.number
       ? version
       : undefined;
   const draftLabel = `Rascunho V${draft?.number} · ${
