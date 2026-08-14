@@ -36,6 +36,8 @@ export interface ValidationIssue {
   action: string;
   /** Aba do workspace onde a correção é feita. */
   tab: "etapas" | "regras" | "resumo";
+  /** Build 018 — origem do issue, usada apenas para agrupar o checklist. */
+  source: "estrutura" | "regras" | "sla";
 }
 
 export interface WorkflowValidation {
@@ -63,7 +65,11 @@ function titleOf(message: string): string {
   return first.length > 70 ? `${first.slice(0, 67)}…` : first;
 }
 
-function enrich(issue: RuleIssue, tab: ValidationIssue["tab"]): ValidationIssue {
+function enrich(
+  issue: RuleIssue,
+  tab: ValidationIssue["tab"],
+  source: ValidationIssue["source"],
+): ValidationIssue {
   const isError = issue.severity === "erro";
   return {
     id: issue.id,
@@ -78,6 +84,7 @@ function enrich(issue: RuleIssue, tab: ValidationIssue["tab"]): ValidationIssue 
       ? "Ajuste a configuração da etapa indicada e valide novamente."
       : "Revise quando possível para tornar a definição mais completa.",
     tab,
+    source,
   };
 }
 
@@ -100,7 +107,18 @@ function structuralIssues(
     impact: string,
     action: string,
     tab: ValidationIssue["tab"],
-  ) => issues.push({ id, severity, title, description, location, impact, action, tab });
+  ) =>
+    issues.push({
+      id,
+      severity,
+      title,
+      description,
+      location,
+      impact,
+      action,
+      tab,
+      source: "estrutura",
+    });
 
   if (doc.steps.length === 0) {
     push(
@@ -229,8 +247,8 @@ export function validateWorkflow(
 ): WorkflowValidation {
   const all: ValidationIssue[] = [
     ...structuralIssues(doc, ctx),
-    ...validateExecutionRules(doc).map((i) => enrich(i, "regras")),
-    ...validateSlaRules(doc).map((i) => enrich(i, "regras")),
+    ...validateExecutionRules(doc).map((i) => enrich(i, "regras", "regras")),
+    ...validateSlaRules(doc).map((i) => enrich(i, "regras", "sla")),
   ];
 
   const errors = all.filter((i) => i.severity === "erro");

@@ -27,6 +27,8 @@ import { useRelationshipStats } from "@/lib/relationship-store";
 import { workflowReadiness } from "@/components/workflow/workflow-execution";
 import { WORKFLOW_CENTER_STATS } from "@/config/workflow-model";
 import { VERSION_TONE } from "@/config/workflow-version";
+import { READINESS_TONE } from "@/config/publication-model";
+import { publicationReadiness } from "@/lib/publication-readiness";
 import { stateFromLegacyStatus } from "@/config/lifecycle-model";
 import { useProcessDocs } from "@/lib/process-store";
 import {
@@ -256,6 +258,16 @@ function WorkflowConnections({ objectId }: { objectId: string }) {
 function WorkflowCard({ doc }: { doc: WorkflowDoc }) {
   const { score } = workflowReadiness(doc);
   const version = currentWorkflowVersion(doc);
+  /* Build 018 — indicador derivado de publicação (sem dashboard novo). */
+  const readiness = publicationReadiness(doc);
+  const publicationLabel =
+    version?.status === "publicada"
+      ? `Publicado V${version.number}`
+      : version?.status === "arquivada"
+        ? `Arquivada V${version.number}`
+        : readiness.canPublish
+          ? "Pronto para publicação"
+          : "Requer correções";
   return (
     <article className="group relative rounded-xl border bg-card p-4 transition-colors hover:border-primary/30">
       <div className="flex items-start justify-between gap-3">
@@ -312,6 +324,17 @@ function WorkflowCard({ doc }: { doc: WorkflowDoc }) {
         >
           <Play className="mr-1 h-3 w-3" />
           {score}% pronto
+        </Pill>
+        <Pill
+          tone={
+            version?.status === "publicada"
+              ? VERSION_TONE.publicada
+              : READINESS_TONE[readiness.state]
+          }
+          size="sm"
+          title={readiness.hint}
+        >
+          {publicationLabel}
         </Pill>
         <WorkflowConnections objectId={doc.id} />
       </div>

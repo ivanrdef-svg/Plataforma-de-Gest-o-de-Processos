@@ -18,6 +18,8 @@ import {
   type WorkflowDoc,
 } from "@/lib/workflow-store";
 import { useWorkflowInstances } from "@/lib/runtime-store";
+import { NOT_INFORMED } from "@/config/publication-model";
+import { ImpactPill } from "@/components/workflow/workflow-publication-tab";
 import { cn } from "@/lib/utils";
 
 /**
@@ -147,6 +149,7 @@ export function WorkflowVersions({ doc }: { doc: WorkflowDoc }) {
                         atual
                       </Pill>
                     )}
+                    <ImpactPill {...(v.impactLevel ? { level: v.impactLevel } : {})} />
                     {v.validation && (
                       <Pill tone="bg-muted text-muted-foreground" size="sm">
                         {v.validation.status}
@@ -154,6 +157,19 @@ export function WorkflowVersions({ doc }: { doc: WorkflowDoc }) {
                     )}
                   </div>
                   <p className="mt-1.5 text-xs text-muted-foreground">{v.summary}</p>
+                  {(v.changeSummary || v.publication) && (
+                    <p className="mt-1 text-xs text-foreground/80">
+                      Resumo:{" "}
+                      {v.changeSummary || v.publication?.changeSummary || NOT_INFORMED}
+                    </p>
+                  )}
+                  {v.publication && (
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      Publicação · validação {v.publication.validationStatus} ·{" "}
+                      {v.publication.warnings} aviso(s) · impacto{" "}
+                      {v.publication.impactLevel ?? NOT_INFORMED.toLowerCase()}
+                    </p>
+                  )}
                   <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-muted-foreground">
                     <div className="flex gap-1">
                       <dt>Criada:</dt>

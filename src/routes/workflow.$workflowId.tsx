@@ -29,6 +29,7 @@ import { WorkflowParticipants } from "@/components/workflow/workflow-participant
 import { WorkflowRules } from "@/components/workflow/workflow-rules";
 import { WorkflowExecution } from "@/components/workflow/workflow-execution";
 import { WorkflowValidationTab } from "@/components/workflow/workflow-validation-tab";
+import { WorkflowPublicationTab } from "@/components/workflow/workflow-publication-tab";
 import {
   WorkflowVersions,
   createVersionWithFeedback,
@@ -351,6 +352,11 @@ function WorkflowWorkspace() {
           id: "validacao",
           label: "Validação",
           content: <WorkflowValidationTab doc={doc} />,
+        },
+        {
+          id: "publicacao",
+          label: "Publicação",
+          content: <WorkflowPublicationTab doc={doc} />,
         },
         {
           id: "execucao",
