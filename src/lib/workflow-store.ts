@@ -131,6 +131,23 @@ export interface WorkflowDoc {
   currentVersionNumber?: number;
   /** Versão publicada vigente — base das novas execuções. */
   publishedVersionNumber?: number;
+  /* --- Build 019: origem em Template (opcional, retrocompatível) --- */
+  /**
+   * Registro histórico de qual Template originou esta definição. Escrito uma
+   * única vez na criação — nunca atualizado depois. Não é uma dependência:
+   * Template e Workflow são totalmente independentes após a criação.
+   */
+  templateOrigin?: WorkflowTemplateOrigin;
+}
+
+/** Build 019 — rastreabilidade da criação a partir de um Template. */
+export interface WorkflowTemplateOrigin {
+  templateId: string;
+  templateName: string;
+  /** Workflow que originou o Template (rastreabilidade, não dependência). */
+  sourceWorkflowId?: string;
+  sourceWorkflowVersion?: number;
+  createdAt: string;
 }
 
 /** Status derivado da validação — NÃO substitui o Lifecycle Engine. */
@@ -1111,4 +1128,78 @@ export function archiveWorkflowVersion(
     "Não inicia novas execuções. Execuções existentes seguem inalteradas.",
   );
   return { ok: true };
+}
+
+/* ------------------------------------------------------------------ */
+/* Build 019 — criação a partir de um Template                         */
+/* ------------------------------------------------------------------ */
+
+/** Campos que o usuário pode sobrepor ao conteúdo copiado do Template. */
+export interface WorkflowFromTemplateOverrides {
+  name?: string;
+  description?: string;
+  area?: string;
+  owner?: string;
+  objective?: string;
+}
+
+/**
+ * Cria uma nova definição de Workflow a partir de um conteúdo já copiado
+ * (cópia profunda feita pelo chamador). Mesmo padrão de
+ * `createWorkflowFromProcess`: novo `id`, `status: "em configuração"` e
+ * Versão 1 em rascunho. O conteúdo recebido é copiado novamente aqui para
+ * garantir que nenhuma referência seja compartilhada com a origem.
+ */
+export function createWorkflowFromTemplateContent(
+  content: WorkflowVersionContent,
+  overrides: WorkflowFromTemplateOverrides = {},
+  origin?: WorkflowTemplateOrigin,
+): WorkflowDoc {
+  ensureHydrated();
+  const now = new Date();
+  const id = `wkf-${now.getTime().toString(36)}`;
+  const copy = deepCopy(content);
+
+  const doc: WorkflowDoc = {
+    id,
+    code: nextCode(),
+    name: overrides.name?.trim() || "Novo workflow",
+    description: overrides.description?.trim() || copy.description,
+    processId: copy.processId,
+    processName: copy.processName,
+    processVersion: copy.processVersion,
+    objective: overrides.objective?.trim() || copy.objective,
+    version: "v0.1",
+    status: "em configuração",
+    owner: overrides.owner?.trim() ?? "",
+    area: overrides.area?.trim() ?? "",
+    createdAt: formatDate(now),
+    revisedAt: formatDate(now),
+    favorite: false,
+    steps: copy.steps,
+    participants: copy.participants,
+    savedAt: now.toISOString(),
+    ...(copy.slaAmount !== undefined ? { slaAmount: copy.slaAmount } : {}),
+    ...(copy.slaUnit ? { slaUnit: copy.slaUnit } : {}),
+    ...(copy.taskSlaAmount !== undefined ? { taskSlaAmount: copy.taskSlaAmount } : {}),
+    ...(copy.taskSlaUnit ? { taskSlaUnit: copy.taskSlaUnit } : {}),
+    versions: [
+      {
+        versionId: versionIdOf(id, 1),
+        number: 1,
+        status: "rascunho",
+        summary: origin
+          ? `Versão inicial criada a partir do template "${origin.templateName}".`
+          : "Versão inicial da definição.",
+        createdAt: now.toISOString(),
+      },
+    ],
+    currentVersionNumber: 1,
+    ...(origin ? { templateOrigin: origin } : {}),
+  };
+
+  state = { ...state, [id]: doc };
+  persist();
+  emit();
+  return doc;
 }
