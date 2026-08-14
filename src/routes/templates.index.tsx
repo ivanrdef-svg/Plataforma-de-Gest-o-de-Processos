@@ -12,6 +12,7 @@ import {
 } from "@/config/template-model";
 import { useWorkflowTemplates, type WorkflowTemplate } from "@/lib/template-store";
 import { useWorkflowDocs } from "@/lib/workflow-store";
+import { UseTemplateDialog } from "@/components/templates/use-template-dialog";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/templates/")({
@@ -207,6 +208,7 @@ function TemplateCard({
   usage: number;
 }) {
   const active = template.status === "ativo";
+  const [useOpen, setUseOpen] = useState(false);
 
   return (
     <article className="group rounded-xl border bg-card p-4 transition-colors hover:border-primary/30">
@@ -255,21 +257,21 @@ function TemplateCard({
           Usado para criar {usage} workflow{usage === 1 ? "" : "s"}
         </p>
         <Button
-          asChild={active}
           size="sm"
           variant={active ? "default" : "outline"}
           className="h-8"
           disabled={!active}
+          onClick={() => setUseOpen(true)}
         >
-          {active ? (
-            <Link to="/templates/$templateId" params={{ templateId: template.id }}>
-              {TEMPLATE_USE_LABEL[template.status]}
-            </Link>
-          ) : (
-            <span>{TEMPLATE_USE_LABEL[template.status]}</span>
-          )}
+          {TEMPLATE_USE_LABEL[template.status]}
         </Button>
       </div>
+
+      <UseTemplateDialog
+        template={template}
+        open={useOpen}
+        onOpenChange={setUseOpen}
+      />
     </article>
   );
 }
