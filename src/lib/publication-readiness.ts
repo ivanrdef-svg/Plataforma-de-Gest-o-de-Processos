@@ -81,14 +81,25 @@ export function publicationReadiness(
   const rules = fromIssues(validation, "regras");
   const sla = fromIssues(validation, "sla");
 
+  /* Build 018.1 — os itens de aprovação/decisão NÃO recalculam a regra:
+     eles apenas filtram as issues já produzidas por validateWorkflow(),
+     usando a etapa (location) como chave estável. */
   const approvals = doc.steps.filter((s) => stepKind(s) === "aprovação");
   const decisions = doc.steps.filter((s) => stepKind(s) === "decisão");
-  const approvalsMissing = approvals.filter(
-    (s) => !(s.approver ?? s.owner ?? "").trim(),
-  ).length;
-  const decisionsMissing = decisions.filter(
-    (s) => decisionOptions(s).filter((o) => o.label.trim()).length < 2,
-  ).length;
+
+  const byLocation = (names: string[]) => {
+    const set = new Set(names.filter(Boolean));
+    const match = (i: (typeof validation.errors)[number]) =>
+      i.source === "regras" && set.has(i.location);
+    return {
+      errors: validation.errors.filter(match).length,
+      warnings: validation.warnings.filter(match).length,
+    };
+  };
+
+  const approvalIssues = byLocation(approvals.map((s) => s.name));
+  const decisionIssues = byLocation(decisions.map((s) => s.name));
+
 
   const version = currentWorkflowVersion(doc);
 
