@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowUpRight,
+  LayoutTemplate,
   Play,
   Plus,
   Search,
@@ -131,6 +132,13 @@ function WorkflowCenter() {
               herda o processo — nunca o substitui.
             </p>
           </div>
+          <div className="flex items-center gap-2">
+          <Button asChild variant="outline" size="sm" className="h-9">
+            <Link to="/templates">
+              <LayoutTemplate className="mr-1.5 h-4 w-4" />
+              Templates
+            </Link>
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="sm" className="h-9">
@@ -162,6 +170,7 @@ function WorkflowCenter() {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
         </header>
 
         <section className="mt-6 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
