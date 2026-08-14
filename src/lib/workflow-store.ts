@@ -131,6 +131,23 @@ export interface WorkflowDoc {
   currentVersionNumber?: number;
   /** Versão publicada vigente — base das novas execuções. */
   publishedVersionNumber?: number;
+  /* --- Build 019: origem em Template (opcional, retrocompatível) --- */
+  /**
+   * Registro histórico de qual Template originou esta definição. Escrito uma
+   * única vez na criação — nunca atualizado depois. Não é uma dependência:
+   * Template e Workflow são totalmente independentes após a criação.
+   */
+  templateOrigin?: WorkflowTemplateOrigin;
+}
+
+/** Build 019 — rastreabilidade da criação a partir de um Template. */
+export interface WorkflowTemplateOrigin {
+  templateId: string;
+  templateName: string;
+  /** Workflow que originou o Template (rastreabilidade, não dependência). */
+  sourceWorkflowId?: string;
+  sourceWorkflowVersion?: number;
+  createdAt: string;
 }
 
 /** Status derivado da validação — NÃO substitui o Lifecycle Engine. */
