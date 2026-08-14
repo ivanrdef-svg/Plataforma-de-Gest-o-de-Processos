@@ -12,7 +12,6 @@ import {
   XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { AppShell } from "@/components/shell/app-shell";
 import { WorkspaceLayout } from "@/components/workspace/workspace-layout";
 import { WorkspaceMeta } from "@/components/workspace/workspace-meta";
 import { EmptyState } from "@/components/layout/page";
@@ -76,15 +75,13 @@ function TemplateWorkspace() {
 
   if (!template) {
     return (
-      <AppShell>
-        <div className="p-10">
+      <div className="p-10">
           <EmptyState
             icon={<LayoutTemplate className="h-5 w-5" />}
             title="Template não encontrado"
             description="Volte ao Template Center para escolher outro modelo."
-          />
-        </div>
-      </AppShell>
+        />
+      </div>
     );
   }
 
@@ -142,7 +139,7 @@ function TemplateWorkspace() {
   };
 
   return (
-    <AppShell>
+    <>
       <WorkspaceLayout
         title={template.name}
         subtitle={template.description}
@@ -341,7 +338,7 @@ function TemplateWorkspace() {
         open={editing}
         onOpenChange={setEditing}
       />
-    </AppShell>
+    </>
   );
 }
 

@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronLeft, LayoutTemplate, Search } from "lucide-react";
-import { toast } from "sonner";
 import { AppShell } from "@/components/shell/app-shell";
 import { EmptyState } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
@@ -276,11 +275,4 @@ function TemplateCard({
       </div>
     </article>
   );
-}
-
-/** Mantido para uso futuro do fluxo de criação (Etapa 3). */
-export function templateUnavailableToast() {
-  toast("Uso de template", {
-    description: "O fluxo de criação a partir do template chega na próxima etapa.",
-  });
 }
