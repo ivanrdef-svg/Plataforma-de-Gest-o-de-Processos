@@ -457,9 +457,16 @@ export function startInstanceFromWorkflow(doc: WorkflowDoc): WorkflowInstance {
   const originVersion = publishedWorkflowVersion(doc) ?? currentWorkflowVersion(doc);
 
   /* Fonte de verdade da execução: conteúdo congelado da versão publicada. */
-  const source: WorkflowDoc = originVersion?.content
-    ? { ...doc, ...originVersion.content }
-    : doc;
+  let source: WorkflowDoc = doc;
+  const frozen = originVersion?.content;
+  if (frozen) {
+    const merged: WorkflowDoc = { ...doc };
+    delete merged.slaAmount;
+    delete merged.slaUnit;
+    delete merged.taskSlaAmount;
+    delete merged.taskSlaUnit;
+    source = { ...merged, ...frozen };
+  }
 
   const docInstanceSpec = instanceSpecOf(source);
   const docTaskSpec = defaultTaskSpecOf(source);
