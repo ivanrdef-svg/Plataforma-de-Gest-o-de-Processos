@@ -30,6 +30,7 @@ import { Route as PopIndexRouteImport } from './routes/pop.index'
 import { Route as PopPopIdRouteImport } from './routes/pop.$popId'
 import { Route as ProcessosIndexRouteImport } from './routes/processos.index'
 import { Route as ProcessosProcessIdRouteImport } from './routes/processos.$processId'
+import { Route as TemplatesIndexRouteImport } from './routes/templates.index'
 import { Route as WorkflowIndexRouteImport } from './routes/workflow.index'
 import { Route as WorkflowWorkflowIdRouteImport } from './routes/workflow.$workflowId'
 import { Route as WorkspacesIndexRouteImport } from './routes/workspaces.index'
@@ -140,6 +141,11 @@ const ProcessosProcessIdRoute = ProcessosProcessIdRouteImport.update({
   path: '/$processId',
   getParentRoute: () => ProcessosRoute,
 } as any)
+const TemplatesIndexRoute = TemplatesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => TemplatesRoute,
+} as any)
 const WorkflowIndexRoute = WorkflowIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -171,7 +177,7 @@ export interface FileRoutesByFullPath {
   '/knowledge': typeof KnowledgeRouteWithChildren
   '/pop': typeof PopRouteWithChildren
   '/processos': typeof ProcessosRouteWithChildren
-  '/templates': typeof TemplatesRoute
+  '/templates': typeof TemplatesRouteWithChildren
   '/workflow': typeof WorkflowRouteWithChildren
   '/workspaces': typeof WorkspacesRouteWithChildren
   '/execucao/$instanceId': typeof ExecucaoInstanceIdRoute
@@ -185,6 +191,7 @@ export interface FileRoutesByFullPath {
   '/knowledge/': typeof KnowledgeIndexRoute
   '/pop/': typeof PopIndexRoute
   '/processos/': typeof ProcessosIndexRoute
+  '/templates/': typeof TemplatesIndexRoute
   '/workflow/': typeof WorkflowIndexRoute
   '/workspaces/': typeof WorkspacesIndexRoute
 }
@@ -193,7 +200,6 @@ export interface FileRoutesByTo {
   '/administracao': typeof AdministracaoRoute
   '/favoritos': typeof FavoritosRoute
   '/inbox': typeof InboxRoute
-  '/templates': typeof TemplatesRoute
   '/execucao/$instanceId': typeof ExecucaoInstanceIdRoute
   '/knowledge/$packageId': typeof KnowledgePackageIdRoute
   '/pop/$popId': typeof PopPopIdRoute
@@ -205,6 +211,7 @@ export interface FileRoutesByTo {
   '/knowledge': typeof KnowledgeIndexRoute
   '/pop': typeof PopIndexRoute
   '/processos': typeof ProcessosIndexRoute
+  '/templates': typeof TemplatesIndexRoute
   '/workflow': typeof WorkflowIndexRoute
   '/workspaces': typeof WorkspacesIndexRoute
 }
@@ -219,7 +226,7 @@ export interface FileRoutesById {
   '/knowledge': typeof KnowledgeRouteWithChildren
   '/pop': typeof PopRouteWithChildren
   '/processos': typeof ProcessosRouteWithChildren
-  '/templates': typeof TemplatesRoute
+  '/templates': typeof TemplatesRouteWithChildren
   '/workflow': typeof WorkflowRouteWithChildren
   '/workspaces': typeof WorkspacesRouteWithChildren
   '/execucao/$instanceId': typeof ExecucaoInstanceIdRoute
@@ -233,6 +240,7 @@ export interface FileRoutesById {
   '/knowledge/': typeof KnowledgeIndexRoute
   '/pop/': typeof PopIndexRoute
   '/processos/': typeof ProcessosIndexRoute
+  '/templates/': typeof TemplatesIndexRoute
   '/workflow/': typeof WorkflowIndexRoute
   '/workspaces/': typeof WorkspacesIndexRoute
 }
@@ -262,6 +270,7 @@ export interface FileRouteTypes {
     | '/knowledge/'
     | '/pop/'
     | '/processos/'
+    | '/templates/'
     | '/workflow/'
     | '/workspaces/'
   fileRoutesByTo: FileRoutesByTo
@@ -270,7 +279,6 @@ export interface FileRouteTypes {
     | '/administracao'
     | '/favoritos'
     | '/inbox'
-    | '/templates'
     | '/execucao/$instanceId'
     | '/knowledge/$packageId'
     | '/pop/$popId'
@@ -282,6 +290,7 @@ export interface FileRouteTypes {
     | '/knowledge'
     | '/pop'
     | '/processos'
+    | '/templates'
     | '/workflow'
     | '/workspaces'
   id:
@@ -309,6 +318,7 @@ export interface FileRouteTypes {
     | '/knowledge/'
     | '/pop/'
     | '/processos/'
+    | '/templates/'
     | '/workflow/'
     | '/workspaces/'
   fileRoutesById: FileRoutesById
@@ -323,7 +333,7 @@ export interface RootRouteChildren {
   KnowledgeRoute: typeof KnowledgeRouteWithChildren
   PopRoute: typeof PopRouteWithChildren
   ProcessosRoute: typeof ProcessosRouteWithChildren
-  TemplatesRoute: typeof TemplatesRoute
+  TemplatesRoute: typeof TemplatesRouteWithChildren
   WorkflowRoute: typeof WorkflowRouteWithChildren
   WorkspacesRoute: typeof WorkspacesRouteWithChildren
 }
@@ -477,6 +487,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProcessosProcessIdRouteImport
       parentRoute: typeof ProcessosRoute
     }
+    '/templates/': {
+      id: '/templates/'
+      path: '/'
+      fullPath: '/templates/'
+      preLoaderRoute: typeof TemplatesIndexRouteImport
+      parentRoute: typeof TemplatesRoute
+    }
     '/workflow/': {
       id: '/workflow/'
       path: '/'
@@ -574,6 +591,18 @@ const ProcessosRouteWithChildren = ProcessosRoute._addFileChildren(
   ProcessosRouteChildren,
 )
 
+interface TemplatesRouteChildren {
+  TemplatesIndexRoute: typeof TemplatesIndexRoute
+}
+
+const TemplatesRouteChildren: TemplatesRouteChildren = {
+  TemplatesIndexRoute: TemplatesIndexRoute,
+}
+
+const TemplatesRouteWithChildren = TemplatesRoute._addFileChildren(
+  TemplatesRouteChildren,
+)
+
 interface WorkflowRouteChildren {
   WorkflowWorkflowIdRoute: typeof WorkflowWorkflowIdRoute
   WorkflowIndexRoute: typeof WorkflowIndexRoute
@@ -612,7 +641,7 @@ const rootRouteChildren: RootRouteChildren = {
   KnowledgeRoute: KnowledgeRouteWithChildren,
   PopRoute: PopRouteWithChildren,
   ProcessosRoute: ProcessosRouteWithChildren,
-  TemplatesRoute: TemplatesRoute,
+  TemplatesRoute: TemplatesRouteWithChildren,
   WorkflowRoute: WorkflowRouteWithChildren,
   WorkspacesRoute: WorkspacesRouteWithChildren,
 }
