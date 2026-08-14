@@ -12,6 +12,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { UseTemplateDialog } from "@/components/templates/use-template-dialog";
 import { WorkspaceLayout } from "@/components/workspace/workspace-layout";
 import { WorkspaceMeta } from "@/components/workspace/workspace-meta";
 import { EmptyState } from "@/components/layout/page";
@@ -72,6 +73,7 @@ function TemplateWorkspace() {
   const workflows = useWorkflowDocs();
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
+  const [useOpen, setUseOpen] = useState(false);
 
   if (!template) {
     return (
@@ -190,12 +192,7 @@ function TemplateWorkspace() {
                 <Button
                   size="sm"
                   className="h-8"
-                  onClick={() =>
-                    toast("Usar Template", {
-                      description:
-                        "O fluxo de criação de workflow a partir do template chega na próxima etapa.",
-                    })
-                  }
+                  onClick={() => setUseOpen(true)}
                 >
                   <Play className="mr-1.5 h-3.5 w-3.5" />
                   Usar Template
