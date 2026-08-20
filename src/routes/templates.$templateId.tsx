@@ -335,6 +335,12 @@ function TemplateWorkspace() {
         open={editing}
         onOpenChange={setEditing}
       />
+
+      <UseTemplateDialog
+        template={template}
+        open={useOpen}
+        onOpenChange={setUseOpen}
+      />
     </>
   );
 }
