@@ -1,17 +1,25 @@
 /**
  * Build 007 — armazenamento local dos diagramas BPM.
+ * Build 020 — diagrama editorial autônomo.
  *
- * Mesmo padrão dos demais stores (knowledge, pop, process, relationships):
- * persistência temporária em localStorage. Store adicional — nada existente
- * é substituído. A origem da informação continua sendo o Processo.
+ * A partir da Build 020 o diagrama deixa de ser uma projeção descartável do
+ * Processo: ele é gerado uma única vez (quando ainda não existe) e depois
+ * pertence ao usuário. Nada regenera nem sobrescreve o desenho existente de
+ * forma automática — a sincronização com o Processo é aditiva.
+ *
+ * Persistência temporária em localStorage, mesmo padrão dos demais stores.
  */
 
 import { useSyncExternalStore } from "react";
 import {
   generateDiagramFromProcess,
+  nodeSizeFor,
   processSignature,
   type BpmDiagram,
+  type BpmEdge,
+  type BpmEdgeKind,
   type BpmNode,
+  type BpmNodeKind,
 } from "@/config/bpm-model";
 import type { ProcessDoc } from "@/lib/process-store";
 
@@ -22,6 +30,10 @@ type StoreState = Record<string, BpmDiagram>;
 let state: StoreState = {};
 let hydrated = false;
 const listeners = new Set<() => void>();
+
+function rid(prefix: string) {
+  return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
+}
 
 function ensureHydrated() {
   if (hydrated || typeof window === "undefined") return;
@@ -72,46 +84,195 @@ export function useBpmDiagram(processId: string): BpmDiagram | undefined {
   return useDiagrams()[processId];
 }
 
-/** Gera (ou regenera) o diagrama a partir da estrutura do Processo. */
-export function regenerateDiagram(doc: ProcessDoc): BpmDiagram {
-  ensureHydrated();
-  const fresh = generateDiagramFromProcess(doc);
-  const previous = state[doc.id];
-
-  // Preserva refinamentos manuais (observações) por etapa de origem.
-  if (previous) {
-    const notesByKey = new Map(
-      previous.nodes.map((n) => [n.stepId ?? n.id, n.notes]),
-    );
-    fresh.nodes = fresh.nodes.map((n) => ({
-      ...n,
-      notes: notesByKey.get(n.stepId ?? n.id) ?? n.notes,
-    }));
-  }
-
-  state = { ...state, [doc.id]: fresh };
+function write(processId: string, next: BpmDiagram) {
+  state = { ...state, [processId]: next };
   persist();
   emit();
+}
+
+/**
+ * Geração inicial do diagrama. Só deve ser usada quando ainda NÃO existe
+ * desenho para o Processo (ver `ensureDiagram`) ou como ação explícita e
+ * consciente de "reconstruir do zero" acionada pelo usuário.
+ *
+ * Build 020: nada no store chama esta função automaticamente sobre um
+ * diagrama existente.
+ */
+export function rebuildDiagramFromProcess(doc: ProcessDoc): BpmDiagram {
+  ensureHydrated();
+  const fresh = generateDiagramFromProcess(doc);
+  write(doc.id, fresh);
   return fresh;
 }
 
-/** Garante que exista um diagrama para o processo, sem regenerar se já houver. */
+/**
+ * Garante que exista um diagrama para o Processo.
+ * Se já existir, retorna exatamente o que está salvo — sem tocar em nada.
+ */
 export function ensureDiagram(doc: ProcessDoc): BpmDiagram {
   ensureHydrated();
   const current = state[doc.id];
-  // Build 008 — diagramas gerados antes da geração inteligente não possuem
-  // `issues`: nesse caso o fluxo é regerado a partir do modelo do Processo.
-  if (current && Array.isArray(current.issues)) return current;
-  return regenerateDiagram(doc);
+  if (current) return current;
+  return rebuildDiagramFromProcess(doc);
 }
 
-/** true quando as etapas do Processo mudaram depois da última geração. */
-export function isDiagramStale(doc: ProcessDoc, diagram?: BpmDiagram) {
-  if (!diagram) return true;
-  return diagram.signature !== processSignature(doc);
+/**
+ * Etapas do Processo que ainda não estão representadas no diagrama.
+ * Substitui `isDiagramStale`: comparação simples por `stepId`, sem diff de
+ * conteúdo e sem qualquer efeito destrutivo.
+ */
+export function pendingProcessChanges(
+  doc: ProcessDoc,
+  diagram?: BpmDiagram,
+): { count: number; stepIds: string[] } {
+  if (!diagram) return { count: doc.steps.length, stepIds: doc.steps.map((s) => s.id) };
+  const present = new Set(
+    diagram.nodes.map((n) => n.stepId).filter(Boolean) as string[],
+  );
+  const stepIds = doc.steps.filter((s) => !present.has(s.id)).map((s) => s.id);
+  return { count: stepIds.length, stepIds };
 }
 
-/** Atualiza um nó (posição no canvas ou refinamento manual). */
+/** Próxima posição livre à direita do diagrama, para nós novos. */
+function nextFreeSlot(diagram: BpmDiagram, index: number, kind: BpmNodeKind) {
+  const size = nodeSizeFor(kind);
+  const maxX = diagram.nodes.length
+    ? Math.max(...diagram.nodes.map((n) => n.x + n.width))
+    : 0;
+  const minY = diagram.nodes.length
+    ? Math.min(...diagram.nodes.map((n) => n.y))
+    : 0;
+  return {
+    x: maxX + 96,
+    y: minY + index * (size.height + 40),
+  };
+}
+
+/**
+ * Sincronização ADITIVA com o Processo.
+ *
+ * Cria nós para etapas que ainda não existem no diagrama e, quando é possível
+ * inferir, uma aresta de sequência a partir da etapa anterior já representada.
+ * Nunca remove, reposiciona ou sobrescreve nós/arestas existentes, nem toca em
+ * `notes`.
+ */
+export function syncDiagramWithProcess(doc: ProcessDoc): BpmDiagram {
+  ensureHydrated();
+  const current = state[doc.id];
+  if (!current) return rebuildDiagramFromProcess(doc);
+
+  const { stepIds } = pendingProcessChanges(doc, current);
+  if (!stepIds.length) return current;
+
+  const nodeByStep = new Map<string, string>();
+  current.nodes.forEach((n) => {
+    if (n.stepId) nodeByStep.set(n.stepId, n.id);
+  });
+
+  const nodes: BpmNode[] = [...current.nodes];
+  const edges: BpmEdge[] = [...current.edges];
+
+  stepIds.forEach((stepId, index) => {
+    const step = doc.steps.find((s) => s.id === stepId);
+    if (!step) return;
+
+    const kind: BpmNodeKind =
+      step.type === "decisao"
+        ? "gateway"
+        : step.type === "aprovacao"
+          ? "approval"
+          : "task";
+    const size = nodeSizeFor(kind);
+    const pos = nextFreeSlot(current, index, kind);
+    const id = rid("node");
+
+    nodes.push({
+      id,
+      kind,
+      stepId: step.id,
+      stepType: step.type ?? "atividade",
+      name: step.name || "Nova etapa",
+      description: step.description,
+      owner: step.owner,
+      duration: step.duration,
+      notes: step.notes,
+      inputs: step.inputs,
+      outputs: step.outputs,
+      issues: [],
+      width: size.width,
+      height: size.height,
+      x: pos.x,
+      y: pos.y,
+    });
+    nodeByStep.set(step.id, id);
+
+    // Liga à etapa anterior do Processo, quando ela já está no diagrama.
+    const position = doc.steps.findIndex((s) => s.id === step.id);
+    const previous = position > 0 ? doc.steps[position - 1] : undefined;
+    const sourceId = previous ? nodeByStep.get(previous.id) : undefined;
+    if (sourceId && sourceId !== id) {
+      const duplicate = edges.some(
+        (e) => e.source === sourceId && e.target === id,
+      );
+      if (!duplicate) {
+        edges.push({
+          id: rid("edge"),
+          kind: "sequence",
+          variant: "flow",
+          source: sourceId,
+          target: id,
+        });
+      }
+    }
+  });
+
+  const next: BpmDiagram = { ...current, nodes, edges };
+  write(doc.id, next);
+  return next;
+}
+
+/** Cria um nó editorial (sem `stepId`) na posição informada. */
+export function addManualNode(
+  processId: string,
+  kind: BpmNodeKind,
+  position: { x: number; y: number },
+): BpmNode | undefined {
+  ensureHydrated();
+  const diagram = state[processId];
+  if (!diagram) return undefined;
+
+  const size = nodeSizeFor(kind);
+  const node: BpmNode = {
+    id: rid("node"),
+    kind,
+    manual: true,
+    name:
+      kind === "start"
+        ? "Início"
+        : kind === "end"
+          ? "Fim"
+          : kind === "gateway"
+            ? "Decisão"
+            : "Nova atividade",
+    description: "",
+    owner: "",
+    duration: "",
+    notes: "",
+    issues: [],
+    width: size.width,
+    height: size.height,
+    x: Math.round(position.x - size.width / 2),
+    y: Math.round(position.y - size.height / 2),
+  };
+
+  write(processId, { ...diagram, nodes: [...diagram.nodes, node] });
+  return node;
+}
+
+/**
+ * Atualiza propriedades de um nó (posição, notas, nome, descrição,
+ * responsável…). Mantém a assinatura anterior de `updateBpmNode`.
+ */
 export function updateBpmNode(
   processId: string,
   nodeId: string,
@@ -120,15 +281,73 @@ export function updateBpmNode(
   ensureHydrated();
   const diagram = state[processId];
   if (!diagram) return;
-  state = {
-    ...state,
-    [processId]: {
-      ...diagram,
-      nodes: diagram.nodes.map((n) =>
-        n.id === nodeId ? { ...n, ...patch } : n,
-      ),
-    },
+  write(processId, {
+    ...diagram,
+    nodes: diagram.nodes.map((n) => (n.id === nodeId ? { ...n, ...patch } : n)),
+  });
+}
+
+/** Alias explícito para edição de propriedades editoriais. */
+export const updateNodeProperties = updateBpmNode;
+
+/** Remove um nó e todas as arestas conectadas a ele. */
+export function removeNode(processId: string, nodeId: string) {
+  ensureHydrated();
+  const diagram = state[processId];
+  if (!diagram) return;
+  write(processId, {
+    ...diagram,
+    nodes: diagram.nodes.filter((n) => n.id !== nodeId),
+    edges: diagram.edges.filter(
+      (e) => e.source !== nodeId && e.target !== nodeId,
+    ),
+  });
+}
+
+/** Cria uma conexão manual entre dois nós existentes. */
+export function addEdge(
+  processId: string,
+  sourceId: string,
+  targetId: string,
+  kind: BpmEdgeKind = "sequence",
+): BpmEdge | undefined {
+  ensureHydrated();
+  const diagram = state[processId];
+  if (!diagram) return undefined;
+  if (sourceId === targetId) return undefined;
+
+  const has = (id: string) => diagram.nodes.some((n) => n.id === id);
+  if (!has(sourceId) || !has(targetId)) return undefined;
+
+  const duplicate = diagram.edges.some(
+    (e) => e.source === sourceId && e.target === targetId && e.kind === kind,
+  );
+  if (duplicate) return undefined;
+
+  const edge: BpmEdge = {
+    id: rid("edge"),
+    kind,
+    variant: kind === "sequence" ? "flow" : "dependency",
+    source: sourceId,
+    target: targetId,
+    manual: true,
   };
-  persist();
-  emit();
+  write(processId, { ...diagram, edges: [...diagram.edges, edge] });
+  return edge;
+}
+
+/** Remove apenas a aresta indicada. */
+export function removeEdge(processId: string, edgeId: string) {
+  ensureHydrated();
+  const diagram = state[processId];
+  if (!diagram) return;
+  write(processId, {
+    ...diagram,
+    edges: diagram.edges.filter((e) => e.id !== edgeId),
+  });
+}
+
+/** Assinatura atual do modelo — informativa (não dispara regeneração). */
+export function currentProcessSignature(doc: ProcessDoc) {
+  return processSignature(doc);
 }
