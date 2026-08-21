@@ -42,10 +42,12 @@ export interface BpmIssue {
 export interface BpmNode {
   id: string;
   kind: BpmNodeKind;
-  /** Etapa de origem no Processo (quando o nó representa uma etapa). */
+  /** Etapa de origem no Processo. Ausente em nós editoriais (criados à mão). */
   stepId?: string;
   /** Tipo da etapa no modelo do Processo (Build 007). */
   stepType?: ProcessStepTypeId;
+  /** Build 020 — true quando o nó foi criado manualmente no diagrama. */
+  manual?: boolean;
   name: string;
   description: string;
   owner: string;
@@ -72,6 +74,8 @@ export interface BpmEdge {
   label?: string;
   /** `flow` = sequência do processo; `dependency` = dependência declarada. */
   variant?: "flow" | "dependency";
+  /** Build 020 — true quando a conexão foi criada manualmente. */
+  manual?: boolean;
 }
 
 /** Pools e lanes do diagrama (derivadas dos participantes). */
@@ -82,7 +86,10 @@ export interface BpmLane {
 
 export interface BpmDiagram {
   processId: string;
-  /** Assinatura do modelo usada para detectar diagrama desatualizado. */
+  /**
+   * Build 020 — assinatura do modelo no momento da geração inicial.
+   * Uso apenas informativo/histórico: NÃO dispara mais regeneração destrutiva.
+   */
   signature: string;
   nodes: BpmNode[];
   edges: BpmEdge[];
@@ -91,6 +98,15 @@ export interface BpmDiagram {
   issues: BpmIssue[];
   generatedAt: string;
 }
+
+/** Tamanho padrão de um nó por tipo (usado também na criação manual). */
+export function nodeSizeFor(kind: BpmNodeKind) {
+  if (kind === "gateway") return NODE_SIZE.gateway;
+  if (kind === "start" || kind === "end" || kind === "event")
+    return NODE_SIZE.event;
+  return NODE_SIZE.task;
+}
+
 
 export const NODE_SIZE = {
   task: { width: 208, height: 88 },
