@@ -92,7 +92,10 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
   }, [fullscreen, showSource, showProps]);
 
 
-  const stale = useMemo(() => isDiagramStale(doc, diagram), [doc, diagram]);
+  const stale = useMemo(
+    () => pendingProcessChanges(doc, diagram).count > 0,
+    [doc, diagram],
+  );
   const issues = useMemo(
     () =>
       diagram
@@ -104,10 +107,9 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
     diagram?.nodes.find((n) => n.id === selectedId) ?? null;
 
   const regenerate = () => {
-    regenerateDiagram(doc);
-    setSelectedId(null);
+    syncDiagramWithProcess(doc);
     toast.success("Diagrama atualizado", {
-      description: "O fluxo foi regerado a partir das etapas do Processo.",
+      description: "As novas etapas do Processo foram adicionadas ao fluxo.",
     });
   };
 
