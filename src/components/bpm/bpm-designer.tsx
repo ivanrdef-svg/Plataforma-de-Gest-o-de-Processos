@@ -22,8 +22,8 @@ import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   ensureDiagram,
-  isDiagramStale,
-  regenerateDiagram,
+  pendingProcessChanges,
+  syncDiagramWithProcess,
   updateBpmNode,
   useBpmDiagram,
 } from "@/lib/bpm-store";
