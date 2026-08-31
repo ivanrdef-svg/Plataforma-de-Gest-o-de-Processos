@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Download,
   Maximize2,
@@ -12,6 +12,14 @@ import {
   PanelRight,
   Map as MapIcon,
   AlertTriangle,
+  Plus,
+  Spline,
+  Trash2,
+  CircleDot,
+  Flag,
+  GitBranch,
+  Square,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { BpmCanvas, type BpmCanvasHandle } from "@/components/bpm/bpm-canvas";
@@ -21,34 +29,58 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  addEdge,
+  addManualNode,
   ensureDiagram,
   pendingProcessChanges,
+  removeEdge,
+  removeNode,
   syncDiagramWithProcess,
   updateBpmNode,
+  updateNodeProperties,
   useBpmDiagram,
 } from "@/lib/bpm-store";
-import { diagramIssueSummary } from "@/config/bpm-model";
+import { diagramIssueSummary, type BpmNodeKind } from "@/config/bpm-model";
 import type { ProcessDoc } from "@/lib/process-store";
 import { cn } from "@/lib/utils";
 
 /**
  * Build 007 — BPM Designer.
- *
- * Três áreas: painel esquerdo (dados do Processo), canvas central (fluxo
- * derivado automaticamente) e painel direito (propriedades do elemento).
- * Não há motor BPMN, validação nem execução nesta build.
+ * Build 020 — edição editorial: criar elementos, conectar, excluir e editar
+ * propriedades diretamente no diagrama. Nada aqui reconstrói o diagrama de
+ * forma destrutiva; a persistência é automática pelo store (localStorage).
  */
+
+const CREATE_OPTIONS: {
+  kind: BpmNodeKind;
+  label: string;
+  icon: typeof ZoomIn;
+}[] = [
+  { kind: "start", label: "Evento de início", icon: CircleDot },
+  { kind: "task", label: "Atividade", icon: Square },
+  { kind: "gateway", label: "Decisão", icon: GitBranch },
+  { kind: "end", label: "Evento de fim", icon: Flag },
+];
 
 function ToolButton({
   label,
   icon: Icon,
   onClick,
   active,
+  disabled,
 }: {
   label: string;
   icon: typeof ZoomIn;
   onClick: () => void;
   active?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <Tooltip>
@@ -59,6 +91,7 @@ function ToolButton({
           size="sm"
           aria-label={label}
           onClick={onClick}
+          disabled={disabled}
           className={cn("h-8 w-8 p-0", active && "text-primary")}
         >
           <Icon className="h-4 w-4" />
@@ -72,11 +105,15 @@ function ToolButton({
 export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
   const diagram = useBpmDiagram(doc.id);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [fullscreen, setFullscreen] = useState(false);
   const [showSource, setShowSource] = useState(true);
   const [showProps, setShowProps] = useState(true);
   const [showMinimap, setShowMinimap] = useState(true);
+  const [creatingKind, setCreatingKind] = useState<BpmNodeKind | null>(null);
+  const [connecting, setConnecting] = useState(false);
+  const [connectSourceId, setConnectSourceId] = useState<string | null>(null);
   const canvasRef = useRef<BpmCanvasHandle>(null);
 
   // Gera o fluxo inicial automaticamente ao abrir o Processo.
@@ -92,10 +129,11 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
   }, [fullscreen, showSource, showProps]);
 
 
-  const stale = useMemo(
-    () => pendingProcessChanges(doc, diagram).count > 0,
+  const pending = useMemo(
+    () => pendingProcessChanges(doc, diagram),
     [doc, diagram],
   );
+  const stale = pending.count > 0;
   const issues = useMemo(
     () =>
       diagram
@@ -105,12 +143,98 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
   );
   const selected =
     diagram?.nodes.find((n) => n.id === selectedId) ?? null;
+  const selectedEdge =
+    diagram?.edges.find((e) => e.id === selectedEdgeId) ?? null;
 
   const regenerate = () => {
     syncDiagramWithProcess(doc);
     toast.success("Diagrama atualizado", {
       description: "As novas etapas do Processo foram adicionadas ao fluxo.",
     });
+  };
+
+  const cancelModes = useCallback(() => {
+    setCreatingKind(null);
+    setConnecting(false);
+    setConnectSourceId(null);
+  }, []);
+
+  const deleteSelectedNode = useCallback(() => {
+    if (!selectedId) return;
+    removeNode(doc.id, selectedId);
+    setSelectedId(null);
+    toast.success("Elemento removido do diagrama.");
+  }, [doc.id, selectedId]);
+
+  const deleteSelectedEdge = useCallback(() => {
+    if (!selectedEdgeId) return;
+    removeEdge(doc.id, selectedEdgeId);
+    setSelectedEdgeId(null);
+    toast.success("Conexão removida.");
+  }, [doc.id, selectedEdgeId]);
+
+  // Delete/Backspace — com guarda de foco em campos de texto.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        cancelModes();
+        return;
+      }
+      if (e.key !== "Delete" && e.key !== "Backspace") return;
+      const el = document.activeElement as HTMLElement | null;
+      if (
+        el &&
+        (el.tagName === "INPUT" ||
+          el.tagName === "TEXTAREA" ||
+          el.isContentEditable)
+      )
+        return;
+      if (selectedEdgeId) {
+        e.preventDefault();
+        deleteSelectedEdge();
+      } else if (selectedId) {
+        e.preventDefault();
+        deleteSelectedNode();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [
+    selectedId,
+    selectedEdgeId,
+    deleteSelectedNode,
+    deleteSelectedEdge,
+    cancelModes,
+  ]);
+
+  const handleCreateAt = (point: { x: number; y: number }) => {
+    if (!creatingKind) return;
+    const node = addManualNode(doc.id, creatingKind, point);
+    setCreatingKind(null);
+    if (node) {
+      setSelectedEdgeId(null);
+      setSelectedId(node.id);
+      toast.success("Elemento adicionado ao diagrama.");
+    }
+  };
+
+  const handleConnectPick = (nodeId: string) => {
+    if (!connectSourceId) {
+      setConnectSourceId(nodeId);
+      return;
+    }
+    const edge = addEdge(doc.id, connectSourceId, nodeId);
+    if (!edge) {
+      toast.error("Conexão não criada", {
+        description:
+          "Não é possível conectar um elemento a ele mesmo nem duplicar uma conexão existente.",
+      });
+    } else {
+      setSelectedEdgeId(edge.id);
+      setSelectedId(null);
+    }
+    setConnecting(false);
+    setConnectSourceId(null);
   };
 
   if (!diagram) {
@@ -120,6 +244,7 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
       </div>
     );
   }
+
 
   return (
     <div
