@@ -300,7 +300,68 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
 
         <Separator orientation="vertical" className="h-5" />
 
-        <ToolButton label="Atualizar diagrama" icon={RefreshCw} onClick={regenerate} />
+        {/* Build 020 — criação de elementos */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              aria-label="Adicionar elemento"
+              className={cn("h-8 gap-1.5 px-2 text-xs", creatingKind && "text-primary")}
+            >
+              <Plus className="h-4 w-4" />
+              Adicionar
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-52">
+            <DropdownMenuLabel className="text-[11px] text-muted-foreground">
+              Clique no canvas para posicionar
+            </DropdownMenuLabel>
+            {CREATE_OPTIONS.map((opt) => (
+              <DropdownMenuItem
+                key={opt.kind}
+                onSelect={() => {
+                  setConnecting(false);
+                  setConnectSourceId(null);
+                  setCreatingKind(opt.kind);
+                }}
+                className="gap-2 text-xs"
+              >
+                <opt.icon className="h-3.5 w-3.5" />
+                {opt.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <ToolButton
+          label={connecting ? "Cancelar conexão" : "Conectar elementos"}
+          icon={Spline}
+          active={connecting}
+          onClick={() => {
+            setCreatingKind(null);
+            setConnectSourceId(null);
+            setConnecting((v) => !v);
+          }}
+        />
+        <ToolButton
+          label="Excluir selecionado"
+          icon={Trash2}
+          disabled={!selectedId && !selectedEdgeId}
+          onClick={() =>
+            selectedEdgeId ? deleteSelectedEdge() : deleteSelectedNode()
+          }
+        />
+
+        <Separator orientation="vertical" className="h-5" />
+
+        <ToolButton
+          label="Atualizar a partir do Processo"
+          icon={RefreshCw}
+          onClick={regenerate}
+        />
+
         <ToolButton
           label="Exportar (em breve)"
           icon={Download}
