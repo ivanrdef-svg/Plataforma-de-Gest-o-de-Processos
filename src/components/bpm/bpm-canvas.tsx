@@ -309,9 +309,14 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
         ref={containerRef}
         className={cn(
           "relative h-full w-full overflow-hidden rounded-xl border bg-[radial-gradient(var(--bpm-dot)_1px,transparent_1px)] [background-size:22px_22px]",
-          panning ? "cursor-grabbing" : "cursor-grab",
+          creating || connecting
+            ? "cursor-crosshair"
+            : panning
+              ? "cursor-grabbing"
+              : "cursor-grab",
           className,
         )}
+
         style={
           {
             "--bpm-dot": "color-mix(in oklch, var(--border) 75%, transparent)",
