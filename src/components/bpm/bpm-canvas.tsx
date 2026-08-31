@@ -375,16 +375,37 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
                 ? Math.min(a.y, b.y) - 26
                 : (y1 + y2) / 2 - 8;
 
+              const isSelected = selectedEdgeId === edge.id;
+
               return (
                 <g key={edge.id}>
+                  {/* Área de clique invisível — não altera o visual da linha. */}
                   <path
                     d={d}
                     fill="none"
+                    stroke="transparent"
+                    strokeWidth={14}
+                    className="cursor-pointer"
+                    onPointerDown={(e) => {
+                      if (creating || connecting) return;
+                      e.stopPropagation();
+                      onSelectEdge?.(edge.id);
+                      onSelect(null);
+                    }}
+                  />
+                  <path
+                    d={d}
+                    fill="none"
+                    pointerEvents="none"
                     stroke={
-                      dependency ? "var(--primary)" : "var(--muted-foreground)"
+                      isSelected
+                        ? "var(--primary)"
+                        : dependency
+                          ? "var(--primary)"
+                          : "var(--muted-foreground)"
                     }
-                    strokeOpacity={dependency ? 0.45 : 0.5}
-                    strokeWidth={1.5}
+                    strokeOpacity={isSelected ? 1 : dependency ? 0.45 : 0.5}
+                    strokeWidth={isSelected ? 3 : 1.5}
                     strokeDasharray={dependency ? "5 4" : undefined}
                     markerEnd="url(#bpm-arrow)"
                   />
@@ -393,6 +414,7 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
                       x={labelX}
                       y={labelY}
                       textAnchor="middle"
+                      pointerEvents="none"
                       className="fill-muted-foreground text-[10px]"
                     >
                       {edge.label}
@@ -401,6 +423,21 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
                 </g>
               );
             })}
+
+            {/* Feedback do modo de conexão: linha tracejada até o cursor. */}
+            {connecting && connectSource && cursor && (
+              <line
+                x1={connectSource.x + connectSource.width}
+                y1={connectSource.y + connectSource.height / 2}
+                x2={cursor.x}
+                y2={cursor.y}
+                stroke="var(--primary)"
+                strokeWidth={1.5}
+                strokeDasharray="6 4"
+                pointerEvents="none"
+              />
+            )}
+
 
             {diagram.nodes.map((node) => (
               <BpmNodeShape
