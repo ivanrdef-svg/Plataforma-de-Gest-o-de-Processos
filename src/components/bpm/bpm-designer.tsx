@@ -391,15 +391,39 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
         </div>
       </div>
 
-      {/* Aviso de diagrama desatualizado */}
+      {/* Modo ativo (criação/conexão) */}
+      {(creatingKind || connecting) && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-muted/40 px-3 py-2">
+          <p className="text-[11px] text-muted-foreground">
+            {creatingKind
+              ? "Clique no canvas para posicionar o novo elemento."
+              : connectSourceId
+                ? "Agora clique no elemento de destino da conexão."
+                : "Clique no elemento de origem da conexão."}
+          </p>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="ml-auto h-7 gap-1.5 text-xs"
+            onClick={cancelModes}
+          >
+            <X className="h-3.5 w-3.5" />
+            Cancelar
+          </Button>
+        </div>
+      )}
+
+      {/* Etapas do Processo ainda não representadas no diagrama */}
       {stale && (
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2">
           <p className="text-[11px] text-muted-foreground">
-            As etapas do Processo mudaram desde a última geração do diagrama.
+            {pending.count} {pending.count === 1 ? "etapa" : "etapas"} do
+            Processo ainda {pending.count === 1 ? "não está" : "não estão"} no
+            BPMN.
           </p>
           <Button size="sm" className="ml-auto h-7 gap-1.5 text-xs" onClick={regenerate}>
             <RefreshCw className="h-3.5 w-3.5" />
-            Atualizar diagrama a partir do Processo
+            Atualizar a partir do Processo
           </Button>
         </div>
       )}
@@ -416,6 +440,14 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
           diagram={diagram}
           selectedId={selectedId}
           onSelect={setSelectedId}
+          selectedEdgeId={selectedEdgeId}
+          onSelectEdge={setSelectedEdgeId}
+          creating={!!creatingKind}
+          onCreateAt={handleCreateAt}
+          connecting={connecting}
+          connectSourceId={connectSourceId}
+          onConnectPick={handleConnectPick}
+          onCancelInteraction={cancelModes}
           onZoomChange={setZoom}
           showMinimap={showMinimap}
           onMoveNode={(id, x, y) => updateBpmNode(doc.id, id, { x, y })}
@@ -434,7 +466,10 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
               selectedStepId={selected?.stepId}
               onSelectStep={(stepId) => {
                 const node = diagram.nodes.find((n) => n.stepId === stepId);
-                if (node) setSelectedId(node.id);
+                if (node) {
+                  setSelectedEdgeId(null);
+                  setSelectedId(node.id);
+                }
               }}
             />
           </aside>
@@ -442,17 +477,48 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
 
         {showProps && (
           <aside className="absolute bottom-3 right-3 top-3 z-10 w-[268px] animate-fade-in overflow-y-auto rounded-xl border bg-card/95 p-3 shadow-sm backdrop-blur">
-            <BpmPropertiesPanel
-              node={selected}
-              processId={doc.id}
-              processName={doc.name}
-              onNotesChange={(notes) =>
-                selected && updateBpmNode(doc.id, selected.id, { notes })
-              }
-            />
+            {selectedEdge ? (
+              <div className="space-y-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    Conexão selecionada
+                  </p>
+                  <h3 className="mt-0.5 text-sm font-medium leading-snug">
+                    {diagram.nodes.find((n) => n.id === selectedEdge.source)?.name ??
+                      "—"}{" "}
+                    →{" "}
+                    {diagram.nodes.find((n) => n.id === selectedEdge.target)?.name ??
+                      "—"}
+                  </h3>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 w-full gap-1.5 text-xs"
+                  onClick={deleteSelectedEdge}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Excluir conexão
+                </Button>
+              </div>
+            ) : (
+              <BpmPropertiesPanel
+                node={selected}
+                processId={doc.id}
+                processName={doc.name}
+                onNotesChange={(notes) =>
+                  selected && updateBpmNode(doc.id, selected.id, { notes })
+                }
+                onPropertyChange={(patch) =>
+                  selected && updateNodeProperties(doc.id, selected.id, patch)
+                }
+                onDelete={deleteSelectedNode}
+              />
+            )}
           </aside>
         )}
       </div>
+
 
     </div>
   );
