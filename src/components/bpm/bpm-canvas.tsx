@@ -211,7 +211,17 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
 
     const onBackgroundPointerDown = (e: React.PointerEvent) => {
       if (e.button !== 0) return;
+
+      // Modo de criação: o clique no fundo define o ponto do novo elemento.
+      if (creating) {
+        e.stopPropagation();
+        onCreateAt?.(toDiagramPoint(e.clientX, e.clientY));
+        return;
+      }
+
       onSelect(null);
+      onSelectEdge?.(null);
+      if (connecting) onCancelInteraction?.();
       panRef.current = {
         x: e.clientX,
         y: e.clientY,
@@ -223,6 +233,9 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
     };
 
     const onBackgroundPointerMove = (e: React.PointerEvent) => {
+      if (connecting && connectSourceId) {
+        setCursor(toDiagramPoint(e.clientX, e.clientY));
+      }
       const p = panRef.current;
       if (!p) return;
       apply({
@@ -250,7 +263,14 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
     const onNodePointerDown = (e: React.PointerEvent, node: BpmNode) => {
       if (e.button !== 0) return;
       e.stopPropagation();
+
+      if (connecting) {
+        onConnectPick?.(node.id);
+        return;
+      }
+
       onSelect(node.id);
+      onSelectEdge?.(null);
       dragRef.current = {
         id: node.id,
         x: e.clientX,
@@ -276,6 +296,11 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
     const onNodePointerUp = () => {
       dragRef.current = null;
     };
+
+    const connectSource = connectSourceId
+      ? diagram.nodes.find((n) => n.id === connectSourceId)
+      : undefined;
+
 
     const nodeById = new Map(diagram.nodes.map((n) => [n.id, n]));
 
