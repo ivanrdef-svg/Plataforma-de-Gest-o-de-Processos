@@ -57,6 +57,17 @@ interface BpmCanvasProps {
   /** Build 008 — minimapa do diagrama no canto do canvas. */
   showMinimap?: boolean | undefined;
   className?: string | undefined;
+  /** Build 020 — seleção de aresta (estado controlado, igual a `selectedId`). */
+  selectedEdgeId?: string | null | undefined;
+  onSelectEdge?: ((id: string | null) => void) | undefined;
+  /** Build 020 — modo de criação: clique no fundo cria um elemento. */
+  creating?: boolean | undefined;
+  onCreateAt?: ((point: { x: number; y: number }) => void) | undefined;
+  /** Build 020 — modo de conexão entre dois nós. */
+  connecting?: boolean | undefined;
+  connectSourceId?: string | null | undefined;
+  onConnectPick?: ((nodeId: string) => void) | undefined;
+  onCancelInteraction?: (() => void) | undefined;
 }
 
 export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
@@ -70,6 +81,14 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
       insets,
       showMinimap,
       className,
+      selectedEdgeId,
+      onSelectEdge,
+      creating,
+      onCreateAt,
+      connecting,
+      connectSourceId,
+      onConnectPick,
+      onCancelInteraction,
     },
     ref,
   ) {
@@ -77,6 +96,18 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
     const [view, setView] = useState<View>({ zoom: 1, x: 40, y: 20 });
     const viewRef = useRef(view);
     viewRef.current = view;
+    const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
+
+    /** Converte coordenadas de tela em coordenadas do diagrama. */
+    const toDiagramPoint = useCallback((clientX: number, clientY: number) => {
+      const rect = containerRef.current?.getBoundingClientRect();
+      const v = viewRef.current;
+      return {
+        x: ((clientX - (rect?.left ?? 0)) - v.x) / v.zoom,
+        y: ((clientY - (rect?.top ?? 0)) - v.y) / v.zoom,
+      };
+    }, []);
+
 
     const apply = useCallback(
       (next: View) => {
