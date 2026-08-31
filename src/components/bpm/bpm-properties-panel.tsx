@@ -33,11 +33,16 @@ export function BpmPropertiesPanel({
   processId,
   processName,
   onNotesChange,
+  onPropertyChange,
+  onDelete,
 }: {
   node: BpmNode | null;
   processId: string;
   processName: string;
   onNotesChange: (notes: string) => void;
+  /** Build 020 — edição editorial das propriedades do elemento. */
+  onPropertyChange?: (patch: Partial<BpmNode>) => void;
+  onDelete?: () => void;
 }) {
   if (!node) {
     return (
@@ -78,21 +83,40 @@ export function BpmPropertiesPanel({
         )}
       </div>
 
-      <ReadField label="Nome" value={node.name} />
+      <div className="space-y-1">
+        <Label className="text-[11px] text-muted-foreground">Nome</Label>
+        <Input
+          value={node.name}
+          onChange={(e) => onPropertyChange?.({ name: e.target.value })}
+          readOnly={!onPropertyChange}
+          className="h-8 text-xs"
+        />
+      </div>
 
       <div className="space-y-1">
         <Label className="text-[11px] text-muted-foreground">Descrição</Label>
         <Textarea
-          value={node.description || "—"}
-          readOnly
-          className="min-h-[64px] resize-none bg-muted/40 text-xs"
+          value={node.description ?? ""}
+          onChange={(e) => onPropertyChange?.({ description: e.target.value })}
+          readOnly={!onPropertyChange}
+          className="min-h-[64px] resize-none text-xs"
         />
       </div>
 
-      <ReadField label="Responsável" value={node.owner} />
+      <div className="space-y-1">
+        <Label className="text-[11px] text-muted-foreground">Responsável</Label>
+        <Input
+          value={node.owner ?? ""}
+          onChange={(e) => onPropertyChange?.({ owner: e.target.value })}
+          readOnly={!onPropertyChange}
+          className="h-8 text-xs"
+        />
+      </div>
+
       <ReadField label="Entradas" value={node.inputs ?? ""} />
       <ReadField label="Saídas" value={node.outputs ?? ""} />
       <ReadField label="Tempo estimado" value={node.duration} />
+
 
       {!!node.issues?.length && (
         <div className="space-y-1.5 rounded-lg border border-dashed bg-muted/30 p-2">

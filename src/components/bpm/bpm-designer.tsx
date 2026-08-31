@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Download,
   Maximize2,
@@ -12,6 +12,14 @@ import {
   PanelRight,
   Map as MapIcon,
   AlertTriangle,
+  Plus,
+  Spline,
+  Trash2,
+  CircleDot,
+  Flag,
+  GitBranch,
+  Square,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { BpmCanvas, type BpmCanvasHandle } from "@/components/bpm/bpm-canvas";
@@ -21,34 +29,58 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  addEdge,
+  addManualNode,
   ensureDiagram,
   pendingProcessChanges,
+  removeEdge,
+  removeNode,
   syncDiagramWithProcess,
   updateBpmNode,
+  updateNodeProperties,
   useBpmDiagram,
 } from "@/lib/bpm-store";
-import { diagramIssueSummary } from "@/config/bpm-model";
+import { diagramIssueSummary, type BpmNodeKind } from "@/config/bpm-model";
 import type { ProcessDoc } from "@/lib/process-store";
 import { cn } from "@/lib/utils";
 
 /**
  * Build 007 — BPM Designer.
- *
- * Três áreas: painel esquerdo (dados do Processo), canvas central (fluxo
- * derivado automaticamente) e painel direito (propriedades do elemento).
- * Não há motor BPMN, validação nem execução nesta build.
+ * Build 020 — edição editorial: criar elementos, conectar, excluir e editar
+ * propriedades diretamente no diagrama. Nada aqui reconstrói o diagrama de
+ * forma destrutiva; a persistência é automática pelo store (localStorage).
  */
+
+const CREATE_OPTIONS: {
+  kind: BpmNodeKind;
+  label: string;
+  icon: typeof ZoomIn;
+}[] = [
+  { kind: "start", label: "Evento de início", icon: CircleDot },
+  { kind: "task", label: "Atividade", icon: Square },
+  { kind: "gateway", label: "Decisão", icon: GitBranch },
+  { kind: "end", label: "Evento de fim", icon: Flag },
+];
 
 function ToolButton({
   label,
   icon: Icon,
   onClick,
   active,
+  disabled,
 }: {
   label: string;
   icon: typeof ZoomIn;
   onClick: () => void;
   active?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <Tooltip>
@@ -59,6 +91,7 @@ function ToolButton({
           size="sm"
           aria-label={label}
           onClick={onClick}
+          disabled={disabled}
           className={cn("h-8 w-8 p-0", active && "text-primary")}
         >
           <Icon className="h-4 w-4" />
@@ -72,11 +105,15 @@ function ToolButton({
 export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
   const diagram = useBpmDiagram(doc.id);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [fullscreen, setFullscreen] = useState(false);
   const [showSource, setShowSource] = useState(true);
   const [showProps, setShowProps] = useState(true);
   const [showMinimap, setShowMinimap] = useState(true);
+  const [creatingKind, setCreatingKind] = useState<BpmNodeKind | null>(null);
+  const [connecting, setConnecting] = useState(false);
+  const [connectSourceId, setConnectSourceId] = useState<string | null>(null);
   const canvasRef = useRef<BpmCanvasHandle>(null);
 
   // Gera o fluxo inicial automaticamente ao abrir o Processo.
@@ -92,10 +129,11 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
   }, [fullscreen, showSource, showProps]);
 
 
-  const stale = useMemo(
-    () => pendingProcessChanges(doc, diagram).count > 0,
+  const pending = useMemo(
+    () => pendingProcessChanges(doc, diagram),
     [doc, diagram],
   );
+  const stale = pending.count > 0;
   const issues = useMemo(
     () =>
       diagram
@@ -105,12 +143,98 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
   );
   const selected =
     diagram?.nodes.find((n) => n.id === selectedId) ?? null;
+  const selectedEdge =
+    diagram?.edges.find((e) => e.id === selectedEdgeId) ?? null;
 
   const regenerate = () => {
     syncDiagramWithProcess(doc);
     toast.success("Diagrama atualizado", {
       description: "As novas etapas do Processo foram adicionadas ao fluxo.",
     });
+  };
+
+  const cancelModes = useCallback(() => {
+    setCreatingKind(null);
+    setConnecting(false);
+    setConnectSourceId(null);
+  }, []);
+
+  const deleteSelectedNode = useCallback(() => {
+    if (!selectedId) return;
+    removeNode(doc.id, selectedId);
+    setSelectedId(null);
+    toast.success("Elemento removido do diagrama.");
+  }, [doc.id, selectedId]);
+
+  const deleteSelectedEdge = useCallback(() => {
+    if (!selectedEdgeId) return;
+    removeEdge(doc.id, selectedEdgeId);
+    setSelectedEdgeId(null);
+    toast.success("Conexão removida.");
+  }, [doc.id, selectedEdgeId]);
+
+  // Delete/Backspace — com guarda de foco em campos de texto.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        cancelModes();
+        return;
+      }
+      if (e.key !== "Delete" && e.key !== "Backspace") return;
+      const el = document.activeElement as HTMLElement | null;
+      if (
+        el &&
+        (el.tagName === "INPUT" ||
+          el.tagName === "TEXTAREA" ||
+          el.isContentEditable)
+      )
+        return;
+      if (selectedEdgeId) {
+        e.preventDefault();
+        deleteSelectedEdge();
+      } else if (selectedId) {
+        e.preventDefault();
+        deleteSelectedNode();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [
+    selectedId,
+    selectedEdgeId,
+    deleteSelectedNode,
+    deleteSelectedEdge,
+    cancelModes,
+  ]);
+
+  const handleCreateAt = (point: { x: number; y: number }) => {
+    if (!creatingKind) return;
+    const node = addManualNode(doc.id, creatingKind, point);
+    setCreatingKind(null);
+    if (node) {
+      setSelectedEdgeId(null);
+      setSelectedId(node.id);
+      toast.success("Elemento adicionado ao diagrama.");
+    }
+  };
+
+  const handleConnectPick = (nodeId: string) => {
+    if (!connectSourceId) {
+      setConnectSourceId(nodeId);
+      return;
+    }
+    const edge = addEdge(doc.id, connectSourceId, nodeId);
+    if (!edge) {
+      toast.error("Conexão não criada", {
+        description:
+          "Não é possível conectar um elemento a ele mesmo nem duplicar uma conexão existente.",
+      });
+    } else {
+      setSelectedEdgeId(edge.id);
+      setSelectedId(null);
+    }
+    setConnecting(false);
+    setConnectSourceId(null);
   };
 
   if (!diagram) {
@@ -120,6 +244,7 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
       </div>
     );
   }
+
 
   return (
     <div
@@ -175,7 +300,68 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
 
         <Separator orientation="vertical" className="h-5" />
 
-        <ToolButton label="Atualizar diagrama" icon={RefreshCw} onClick={regenerate} />
+        {/* Build 020 — criação de elementos */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              aria-label="Adicionar elemento"
+              className={cn("h-8 gap-1.5 px-2 text-xs", creatingKind && "text-primary")}
+            >
+              <Plus className="h-4 w-4" />
+              Adicionar
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-52">
+            <DropdownMenuLabel className="text-[11px] text-muted-foreground">
+              Clique no canvas para posicionar
+            </DropdownMenuLabel>
+            {CREATE_OPTIONS.map((opt) => (
+              <DropdownMenuItem
+                key={opt.kind}
+                onSelect={() => {
+                  setConnecting(false);
+                  setConnectSourceId(null);
+                  setCreatingKind(opt.kind);
+                }}
+                className="gap-2 text-xs"
+              >
+                <opt.icon className="h-3.5 w-3.5" />
+                {opt.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <ToolButton
+          label={connecting ? "Cancelar conexão" : "Conectar elementos"}
+          icon={Spline}
+          active={connecting}
+          onClick={() => {
+            setCreatingKind(null);
+            setConnectSourceId(null);
+            setConnecting((v) => !v);
+          }}
+        />
+        <ToolButton
+          label="Excluir selecionado"
+          icon={Trash2}
+          disabled={!selectedId && !selectedEdgeId}
+          onClick={() =>
+            selectedEdgeId ? deleteSelectedEdge() : deleteSelectedNode()
+          }
+        />
+
+        <Separator orientation="vertical" className="h-5" />
+
+        <ToolButton
+          label="Atualizar a partir do Processo"
+          icon={RefreshCw}
+          onClick={regenerate}
+        />
+
         <ToolButton
           label="Exportar (em breve)"
           icon={Download}
@@ -205,15 +391,39 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
         </div>
       </div>
 
-      {/* Aviso de diagrama desatualizado */}
+      {/* Modo ativo (criação/conexão) */}
+      {(creatingKind || connecting) && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-muted/40 px-3 py-2">
+          <p className="text-[11px] text-muted-foreground">
+            {creatingKind
+              ? "Clique no canvas para posicionar o novo elemento."
+              : connectSourceId
+                ? "Agora clique no elemento de destino da conexão."
+                : "Clique no elemento de origem da conexão."}
+          </p>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="ml-auto h-7 gap-1.5 text-xs"
+            onClick={cancelModes}
+          >
+            <X className="h-3.5 w-3.5" />
+            Cancelar
+          </Button>
+        </div>
+      )}
+
+      {/* Etapas do Processo ainda não representadas no diagrama */}
       {stale && (
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2">
           <p className="text-[11px] text-muted-foreground">
-            As etapas do Processo mudaram desde a última geração do diagrama.
+            {pending.count} {pending.count === 1 ? "etapa" : "etapas"} do
+            Processo ainda {pending.count === 1 ? "não está" : "não estão"} no
+            BPMN.
           </p>
           <Button size="sm" className="ml-auto h-7 gap-1.5 text-xs" onClick={regenerate}>
             <RefreshCw className="h-3.5 w-3.5" />
-            Atualizar diagrama a partir do Processo
+            Atualizar a partir do Processo
           </Button>
         </div>
       )}
@@ -230,6 +440,14 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
           diagram={diagram}
           selectedId={selectedId}
           onSelect={setSelectedId}
+          selectedEdgeId={selectedEdgeId}
+          onSelectEdge={setSelectedEdgeId}
+          creating={!!creatingKind}
+          onCreateAt={handleCreateAt}
+          connecting={connecting}
+          connectSourceId={connectSourceId}
+          onConnectPick={handleConnectPick}
+          onCancelInteraction={cancelModes}
           onZoomChange={setZoom}
           showMinimap={showMinimap}
           onMoveNode={(id, x, y) => updateBpmNode(doc.id, id, { x, y })}
@@ -248,7 +466,10 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
               selectedStepId={selected?.stepId}
               onSelectStep={(stepId) => {
                 const node = diagram.nodes.find((n) => n.stepId === stepId);
-                if (node) setSelectedId(node.id);
+                if (node) {
+                  setSelectedEdgeId(null);
+                  setSelectedId(node.id);
+                }
               }}
             />
           </aside>
@@ -256,17 +477,48 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
 
         {showProps && (
           <aside className="absolute bottom-3 right-3 top-3 z-10 w-[268px] animate-fade-in overflow-y-auto rounded-xl border bg-card/95 p-3 shadow-sm backdrop-blur">
-            <BpmPropertiesPanel
-              node={selected}
-              processId={doc.id}
-              processName={doc.name}
-              onNotesChange={(notes) =>
-                selected && updateBpmNode(doc.id, selected.id, { notes })
-              }
-            />
+            {selectedEdge ? (
+              <div className="space-y-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    Conexão selecionada
+                  </p>
+                  <h3 className="mt-0.5 text-sm font-medium leading-snug">
+                    {diagram.nodes.find((n) => n.id === selectedEdge.source)?.name ??
+                      "—"}{" "}
+                    →{" "}
+                    {diagram.nodes.find((n) => n.id === selectedEdge.target)?.name ??
+                      "—"}
+                  </h3>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 w-full gap-1.5 text-xs"
+                  onClick={deleteSelectedEdge}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Excluir conexão
+                </Button>
+              </div>
+            ) : (
+              <BpmPropertiesPanel
+                node={selected}
+                processId={doc.id}
+                processName={doc.name}
+                onNotesChange={(notes) =>
+                  selected && updateBpmNode(doc.id, selected.id, { notes })
+                }
+                onPropertyChange={(patch) =>
+                  selected && updateNodeProperties(doc.id, selected.id, patch)
+                }
+                onDelete={deleteSelectedNode}
+              />
+            )}
           </aside>
         )}
       </div>
+
 
     </div>
   );

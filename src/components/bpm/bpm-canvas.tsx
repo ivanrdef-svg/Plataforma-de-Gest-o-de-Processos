@@ -57,6 +57,17 @@ interface BpmCanvasProps {
   /** Build 008 — minimapa do diagrama no canto do canvas. */
   showMinimap?: boolean | undefined;
   className?: string | undefined;
+  /** Build 020 — seleção de aresta (estado controlado, igual a `selectedId`). */
+  selectedEdgeId?: string | null | undefined;
+  onSelectEdge?: ((id: string | null) => void) | undefined;
+  /** Build 020 — modo de criação: clique no fundo cria um elemento. */
+  creating?: boolean | undefined;
+  onCreateAt?: ((point: { x: number; y: number }) => void) | undefined;
+  /** Build 020 — modo de conexão entre dois nós. */
+  connecting?: boolean | undefined;
+  connectSourceId?: string | null | undefined;
+  onConnectPick?: ((nodeId: string) => void) | undefined;
+  onCancelInteraction?: (() => void) | undefined;
 }
 
 export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
@@ -70,6 +81,14 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
       insets,
       showMinimap,
       className,
+      selectedEdgeId,
+      onSelectEdge,
+      creating,
+      onCreateAt,
+      connecting,
+      connectSourceId,
+      onConnectPick,
+      onCancelInteraction,
     },
     ref,
   ) {
@@ -77,6 +96,18 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
     const [view, setView] = useState<View>({ zoom: 1, x: 40, y: 20 });
     const viewRef = useRef(view);
     viewRef.current = view;
+    const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
+
+    /** Converte coordenadas de tela em coordenadas do diagrama. */
+    const toDiagramPoint = useCallback((clientX: number, clientY: number) => {
+      const rect = containerRef.current?.getBoundingClientRect();
+      const v = viewRef.current;
+      return {
+        x: ((clientX - (rect?.left ?? 0)) - v.x) / v.zoom,
+        y: ((clientY - (rect?.top ?? 0)) - v.y) / v.zoom,
+      };
+    }, []);
+
 
     const apply = useCallback(
       (next: View) => {
@@ -180,7 +211,17 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
 
     const onBackgroundPointerDown = (e: React.PointerEvent) => {
       if (e.button !== 0) return;
+
+      // Modo de criação: o clique no fundo define o ponto do novo elemento.
+      if (creating) {
+        e.stopPropagation();
+        onCreateAt?.(toDiagramPoint(e.clientX, e.clientY));
+        return;
+      }
+
       onSelect(null);
+      onSelectEdge?.(null);
+      if (connecting) onCancelInteraction?.();
       panRef.current = {
         x: e.clientX,
         y: e.clientY,
@@ -192,6 +233,9 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
     };
 
     const onBackgroundPointerMove = (e: React.PointerEvent) => {
+      if (connecting && connectSourceId) {
+        setCursor(toDiagramPoint(e.clientX, e.clientY));
+      }
       const p = panRef.current;
       if (!p) return;
       apply({
@@ -219,7 +263,14 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
     const onNodePointerDown = (e: React.PointerEvent, node: BpmNode) => {
       if (e.button !== 0) return;
       e.stopPropagation();
+
+      if (connecting) {
+        onConnectPick?.(node.id);
+        return;
+      }
+
       onSelect(node.id);
+      onSelectEdge?.(null);
       dragRef.current = {
         id: node.id,
         x: e.clientX,
@@ -246,6 +297,11 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
       dragRef.current = null;
     };
 
+    const connectSource = connectSourceId
+      ? diagram.nodes.find((n) => n.id === connectSourceId)
+      : undefined;
+
+
     const nodeById = new Map(diagram.nodes.map((n) => [n.id, n]));
 
     return (
@@ -253,9 +309,14 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
         ref={containerRef}
         className={cn(
           "relative h-full w-full overflow-hidden rounded-xl border bg-[radial-gradient(var(--bpm-dot)_1px,transparent_1px)] [background-size:22px_22px]",
-          panning ? "cursor-grabbing" : "cursor-grab",
+          creating || connecting
+            ? "cursor-crosshair"
+            : panning
+              ? "cursor-grabbing"
+              : "cursor-grab",
           className,
         )}
+
         style={
           {
             "--bpm-dot": "color-mix(in oklch, var(--border) 75%, transparent)",
@@ -314,16 +375,37 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
                 ? Math.min(a.y, b.y) - 26
                 : (y1 + y2) / 2 - 8;
 
+              const isSelected = selectedEdgeId === edge.id;
+
               return (
                 <g key={edge.id}>
+                  {/* Área de clique invisível — não altera o visual da linha. */}
                   <path
                     d={d}
                     fill="none"
+                    stroke="transparent"
+                    strokeWidth={14}
+                    className="cursor-pointer"
+                    onPointerDown={(e) => {
+                      if (creating || connecting) return;
+                      e.stopPropagation();
+                      onSelectEdge?.(edge.id);
+                      onSelect(null);
+                    }}
+                  />
+                  <path
+                    d={d}
+                    fill="none"
+                    pointerEvents="none"
                     stroke={
-                      dependency ? "var(--primary)" : "var(--muted-foreground)"
+                      isSelected
+                        ? "var(--primary)"
+                        : dependency
+                          ? "var(--primary)"
+                          : "var(--muted-foreground)"
                     }
-                    strokeOpacity={dependency ? 0.45 : 0.5}
-                    strokeWidth={1.5}
+                    strokeOpacity={isSelected ? 1 : dependency ? 0.45 : 0.5}
+                    strokeWidth={isSelected ? 3 : 1.5}
                     strokeDasharray={dependency ? "5 4" : undefined}
                     markerEnd="url(#bpm-arrow)"
                   />
@@ -332,6 +414,7 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
                       x={labelX}
                       y={labelY}
                       textAnchor="middle"
+                      pointerEvents="none"
                       className="fill-muted-foreground text-[10px]"
                     >
                       {edge.label}
@@ -340,6 +423,21 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(
                 </g>
               );
             })}
+
+            {/* Feedback do modo de conexão: linha tracejada até o cursor. */}
+            {connecting && connectSource && cursor && (
+              <line
+                x1={connectSource.x + connectSource.width}
+                y1={connectSource.y + connectSource.height / 2}
+                x2={cursor.x}
+                y2={cursor.y}
+                stroke="var(--primary)"
+                strokeWidth={1.5}
+                strokeDasharray="6 4"
+                pointerEvents="none"
+              />
+            )}
+
 
             {diagram.nodes.map((node) => (
               <BpmNodeShape
