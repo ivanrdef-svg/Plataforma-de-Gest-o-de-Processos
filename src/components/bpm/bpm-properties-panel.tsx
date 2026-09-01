@@ -162,6 +162,21 @@ export function BpmPropertiesPanel({
           className="min-h-[80px] resize-none text-xs"
         />
       </div>
+
+      {onDelete && (
+        <>
+          <Separator />
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 w-full gap-1.5 text-xs"
+            onClick={onDelete}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Excluir elemento
+          </Button>
+        </>
+      )}
     </div>
   );
 }
