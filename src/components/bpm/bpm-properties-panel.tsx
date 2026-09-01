@@ -1,4 +1,4 @@
-import { AlertTriangle, MousePointerSquareDashed } from "lucide-react";
+import { AlertTriangle, MousePointerSquareDashed, Trash2 } from "lucide-react";
 import {
   ObjectTypeIcon,
   RelationshipIndicators,
@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import type { BpmNode } from "@/config/bpm-model";
 import { getStepType } from "@/config/process-model";
 
