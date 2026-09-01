@@ -128,23 +128,14 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
     return () => window.clearTimeout(id);
   }, [fullscreen, showSource, showProps]);
 
-
-  const pending = useMemo(
-    () => pendingProcessChanges(doc, diagram),
-    [doc, diagram],
-  );
+  const pending = useMemo(() => pendingProcessChanges(doc, diagram), [doc, diagram]);
   const stale = pending.count > 0;
   const issues = useMemo(
-    () =>
-      diagram
-        ? diagramIssueSummary(diagram)
-        : { total: 0, errors: 0, warnings: 0 },
+    () => (diagram ? diagramIssueSummary(diagram) : { total: 0, errors: 0, warnings: 0 }),
     [diagram],
   );
-  const selected =
-    diagram?.nodes.find((n) => n.id === selectedId) ?? null;
-  const selectedEdge =
-    diagram?.edges.find((e) => e.id === selectedEdgeId) ?? null;
+  const selected = diagram?.nodes.find((n) => n.id === selectedId) ?? null;
+  const selectedEdge = diagram?.edges.find((e) => e.id === selectedEdgeId) ?? null;
 
   const regenerate = () => {
     syncDiagramWithProcess(doc);
@@ -182,12 +173,7 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
       }
       if (e.key !== "Delete" && e.key !== "Backspace") return;
       const el = document.activeElement as HTMLElement | null;
-      if (
-        el &&
-        (el.tagName === "INPUT" ||
-          el.tagName === "TEXTAREA" ||
-          el.isContentEditable)
-      )
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable))
         return;
       if (selectedEdgeId) {
         e.preventDefault();
@@ -199,13 +185,7 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [
-    selectedId,
-    selectedEdgeId,
-    deleteSelectedNode,
-    deleteSelectedEdge,
-    cancelModes,
-  ]);
+  }, [selectedId, selectedEdgeId, deleteSelectedNode, deleteSelectedEdge, cancelModes]);
 
   const handleCreateAt = (point: { x: number; y: number }) => {
     if (!creatingKind) return;
@@ -245,13 +225,9 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
     );
   }
 
-
   return (
     <div
-      className={cn(
-        "flex flex-col gap-3",
-        fullscreen && "fixed inset-0 z-50 bg-background p-4",
-      )}
+      className={cn("flex flex-col gap-3", fullscreen && "fixed inset-0 z-50 bg-background p-4")}
     >
       {/* Barra de ferramentas */}
       <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-card px-2 py-1.5">
@@ -349,18 +325,12 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
           label="Excluir selecionado"
           icon={Trash2}
           disabled={!selectedId && !selectedEdgeId}
-          onClick={() =>
-            selectedEdgeId ? deleteSelectedEdge() : deleteSelectedNode()
-          }
+          onClick={() => (selectedEdgeId ? deleteSelectedEdge() : deleteSelectedNode())}
         />
 
         <Separator orientation="vertical" className="h-5" />
 
-        <ToolButton
-          label="Atualizar a partir do Processo"
-          icon={RefreshCw}
-          onClick={regenerate}
-        />
+        <ToolButton label="Atualizar a partir do Processo" icon={RefreshCw} onClick={regenerate} />
 
         <ToolButton
           label="Exportar (em breve)"
@@ -384,8 +354,7 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
           {issues.total > 0 && (
             <span className="flex items-center gap-1 rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-amber-700 dark:text-amber-400">
               <AlertTriangle className="h-3 w-3" />
-              {issues.total}{" "}
-              {issues.total === 1 ? "inconsistência" : "inconsistências"}
+              {issues.total} {issues.total === 1 ? "inconsistência" : "inconsistências"}
             </span>
           )}
         </div>
@@ -417,9 +386,8 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
       {stale && (
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2">
           <p className="text-[11px] text-muted-foreground">
-            {pending.count} {pending.count === 1 ? "etapa" : "etapas"} do
-            Processo ainda {pending.count === 1 ? "não está" : "não estão"} no
-            BPMN.
+            {pending.count} {pending.count === 1 ? "etapa" : "etapas"} do Processo ainda{" "}
+            {pending.count === 1 ? "não está" : "não estão"} no BPMN.
           </p>
           <Button size="sm" className="ml-auto h-7 gap-1.5 text-xs" onClick={regenerate}>
             <RefreshCw className="h-3.5 w-3.5" />
@@ -429,12 +397,7 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
       )}
 
       {/* Três áreas: painéis flutuam sobre o canvas (estilo FigJam/Figma) */}
-      <div
-        className={cn(
-          "relative",
-          fullscreen ? "min-h-0 flex-1" : "h-[620px]",
-        )}
-      >
+      <div className={cn("relative", fullscreen ? "min-h-0 flex-1" : "h-[620px]")}>
         <BpmCanvas
           ref={canvasRef}
           diagram={diagram}
@@ -484,11 +447,8 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
                     Conexão selecionada
                   </p>
                   <h3 className="mt-0.5 text-sm font-medium leading-snug">
-                    {diagram.nodes.find((n) => n.id === selectedEdge.source)?.name ??
-                      "—"}{" "}
-                    →{" "}
-                    {diagram.nodes.find((n) => n.id === selectedEdge.target)?.name ??
-                      "—"}
+                    {diagram.nodes.find((n) => n.id === selectedEdge.source)?.name ?? "—"} →{" "}
+                    {diagram.nodes.find((n) => n.id === selectedEdge.target)?.name ?? "—"}
                   </h3>
                 </div>
                 <Button
@@ -506,9 +466,7 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
                 node={selected}
                 processId={doc.id}
                 processName={doc.name}
-                onNotesChange={(notes) =>
-                  selected && updateBpmNode(doc.id, selected.id, { notes })
-                }
+                onNotesChange={(notes) => selected && updateBpmNode(doc.id, selected.id, { notes })}
                 onPropertyChange={(patch) =>
                   selected && updateNodeProperties(doc.id, selected.id, patch)
                 }
@@ -518,8 +476,6 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
           </aside>
         )}
       </div>
-
-
     </div>
   );
 }

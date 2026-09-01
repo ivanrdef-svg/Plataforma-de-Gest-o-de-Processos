@@ -1,4 +1,4 @@
-import { AlertTriangle, MousePointerSquareDashed } from "lucide-react";
+import { AlertTriangle, MousePointerSquareDashed, Trash2 } from "lucide-react";
 import {
   ObjectTypeIcon,
   RelationshipIndicators,
@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import type { BpmNode } from "@/config/bpm-model";
 import { getStepType } from "@/config/process-model";
 
@@ -72,9 +73,7 @@ export function BpmPropertiesPanel({
   return (
     <div className="space-y-4">
       <div>
-        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-          {kindLabel}
-        </p>
+        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{kindLabel}</p>
         <h3 className="mt-0.5 text-sm font-medium leading-snug">{node.name}</h3>
         {node.stepId && (
           <p className="mt-1 text-[11px] text-muted-foreground">
@@ -117,12 +116,9 @@ export function BpmPropertiesPanel({
       <ReadField label="Saídas" value={node.outputs ?? ""} />
       <ReadField label="Tempo estimado" value={node.duration} />
 
-
       {!!node.issues?.length && (
         <div className="space-y-1.5 rounded-lg border border-dashed bg-muted/30 p-2">
-          <Label className="text-[11px] text-muted-foreground">
-            Consistência do elemento
-          </Label>
+          <Label className="text-[11px] text-muted-foreground">Consistência do elemento</Label>
           <ul className="space-y-1">
             {node.issues.map((issue) => (
               <li
@@ -161,6 +157,21 @@ export function BpmPropertiesPanel({
           className="min-h-[80px] resize-none text-xs"
         />
       </div>
+
+      {onDelete && (
+        <>
+          <Separator />
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 w-full gap-1.5 text-xs"
+            onClick={onDelete}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Excluir elemento
+          </Button>
+        </>
+      )}
     </div>
   );
 }
@@ -188,9 +199,7 @@ function CompactRelationships({ objectId }: { objectId: string }) {
             className="flex items-center gap-2 rounded-md border bg-background px-2 py-1.5"
           >
             <ObjectTypeIcon type={rel.targetType} />
-            <span className="min-w-0 flex-1 truncate text-[11px]">
-              {rel.targetName}
-            </span>
+            <span className="min-w-0 flex-1 truncate text-[11px]">{rel.targetName}</span>
           </li>
         ))}
       </ul>
