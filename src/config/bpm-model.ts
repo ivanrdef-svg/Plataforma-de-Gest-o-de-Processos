@@ -41,7 +41,6 @@ export interface BpmIssue {
   edgeId?: string;
 }
 
-
 export interface BpmNode {
   id: string;
   kind: BpmNodeKind;
@@ -105,11 +104,9 @@ export interface BpmDiagram {
 /** Tamanho padrão de um nó por tipo (usado também na criação manual). */
 export function nodeSizeFor(kind: BpmNodeKind) {
   if (kind === "gateway") return NODE_SIZE.gateway;
-  if (kind === "start" || kind === "end" || kind === "event")
-    return NODE_SIZE.event;
+  if (kind === "start" || kind === "end" || kind === "event") return NODE_SIZE.event;
   return NODE_SIZE.task;
 }
-
 
 export const NODE_SIZE = {
   task: { width: 208, height: 88 },
@@ -240,8 +237,7 @@ export function generateDiagramFromProcess(doc: ProcessDoc): BpmDiagram {
             ? NODE_SIZE.event
             : NODE_SIZE.task;
       const rowTop = top + rowIndex * (ROW_HEIGHT + GAP_Y);
-      const x =
-        colInBand * (COL_SLOT + GAP_X) + (COL_SLOT - size.width) / 2;
+      const x = colInBand * (COL_SLOT + GAP_X) + (COL_SLOT - size.width) / 2;
       const y = rowTop + (ROW_HEIGHT - size.height) / 2;
       ids.push(slot.id);
 
@@ -337,9 +333,7 @@ export function generateDiagramFromProcess(doc: ProcessDoc): BpmDiagram {
         return;
       }
 
-      const duplicate = edges.some(
-        (e) => e.source === sourceId && e.target === targetId,
-      );
+      const duplicate = edges.some((e) => e.source === sourceId && e.target === targetId);
       if (duplicate) return;
 
       edges.push({
@@ -381,9 +375,7 @@ export function generateDiagramFromProcess(doc: ProcessDoc): BpmDiagram {
         nodeId: node.id,
       });
     }
-    const connected = edges.some(
-      (e) => e.source === node.id || e.target === node.id,
-    );
+    const connected = edges.some((e) => e.source === node.id || e.target === node.id);
     if (!connected) {
       issues.push({
         id: `isolated-${node.id}`,

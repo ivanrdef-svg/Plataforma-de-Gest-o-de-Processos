@@ -13,10 +13,7 @@
 import type { BpmDiagram, BpmIssue, BpmNode } from "@/config/bpm-model";
 import type { ProcessDoc } from "@/lib/process-store";
 
-export type BpmValidationStatus =
-  | "válido"
-  | "válido com avisos"
-  | "inválido";
+export type BpmValidationStatus = "válido" | "válido com avisos" | "inválido";
 
 export interface BpmValidation {
   status: BpmValidationStatus;
@@ -31,10 +28,7 @@ function label(node: BpmNode | undefined, fallback: string) {
   return name || fallback;
 }
 
-export function validateBpmn(
-  diagram: BpmDiagram,
-  doc: ProcessDoc,
-): BpmValidation {
+export function validateBpmn(diagram: BpmDiagram, doc: ProcessDoc): BpmValidation {
   const issues: BpmIssue[] = [];
   const infos: string[] = [];
 
@@ -255,9 +249,7 @@ export function validateBpmn(
     infos.push("O diagrama ainda está vazio.");
   }
   infos.push(`${nodes.length} elemento(s) e ${edges.length} conexão(ões).`);
-  infos.push(
-    `${stepIdsInDiagram.size} de ${doc.steps.length} etapa(s) do Processo representadas.`,
-  );
+  infos.push(`${stepIdsInDiagram.size} de ${doc.steps.length} etapa(s) do Processo representadas.`);
 
   const errors = issues.filter((i) => i.severity === "erro");
   const warnings = issues.filter((i) => i.severity === "atencao");
