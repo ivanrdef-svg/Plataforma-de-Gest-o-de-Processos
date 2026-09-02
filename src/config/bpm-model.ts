@@ -37,7 +37,10 @@ export interface BpmIssue {
   severity: BpmIssueSeverity;
   message: string;
   nodeId?: string;
+  /** Build 021 — inconsistência associada a uma conexão do diagrama. */
+  edgeId?: string;
 }
+
 
 export interface BpmNode {
   id: string;
