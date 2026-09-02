@@ -51,6 +51,9 @@ interface BpmCanvasProps {
   connectSourceId?: string | null | undefined;
   onConnectPick?: ((nodeId: string) => void) | undefined;
   onCancelInteraction?: (() => void) | undefined;
+  /** Build 021 — severidade já pré-calculada pelo Designer (o canvas não valida nada). */
+  nodeSeverity?: Record<string, "erro" | "atencao"> | undefined;
+  edgeSeverity?: Record<string, "erro" | "atencao"> | undefined;
 }
 
 export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(function BpmCanvas(
@@ -71,6 +74,8 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(function Bp
     connectSourceId,
     onConnectPick,
     onCancelInteraction,
+    nodeSeverity,
+    edgeSeverity,
   },
   ref,
 ) {
@@ -340,6 +345,7 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(function Bp
             const labelY = dependency ? Math.min(a.y, b.y) - 26 : (y1 + y2) / 2 - 8;
 
             const isSelected = selectedEdgeId === edge.id;
+            const edgeIssue = edgeSeverity?.[edge.id];
 
             return (
               <g key={edge.id}>
@@ -370,9 +376,34 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(function Bp
                   }
                   strokeOpacity={isSelected ? 1 : dependency ? 0.45 : 0.5}
                   strokeWidth={isSelected ? 3 : 1.5}
-                  strokeDasharray={dependency ? "5 4" : undefined}
+                  strokeDasharray={dependency ? "5 4" : edgeIssue ? "3 3" : undefined}
                   markerEnd="url(#bpm-arrow)"
                 />
+                {edgeIssue && (
+                  <g transform={`translate(${(x1 + x2) / 2} ${(y1 + y2) / 2})`} pointerEvents="none">
+                    <title>
+                      {edgeIssue === "erro"
+                        ? "Erro nesta conexão"
+                        : "Atenção nesta conexão"}
+                    </title>
+                    <circle
+                      r={7}
+                      fill="var(--card)"
+                      stroke={edgeIssue === "erro" ? "var(--destructive)" : "orange"}
+                      strokeWidth={1.5}
+                    />
+                    <text
+                      textAnchor="middle"
+                      y={3.5}
+                      className={cn(
+                        "text-[9px] font-bold",
+                        edgeIssue === "erro" ? "fill-destructive" : "fill-amber-600",
+                      )}
+                    >
+                      !
+                    </text>
+                  </g>
+                )}
                 {edge.label && (
                   <text
                     x={labelX}
@@ -407,6 +438,7 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(function Bp
               key={node.id}
               node={node}
               selected={selectedId === node.id}
+              severity={nodeSeverity?.[node.id]}
               onPointerDown={(e) => onNodePointerDown(e, node)}
               onPointerMove={onNodePointerMove}
               onPointerUp={onNodePointerUp}
@@ -433,12 +465,14 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(function Bp
 function BpmNodeShape({
   node,
   selected,
+  severity,
   onPointerDown,
   onPointerMove,
   onPointerUp,
 }: {
   node: BpmNode;
   selected: boolean;
+  severity?: "erro" | "atencao" | undefined;
   onPointerDown: (e: React.PointerEvent) => void;
   onPointerMove: (e: React.PointerEvent) => void;
   onPointerUp: (e: React.PointerEvent) => void;
@@ -559,14 +593,19 @@ function BpmNodeShape({
         </>
       )}
 
-      {/* Build 008 — indicador discreto de inconsistência */}
-      {!!node.issues?.length && (
+      {/* Build 008/021 — indicador discreto de inconsistência */}
+      {(!!node.issues?.length || !!severity) && (
         <g transform={`translate(${node.width - 12} -6)`}>
+          <title>
+            {severity === "erro" || node.issues?.some((i) => i.severity === "erro")
+              ? "Erro neste elemento"
+              : "Atenção neste elemento"}
+          </title>
           <circle
             r={8}
             fill="var(--card)"
             stroke={
-              node.issues.some((i) => i.severity === "erro")
+              severity === "erro" || node.issues?.some((i) => i.severity === "erro")
                 ? "color-mix(in oklch, red 60%, var(--border))"
                 : "color-mix(in oklch, orange 60%, var(--border))"
             }
@@ -577,7 +616,7 @@ function BpmNodeShape({
               <AlertTriangle
                 className={cn(
                   "h-2.5 w-2.5",
-                  node.issues.some((i) => i.severity === "erro")
+                  severity === "erro" || node.issues?.some((i) => i.severity === "erro")
                     ? "text-destructive"
                     : "text-amber-600 dark:text-amber-400",
                 )}
