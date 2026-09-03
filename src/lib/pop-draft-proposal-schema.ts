@@ -33,8 +33,7 @@ export type AiFinding = z.infer<typeof AiFindingSchema>;
 export type AiProposalOutput = z.infer<typeof AiProposalOutputSchema>;
 
 export type ParseAiProposalOutputResult =
-  | { ok: true; data: AiProposalOutput }
-  | { ok: false; error: string };
+  { ok: true; data: AiProposalOutput } | { ok: false; error: string };
 
 /** Remove cercas de bloco de código, caso o modelo desobedeça a instrução. */
 function stripCodeFence(text: string): string {

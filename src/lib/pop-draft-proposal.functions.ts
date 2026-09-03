@@ -1,0 +1,205 @@
+/**
+ * Build 025 — Etapa 2: interpretação por IA do documento estruturado.
+ *
+ * Mesmo padrão dos builds anteriores: createServerFn + zod, credenciais lidas
+ * apenas dentro do handler, resultado discriminado devolvido ao cliente —
+ * a persistência é responsabilidade do cliente (localStorage).
+ */
+
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import type {
+  PopDraftFinding,
+  PopDraftProposal,
+  PopProposedSection,
+} from "@/config/pop-draft-proposal-model";
+import { AiProposalOutputSchema, type AiProposalOutput } from "@/lib/pop-draft-proposal-schema";
+
+/** Modelo de chat usado na interpretação (não-OpenAI: caminho chat/completions). */
+export const POP_INTERPRETATION_MODEL = "google/gemini-3.7-flash";
+
+const GenerateInput = z.object({
+  sourceDocumentId: z.string().min(1),
+  storageObjectPath: z.string().min(1).max(512),
+});
+
+export type GeneratePopDraftProposalFailureReason =
+  | "documento-invalido"
+  | "storage"
+  | "contexto-excedido"
+  | "gateway-nao-configurado"
+  | "gateway-indisponivel"
+  | "gateway-nao-autorizado"
+  | "resposta-invalida"
+  | "desconhecido";
+
+export type GeneratePopDraftProposalResult =
+  | { ok: true; proposal: PopDraftProposal }
+  | { ok: false; reason: GeneratePopDraftProposalFailureReason; message: string };
+
+function rid(prefix: string) {
+  return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/** Traduz erros do SDK/gateway em motivos controlados, sem vazar detalhes crus. */
+function classifyAiError(error: unknown): {
+  reason: GeneratePopDraftProposalFailureReason;
+  message: string;
+} {
+  const raw = error instanceof Error ? error.message : String(error);
+  const name = error instanceof Error ? error.name : "";
+  const status =
+    typeof error === "object" && error !== null && "statusCode" in error
+      ? Number((error as { statusCode?: unknown }).statusCode)
+      : undefined;
+
+  if (name === "AbortError" || /timeout|timed out|aborted/i.test(raw)) {
+    return {
+      reason: "gateway-indisponivel",
+      message:
+        "A interpretação demorou mais do que o esperado e foi interrompida. Tente novamente.",
+    };
+  }
+  if (status === 401 || status === 403) {
+    return {
+      reason: "gateway-nao-autorizado",
+      message: "O serviço de IA recusou a solicitação (credencial ou permissão inválida).",
+    };
+  }
+  if (status === 402) {
+    return {
+      reason: "gateway-indisponivel",
+      message: "O serviço de IA está sem créditos disponíveis para processar esta solicitação.",
+    };
+  }
+  if (status === 429 || (typeof status === "number" && status >= 500)) {
+    return {
+      reason: "gateway-indisponivel",
+      message: "O serviço de IA está temporariamente indisponível. Tente novamente em instantes.",
+    };
+  }
+  if (
+    name === "AI_NoObjectGeneratedError" ||
+    name === "AI_TypeValidationError" ||
+    /no object generated|schema|validation/i.test(raw)
+  ) {
+    return {
+      reason: "resposta-invalida",
+      message:
+        "A resposta da IA não respeitou o formato exigido e foi descartada. Nenhuma proposta foi criada.",
+    };
+  }
+  return {
+    reason: "desconhecido",
+    message: "Falha inesperada ao interpretar o documento com IA.",
+  };
+}
+
+/** Converte o output validado da IA em uma proposta com ids próprios do servidor. */
+function assembleProposal(
+  sourceDocumentId: string,
+  output: AiProposalOutput,
+  gatewayRequestId: string | undefined,
+): PopDraftProposal {
+  const proposedSections: PopProposedSection[] = output.proposedSections.map((section) => ({
+    id: rid("psec"),
+    title: section.title,
+    content: section.content,
+    origin: section.origin,
+    confidence: section.confidence,
+    sourceElementIds: section.sourceElementIds,
+  }));
+
+  const idByTitle = new Map<string, string>();
+  output.proposedSections.forEach((section, index) => {
+    // Apenas correspondência exata de título; duplicatas mantêm a primeira.
+    if (!idByTitle.has(section.title)) idByTitle.set(section.title, proposedSections[index]!.id);
+  });
+
+  const findings: PopDraftFinding[] = output.findings.map((finding) => {
+    const relatedSectionId = finding.relatedSectionTitle
+      ? idByTitle.get(finding.relatedSectionTitle)
+      : undefined;
+    return {
+      id: rid("pfind"),
+      type: finding.type,
+      description: finding.description,
+      ...(relatedSectionId ? { relatedSectionId } : {}),
+      ...(finding.sourceElementIds ? { sourceElementIds: finding.sourceElementIds } : {}),
+    };
+  });
+
+  return {
+    id: rid("pdp"),
+    sourceDocumentId,
+    status: "proposto",
+    proposedSections,
+    findings,
+    aiMeta: {
+      model: POP_INTERPRETATION_MODEL,
+      processedAt: new Date().toISOString(),
+      ...(gatewayRequestId ? { gatewayRequestId } : {}),
+    },
+    createdAt: new Date().toISOString(),
+  };
+}
+
+export const generatePopDraftProposal = createServerFn({ method: "POST" })
+  .validator((input: unknown) => GenerateInput.parse(input))
+  .handler(async ({ data }): Promise<GeneratePopDraftProposalResult> => {
+    const { loadDocxStructureFromStorage } = await import("@/lib/pop-docx-source.server");
+    const loaded = await loadDocxStructureFromStorage(
+      data.sourceDocumentId,
+      data.storageObjectPath,
+    );
+    if (!loaded.ok) return loaded;
+
+    const { checkContextLimits, buildPopInterpretationPrompt } =
+      await import("@/lib/pop-draft-proposal-prompt");
+
+    // Limites verificados ANTES de gastar uma chamada de IA.
+    const limits = checkContextLimits(loaded.structure.elements);
+    if (!limits.ok) {
+      return { ok: false, reason: "contexto-excedido", message: limits.reason };
+    }
+
+    const apiKey = process.env["LOVABLE_API_KEY"];
+    if (!apiKey) {
+      return {
+        ok: false,
+        reason: "gateway-nao-configurado",
+        message: "O serviço de IA não está configurado neste ambiente.",
+      };
+    }
+
+    const prompt = buildPopInterpretationPrompt(loaded.structure.elements);
+
+    try {
+      const { streamObject } = await import("ai");
+      const { createLovableAiGatewayChatProvider } = await import("@/lib/ai-gateway.server");
+      const gateway = createLovableAiGatewayChatProvider(apiKey);
+
+      const result = streamObject({
+        model: gateway(POP_INTERPRETATION_MODEL),
+        schema: AiProposalOutputSchema,
+        temperature: 0.2,
+        messages: [
+          { role: "system", content: prompt.system },
+          { role: "user", content: prompt.user },
+        ],
+      });
+
+      // Consumido no servidor: mantém bytes fluindo (evita corte por inatividade)
+      // sem streaming na UI. Rejeita automaticamente saída fora do schema.
+      const output = await result.object;
+      const gatewayRequestId = await gateway.waitForRunId();
+
+      return {
+        ok: true,
+        proposal: assembleProposal(data.sourceDocumentId, output, gatewayRequestId),
+      };
+    } catch (error) {
+      // Nenhuma proposta parcial é montada ou devolvida em caso de falha.
+      return { ok: false, ...classifyAiError(error) };
+    }
+  });
