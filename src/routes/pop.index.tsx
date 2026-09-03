@@ -108,8 +108,7 @@ function ImportedDocumentsSection() {
             <div className="flex items-center justify-between gap-3">
               <span className="truncate">{doc.originalFileName}</span>
               <span className="shrink-0 text-muted-foreground">
-                {new Date(doc.importedAt).toLocaleDateString("pt-BR")} ·{" "}
-                {STATUS_LABEL[doc.status]}
+                {new Date(doc.importedAt).toLocaleDateString("pt-BR")} · {STATUS_LABEL[doc.status]}
               </span>
             </div>
             {doc.status === "erro" && doc.errorMessage ? (
@@ -129,7 +128,6 @@ function ImportedDocumentsSection() {
     </div>
   );
 }
-
 
 function PopIndex() {
   const docs = usePopDocs();
@@ -206,7 +204,6 @@ function PopIndex() {
     } catch (error) {
       toast.error("Falha ao importar o documento", {
         description: error instanceof Error ? error.message : "Tente novamente.",
-
       });
     } finally {
       setUploading(false);

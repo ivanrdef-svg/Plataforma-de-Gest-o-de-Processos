@@ -38,7 +38,6 @@ export interface PopSourceDocument {
   parseSummary?: PopSourceDocumentParseSummary;
 }
 
-
 type StoreState = Record<string, PopSourceDocument>;
 
 let state: StoreState = {};
@@ -140,7 +139,8 @@ function patch(id: string, changes: PopSourceDocumentPatch) {
   ensureHydrated();
   const current = state[id];
   if (!current) return undefined;
-  const next: PopSourceDocument = { ...current, ...changes };
+  const next = { ...current, ...changes } as PopSourceDocument;
+  if (next.errorMessage === undefined) delete next.errorMessage;
   state = { ...state, [id]: next };
   persist();
   emit();
@@ -156,10 +156,7 @@ export function markPopSourceDocumentProcessing(id: string) {
  * Marca o documento como processado com sucesso.
  * Warnings não fatais não impedem o estado "pronto".
  */
-export function markPopSourceDocumentReady(
-  id: string,
-  summary?: PopSourceDocumentParseSummary,
-) {
+export function markPopSourceDocumentReady(id: string, summary?: PopSourceDocumentParseSummary) {
   return patch(id, {
     status: "pronto",
     errorMessage: undefined,
