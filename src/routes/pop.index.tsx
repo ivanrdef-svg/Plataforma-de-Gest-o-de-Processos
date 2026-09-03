@@ -137,11 +137,34 @@ function PopIndex() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const upload = useServerFn(uploadPopSourceDocument);
+  const process = useServerFn(processPopSourceDocument);
 
   const create = () => {
     const doc = createPopDoc();
     toast.success("Novo POP criado");
     void navigate({ to: "/pop/$popId", params: { popId: doc.id } });
+  };
+
+  /** Extração estrutural determinística — sem IA, sem criar POP. */
+  const runProcessing = async (sourceDocumentId: string, storageObjectPath: string) => {
+    markPopSourceDocumentProcessing(sourceDocumentId);
+    try {
+      const result = await process({ data: { sourceDocumentId, storageObjectPath } });
+      if (result.ok) {
+        markPopSourceDocumentReady(sourceDocumentId, {
+          elementCount: result.structure.elements.length,
+          warnings: result.structure.warnings,
+          parsedAt: result.structure.parsedAt,
+        });
+      } else {
+        markPopSourceDocumentError(sourceDocumentId, result.message);
+      }
+    } catch (error) {
+      markPopSourceDocumentError(
+        sourceDocumentId,
+        error instanceof Error ? error.message : "Falha ao processar o documento.",
+      );
+    }
   };
 
   const handleFile = async (file: File) => {
@@ -177,12 +200,13 @@ function PopIndex() {
         sizeBytes: file.size,
       });
       toast.success("Documento importado", {
-        description:
-          "A estruturação automática chega em uma próxima atualização — por enquanto, o arquivo original fica preservado.",
+        description: "Extraindo a estrutura do documento — o arquivo original fica preservado.",
       });
+      void runProcessing(result.sourceDocumentId, result.storageObjectPath);
     } catch (error) {
       toast.error("Falha ao importar o documento", {
         description: error instanceof Error ? error.message : "Tente novamente.",
+
       });
     } finally {
       setUploading(false);
