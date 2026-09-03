@@ -56,7 +56,8 @@ function classifyAiError(error: unknown): {
   if (name === "AbortError" || /timeout|timed out|aborted/i.test(raw)) {
     return {
       reason: "gateway-indisponivel",
-      message: "A interpretação demorou mais do que o esperado e foi interrompida. Tente novamente.",
+      message:
+        "A interpretação demorou mais do que o esperado e foi interrompida. Tente novamente.",
     };
   }
   if (status === 401 || status === 403) {
@@ -147,12 +148,14 @@ export const generatePopDraftProposal = createServerFn({ method: "POST" })
   .validator((input: unknown) => GenerateInput.parse(input))
   .handler(async ({ data }): Promise<GeneratePopDraftProposalResult> => {
     const { loadDocxStructureFromStorage } = await import("@/lib/pop-docx-source.server");
-    const loaded = await loadDocxStructureFromStorage(data.sourceDocumentId, data.storageObjectPath);
+    const loaded = await loadDocxStructureFromStorage(
+      data.sourceDocumentId,
+      data.storageObjectPath,
+    );
     if (!loaded.ok) return loaded;
 
-    const { checkContextLimits, buildPopInterpretationPrompt } = await import(
-      "@/lib/pop-draft-proposal-prompt"
-    );
+    const { checkContextLimits, buildPopInterpretationPrompt } =
+      await import("@/lib/pop-draft-proposal-prompt");
 
     // Limites verificados ANTES de gastar uma chamada de IA.
     const limits = checkContextLimits(loaded.structure.elements);
