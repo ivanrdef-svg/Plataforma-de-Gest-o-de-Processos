@@ -132,7 +132,11 @@ export function createPopSourceDocument(input: CreatePopSourceDocumentInput): Po
   return doc;
 }
 
-function patch(id: string, changes: Partial<PopSourceDocument>) {
+type PopSourceDocumentPatch = {
+  [K in keyof PopSourceDocument]?: PopSourceDocument[K] | undefined;
+};
+
+function patch(id: string, changes: PopSourceDocumentPatch) {
   ensureHydrated();
   const current = state[id];
   if (!current) return undefined;

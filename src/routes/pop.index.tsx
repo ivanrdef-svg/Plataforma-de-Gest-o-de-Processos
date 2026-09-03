@@ -12,7 +12,15 @@ import {
   MAX_POP_SOURCE_DOCUMENT_SIZE_BYTES,
   uploadPopSourceDocument,
 } from "@/lib/pop-documents.functions";
-import { createPopSourceDocument, usePopSourceDocuments } from "@/lib/pop-source-document-store";
+import {
+  createPopSourceDocument,
+  markPopSourceDocumentError,
+  markPopSourceDocumentProcessing,
+  markPopSourceDocumentReady,
+  usePopSourceDocuments,
+  type PopSourceDocumentStatus,
+} from "@/lib/pop-source-document-store";
+import { processPopSourceDocument } from "@/lib/pop-docx-parser.functions";
 
 /** Build 009 — o card do POP mostra claramente o estágio do ciclo de vida. */
 function PopCard({ doc }: { doc: PopDoc }) {
