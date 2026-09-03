@@ -12,11 +12,7 @@ import {
   MAX_POP_SOURCE_DOCUMENT_SIZE_BYTES,
   uploadPopSourceDocument,
 } from "@/lib/pop-documents.functions";
-import {
-  createPopSourceDocument,
-  usePopSourceDocuments,
-} from "@/lib/pop-source-document-store";
-
+import { createPopSourceDocument, usePopSourceDocuments } from "@/lib/pop-source-document-store";
 
 /** Build 009 — o card do POP mostra claramente o estágio do ciclo de vida. */
 function PopCard({ doc }: { doc: PopDoc }) {
@@ -40,9 +36,7 @@ function PopCard({ doc }: { doc: PopDoc }) {
         <LifecycleBadge state={state} size="sm" />
       </div>
       <p className="mt-1 truncate text-sm font-medium">{doc.name}</p>
-      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-        {doc.description}
-      </p>
+      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{doc.description}</p>
       <LifecycleTrack state={state} className="mt-3" />
       <p className="mt-3 text-[11px] text-muted-foreground">
         {doc.category} · {doc.version} · {doc.owner}
@@ -92,15 +86,10 @@ function ImportedDocumentsSection() {
 
   return (
     <div className="mt-10 rounded-xl border bg-card p-4">
-      <p className="text-xs font-medium text-muted-foreground">
-        Documentos importados
-      </p>
+      <p className="text-xs font-medium text-muted-foreground">Documentos importados</p>
       <ul className="mt-3 space-y-2">
         {documents.map((doc) => (
-          <li
-            key={doc.id}
-            className="flex items-center justify-between gap-3 text-xs"
-          >
+          <li key={doc.id} className="flex items-center justify-between gap-3 text-xs">
             <span className="truncate">{doc.originalFileName}</span>
             <span className="shrink-0 text-muted-foreground">
               {new Date(doc.importedAt).toLocaleDateString("pt-BR")} · {doc.status}
@@ -231,4 +220,3 @@ function PopIndex() {
     </div>
   );
 }
-
