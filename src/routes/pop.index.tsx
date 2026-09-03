@@ -1,11 +1,18 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { FileText, Plus } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { useRef, useState } from "react";
+import { FileText, Loader2, Plus, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
 import { createPopDoc, usePopDocs, type PopDoc } from "@/lib/pop-store";
 import { LifecycleBadge, LifecycleTrack } from "@/components/lifecycle/lifecycle-badge";
 import { useLifecycleState } from "@/lib/lifecycle-store";
+import {
+  MAX_POP_SOURCE_DOCUMENT_SIZE_BYTES,
+  uploadPopSourceDocument,
+} from "@/lib/pop-documents.functions";
+import { createPopSourceDocument, usePopSourceDocuments } from "@/lib/pop-source-document-store";
 
 /** Build 009 — o card do POP mostra claramente o estágio do ciclo de vida. */
 function PopCard({ doc }: { doc: PopDoc }) {
@@ -29,9 +36,7 @@ function PopCard({ doc }: { doc: PopDoc }) {
         <LifecycleBadge state={state} size="sm" />
       </div>
       <p className="mt-1 truncate text-sm font-medium">{doc.name}</p>
-      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-        {doc.description}
-      </p>
+      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{doc.description}</p>
       <LifecycleTrack state={state} className="mt-3" />
       <p className="mt-3 text-[11px] text-muted-foreground">
         {doc.category} · {doc.version} · {doc.owner}
@@ -61,14 +66,97 @@ export const Route = createFileRoute("/pop/")({
   }),
 });
 
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Falha ao ler o arquivo."));
+    reader.onload = () => {
+      const result = String(reader.result ?? "");
+      const comma = result.indexOf(",");
+      resolve(comma >= 0 ? result.slice(comma + 1) : result);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+/** Build 023 — importa o documento original. Ainda NÃO cria um POP. */
+function ImportedDocumentsSection() {
+  const documents = usePopSourceDocuments();
+  if (documents.length === 0) return null;
+
+  return (
+    <div className="mt-10 rounded-xl border bg-card p-4">
+      <p className="text-xs font-medium text-muted-foreground">Documentos importados</p>
+      <ul className="mt-3 space-y-2">
+        {documents.map((doc) => (
+          <li key={doc.id} className="flex items-center justify-between gap-3 text-xs">
+            <span className="truncate">{doc.originalFileName}</span>
+            <span className="shrink-0 text-muted-foreground">
+              {new Date(doc.importedAt).toLocaleDateString("pt-BR")} · {doc.status}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function PopIndex() {
   const docs = usePopDocs();
   const navigate = useNavigate();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const upload = useServerFn(uploadPopSourceDocument);
 
   const create = () => {
     const doc = createPopDoc();
     toast.success("Novo POP criado");
     void navigate({ to: "/pop/$popId", params: { popId: doc.id } });
+  };
+
+  const handleFile = async (file: File) => {
+    if (!file.name.toLowerCase().endsWith(".docx")) {
+      toast.error("Formato não suportado", {
+        description: "Selecione um arquivo .docx.",
+      });
+      return;
+    }
+    if (file.size === 0) {
+      toast.error("Arquivo vazio", {
+        description: "O arquivo selecionado não possui conteúdo.",
+      });
+      return;
+    }
+    if (file.size > MAX_POP_SOURCE_DOCUMENT_SIZE_BYTES) {
+      toast.error("Arquivo muito grande", {
+        description: "O limite é de 10 MB por documento.",
+      });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const fileBase64 = await fileToBase64(file);
+      const result = await upload({
+        data: { originalFileName: file.name, fileBase64 },
+      });
+      createPopSourceDocument({
+        id: result.sourceDocumentId,
+        originalFileName: result.originalFileName,
+        storageObjectPath: result.storageObjectPath,
+        sizeBytes: file.size,
+      });
+      toast.success("Documento importado", {
+        description:
+          "A estruturação automática chega em uma próxima atualização — por enquanto, o arquivo original fica preservado.",
+      });
+    } catch (error) {
+      toast.error("Falha ao importar o documento", {
+        description: error instanceof Error ? error.message : "Tente novamente.",
+      });
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -82,10 +170,36 @@ function PopIndex() {
             Cada POP é um objeto estruturado da plataforma.
           </p>
         </div>
-        <Button className="gap-1.5" onClick={create}>
-          <Plus className="h-4 w-4" />
-          Novo POP
-        </Button>
+        <div className="flex items-center gap-2">
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".docx"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
+              if (file) void handleFile(file);
+            }}
+          />
+          <Button
+            variant="outline"
+            className="gap-1.5"
+            disabled={uploading}
+            onClick={() => inputRef.current?.click()}
+          >
+            {uploading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Upload className="h-4 w-4" />
+            )}
+            Importar de Word
+          </Button>
+          <Button className="gap-1.5" onClick={create}>
+            <Plus className="h-4 w-4" />
+            Novo POP
+          </Button>
+        </div>
       </div>
 
       {docs.length === 0 ? (
@@ -101,6 +215,8 @@ function PopIndex() {
           ))}
         </div>
       )}
+
+      <ImportedDocumentsSection />
     </div>
   );
 }
