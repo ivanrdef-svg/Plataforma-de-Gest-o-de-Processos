@@ -8,10 +8,7 @@
 
 import { useSyncExternalStore } from "react";
 import type { KnowledgeCategory } from "@/config/knowledge-demo";
-import {
-  POP_SECTION_TEMPLATES,
-  type PopSectionId,
-} from "@/config/pop-structure";
+import { POP_SECTION_TEMPLATES, type PopSectionId } from "@/config/pop-structure";
 
 const STORAGE_KEY = "process-platform:pop:v1";
 
@@ -185,10 +182,7 @@ export function createPopDoc(name = "Novo POP"): PopDoc {
   return doc;
 }
 
-export function updatePopDoc(
-  id: string,
-  patch: Partial<Omit<PopDoc, "id">>,
-): PopDoc | undefined {
+export function updatePopDoc(id: string, patch: Partial<Omit<PopDoc, "id">>): PopDoc | undefined {
   ensureHydrated();
   const current = state[id];
   if (!current) return undefined;
@@ -213,9 +207,7 @@ export function updatePopSection(
   const doc = state[docId];
   if (!doc) return undefined;
   return updatePopDoc(docId, {
-    sections: doc.sections.map((s) =>
-      s.id === sectionKey ? { ...s, ...patch } : s,
-    ),
+    sections: doc.sections.map((s) => (s.id === sectionKey ? { ...s, ...patch } : s)),
   });
 }
 

@@ -11,11 +11,7 @@ import { POP_SOURCE_DOCUMENTS_BUCKET } from "@/lib/pop-documents.functions";
 
 const STORAGE_KEY = "process-platform:pop-source-document:v1";
 
-export type PopSourceDocumentStatus =
-  | "enviado"
-  | "processando"
-  | "pronto"
-  | "erro";
+export type PopSourceDocumentStatus = "enviado" | "processando" | "pronto" | "erro";
 
 export interface PopSourceDocument {
   id: string;
@@ -86,9 +82,7 @@ export function usePopSourceDocuments(): PopSourceDocument[] {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
-export function usePopSourceDocument(
-  id: string,
-): PopSourceDocument | undefined {
+export function usePopSourceDocument(id: string): PopSourceDocument | undefined {
   return usePopSourceDocuments().find((d) => d.id === id);
 }
 
@@ -106,9 +100,7 @@ export interface CreatePopSourceDocumentInput {
 /**
  * Registra localmente um documento cujo upload JÁ foi concluído com sucesso.
  */
-export function createPopSourceDocument(
-  input: CreatePopSourceDocumentInput,
-): PopSourceDocument {
+export function createPopSourceDocument(input: CreatePopSourceDocumentInput): PopSourceDocument {
   ensureHydrated();
   const doc: PopSourceDocument = {
     id: input.id,

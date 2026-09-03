@@ -6,11 +6,7 @@
 
 import type { PopSection } from "@/lib/pop-store";
 
-export type PopDraftProposalStatus =
-  | "proposto"
-  | "em revisão"
-  | "confirmado"
-  | "rejeitado";
+export type PopDraftProposalStatus = "proposto" | "em revisão" | "confirmado" | "rejeitado";
 
 export interface PopDraftProposalAiMeta {
   model: string;
