@@ -17,6 +17,14 @@ const STORAGE_KEY = "process-platform:pop:v1";
 
 export type PopStatus = "rascunho" | "em revisão" | "publicado";
 
+/** Build 023 — procedência de uma seção (opcional, retrocompatível). */
+export type PopSectionOrigin = "manual" | "ia" | "documento";
+
+export interface PopSectionSourceReference {
+  sourceDocumentId: string;
+  sourceSectionReference?: string;
+}
+
 export interface PopSection {
   id: string;
   /** Identificador da seção padrão (quando derivada do template). */
@@ -25,6 +33,17 @@ export interface PopSection {
   hint?: string;
   content: string;
   notes: string;
+  /** Build 023 — origem da seção. Ausente em todo POP criado até hoje. */
+  origin?: PopSectionOrigin;
+  /** Build 023 — vínculo com o documento original importado. */
+  sourceReference?: PopSectionSourceReference;
+}
+
+/** Build 023 — vínculo do POP com a importação que o originou. */
+export interface PopImportOrigin {
+  sourceDocumentId: string;
+  draftProposalId: string;
+  confirmedAt: string;
 }
 
 export interface PopDoc {
@@ -43,6 +62,8 @@ export interface PopDoc {
   favorite: boolean;
   sections: PopSection[];
   savedAt: string;
+  /** Build 023 — presente apenas em POPs criados por importação (Build 026). */
+  importOrigin?: PopImportOrigin;
 }
 
 type StoreState = Record<string, PopDoc>;
