@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import type { BpmNode } from "@/config/bpm-model";
+import type { BpmIssue, BpmNode } from "@/config/bpm-model";
 import { getStepType } from "@/config/process-model";
 
 /**
@@ -31,6 +31,7 @@ function ReadField({ label, value }: { label: string; value: string }) {
 
 export function BpmPropertiesPanel({
   node,
+  issues,
   processId,
   processName,
   onNotesChange,
@@ -38,6 +39,8 @@ export function BpmPropertiesPanel({
   onDelete,
 }: {
   node: BpmNode | null;
+  /** Build 021 — issues já filtradas pela validação atual do diagrama. */
+  issues?: BpmIssue[] | undefined;
   processId: string;
   processName: string;
   onNotesChange: (notes: string) => void;
@@ -116,11 +119,11 @@ export function BpmPropertiesPanel({
       <ReadField label="Saídas" value={node.outputs ?? ""} />
       <ReadField label="Tempo estimado" value={node.duration} />
 
-      {!!node.issues?.length && (
+      {!!issues?.length && (
         <div className="space-y-1.5 rounded-lg border border-dashed bg-muted/30 p-2">
           <Label className="text-[11px] text-muted-foreground">Consistência do elemento</Label>
           <ul className="space-y-1">
-            {node.issues.map((issue) => (
+            {issues.map((issue) => (
               <li
                 key={issue.id}
                 className="flex items-start gap-1.5 text-[11px] leading-snug text-muted-foreground"

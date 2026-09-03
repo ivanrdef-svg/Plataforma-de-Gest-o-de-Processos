@@ -11,7 +11,6 @@ import {
   PanelLeft,
   PanelRight,
   Map as MapIcon,
-  AlertTriangle,
   Plus,
   Spline,
   Trash2,
@@ -155,7 +154,8 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
     const map = new Map<string, "erro" | "atencao">();
     [...validation.errors, ...validation.warnings].forEach((issue) => {
       if (!issue.nodeId) return;
-      if (issue.severity === "erro" || !map.has(issue.nodeId)) map.set(issue.nodeId, issue.severity);
+      if (issue.severity === "erro" || !map.has(issue.nodeId))
+        map.set(issue.nodeId, issue.severity);
     });
     return Object.fromEntries(map) as Record<string, "erro" | "atencao">;
   }, [validation]);
@@ -164,7 +164,8 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
     const map = new Map<string, "erro" | "atencao">();
     [...validation.errors, ...validation.warnings].forEach((issue) => {
       if (!issue.edgeId) return;
-      if (issue.severity === "erro" || !map.has(issue.edgeId)) map.set(issue.edgeId, issue.severity);
+      if (issue.severity === "erro" || !map.has(issue.edgeId))
+        map.set(issue.edgeId, issue.severity);
     });
     return Object.fromEntries(map) as Record<string, "erro" | "atencao">;
   }, [validation]);
