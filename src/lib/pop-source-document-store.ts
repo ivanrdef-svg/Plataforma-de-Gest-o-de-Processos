@@ -131,3 +131,39 @@ export function createPopSourceDocument(input: CreatePopSourceDocumentInput): Po
   emit();
   return doc;
 }
+
+function patch(id: string, changes: Partial<PopSourceDocument>) {
+  ensureHydrated();
+  const current = state[id];
+  if (!current) return undefined;
+  const next: PopSourceDocument = { ...current, ...changes };
+  state = { ...state, [id]: next };
+  persist();
+  emit();
+  return next;
+}
+
+/** Marca o início do processamento estrutural do documento. */
+export function markPopSourceDocumentProcessing(id: string) {
+  return patch(id, { status: "processando", errorMessage: undefined });
+}
+
+/**
+ * Marca o documento como processado com sucesso.
+ * Warnings não fatais não impedem o estado "pronto".
+ */
+export function markPopSourceDocumentReady(
+  id: string,
+  summary?: PopSourceDocumentParseSummary,
+) {
+  return patch(id, {
+    status: "pronto",
+    errorMessage: undefined,
+    ...(summary ? { parseSummary: summary } : {}),
+  });
+}
+
+/** Marca falha de processamento, preservando a mensagem para a UI. */
+export function markPopSourceDocumentError(id: string, errorMessage: string) {
+  return patch(id, { status: "erro", errorMessage });
+}
