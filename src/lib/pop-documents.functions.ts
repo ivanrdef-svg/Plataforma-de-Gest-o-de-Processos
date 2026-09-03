@@ -13,8 +13,7 @@ export const ALLOWED_POP_SOURCE_DOCUMENT_EXTENSIONS = [".docx"] as const;
 /** Duração da URL assinada (5 minutos). */
 export const POP_SOURCE_DOCUMENT_SIGNED_URL_TTL_SECONDS = 300;
 
-const DOCX_MIME_TYPE =
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+const DOCX_MIME_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 const UploadInput = z.object({
   originalFileName: z.string().min(1).max(255),
@@ -32,9 +31,8 @@ function sanitizeFileName(name: string): string {
 }
 
 function decodeBase64(value: string): Uint8Array {
-  const normalized = value.includes(",") && value.startsWith("data:")
-    ? (value.split(",")[1] ?? "")
-    : value;
+  const normalized =
+    value.includes(",") && value.startsWith("data:") ? (value.split(",")[1] ?? "") : value;
   const binary = atob(normalized.replace(/\s+/g, ""));
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i += 1) {
@@ -95,9 +93,7 @@ export const getPopSourceDocumentUrl = createServerFn({ method: "POST" })
       .createSignedUrl(data.storageObjectPath, POP_SOURCE_DOCUMENT_SIGNED_URL_TTL_SECONDS);
 
     if (error || !signed?.signedUrl) {
-      throw new Error(
-        `Falha ao gerar URL assinada: ${error?.message ?? "resposta inválida"}`,
-      );
+      throw new Error(`Falha ao gerar URL assinada: ${error?.message ?? "resposta inválida"}`);
     }
 
     return {
