@@ -178,20 +178,10 @@ export function BpmValidationStatusPills({ validation }: { validation: BpmValida
       <Pill tone={tone} shape="full" size="md" icon={Icon} gap="gap-1.5">
         {statusLabel}
       </Pill>
-      <Pill
-        tone="bg-muted text-muted-foreground"
-        shape="full"
-        size="md"
-        title="Erros no diagrama"
-      >
+      <Pill tone="bg-muted text-muted-foreground" shape="full" size="md" title="Erros no diagrama">
         {validation.errors.length} erro(s)
       </Pill>
-      <Pill
-        tone="bg-muted text-muted-foreground"
-        shape="full"
-        size="md"
-        title="Avisos no diagrama"
-      >
+      <Pill tone="bg-muted text-muted-foreground" shape="full" size="md" title="Avisos no diagrama">
         {validation.warnings.length} aviso(s)
       </Pill>
     </div>

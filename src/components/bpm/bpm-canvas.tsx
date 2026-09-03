@@ -380,11 +380,12 @@ export const BpmCanvas = forwardRef<BpmCanvasHandle, BpmCanvasProps>(function Bp
                   markerEnd="url(#bpm-arrow)"
                 />
                 {edgeIssue && (
-                  <g transform={`translate(${(x1 + x2) / 2} ${(y1 + y2) / 2})`} pointerEvents="none">
+                  <g
+                    transform={`translate(${(x1 + x2) / 2} ${(y1 + y2) / 2})`}
+                    pointerEvents="none"
+                  >
                     <title>
-                      {edgeIssue === "erro"
-                        ? "Erro nesta conexão"
-                        : "Atenção nesta conexão"}
+                      {edgeIssue === "erro" ? "Erro nesta conexão" : "Atenção nesta conexão"}
                     </title>
                     <circle
                       r={7}
