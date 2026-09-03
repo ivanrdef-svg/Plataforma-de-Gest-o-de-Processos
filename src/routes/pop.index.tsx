@@ -1,11 +1,22 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { FileText, Plus } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { useRef, useState } from "react";
+import { FileText, Loader2, Plus, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
 import { createPopDoc, usePopDocs, type PopDoc } from "@/lib/pop-store";
 import { LifecycleBadge, LifecycleTrack } from "@/components/lifecycle/lifecycle-badge";
 import { useLifecycleState } from "@/lib/lifecycle-store";
+import {
+  MAX_POP_SOURCE_DOCUMENT_SIZE_BYTES,
+  uploadPopSourceDocument,
+} from "@/lib/pop-documents.functions";
+import {
+  createPopSourceDocument,
+  usePopSourceDocuments,
+} from "@/lib/pop-source-document-store";
+
 
 /** Build 009 — o card do POP mostra claramente o estágio do ciclo de vida. */
 function PopCard({ doc }: { doc: PopDoc }) {
