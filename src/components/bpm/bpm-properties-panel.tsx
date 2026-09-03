@@ -79,9 +79,26 @@ export function BpmPropertiesPanel({
       <div>
         <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{kindLabel}</p>
         <h3 className="mt-0.5 text-sm font-medium leading-snug">{node.name}</h3>
-        {node.stepId && (
+        {node.stepId ? (
+          <div className="mt-1 flex flex-col items-start gap-0.5">
+            <p className="text-[11px] text-muted-foreground">
+              Origem: etapa do processo {processName}
+            </p>
+            <Link to="/processos/$processId" params={{ processId }}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-auto gap-1 px-0 py-0 text-[11px] text-muted-foreground hover:text-foreground"
+              >
+                Ver etapa no Processo
+                <ArrowUpRight className="h-3 w-3" />
+              </Button>
+            </Link>
+          </div>
+        ) : (
           <p className="mt-1 text-[11px] text-muted-foreground">
-            Origem: etapa do processo {processName}
+            Elemento criado manualmente no BPMN
           </p>
         )}
       </div>
