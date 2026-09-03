@@ -19,12 +19,18 @@ import {
   Flag,
   GitBranch,
   Square,
+  ShieldCheck,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { BpmCanvas, type BpmCanvasHandle } from "@/components/bpm/bpm-canvas";
 import { BpmSourcePanel } from "@/components/bpm/bpm-source-panel";
 import { BpmPropertiesPanel } from "@/components/bpm/bpm-properties-panel";
+import {
+  BpmIssueRow,
+  BpmValidationPanel,
+  BpmValidationStatusPills,
+} from "@/components/bpm/bpm-validation-panel";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -47,7 +53,8 @@ import {
   updateNodeProperties,
   useBpmDiagram,
 } from "@/lib/bpm-store";
-import { diagramIssueSummary, type BpmNodeKind } from "@/config/bpm-model";
+import type { BpmDiagram, BpmNodeKind } from "@/config/bpm-model";
+import { validateBpmn } from "@/lib/bpm-validation";
 import type { ProcessDoc } from "@/lib/process-store";
 import { cn } from "@/lib/utils";
 
@@ -57,6 +64,16 @@ import { cn } from "@/lib/utils";
  * propriedades diretamente no diagrama. Nada aqui reconstrói o diagrama de
  * forma destrutiva; a persistência é automática pelo store (localStorage).
  */
+
+const EMPTY_DIAGRAM: BpmDiagram = {
+  processId: "",
+  signature: "",
+  nodes: [],
+  edges: [],
+  lanes: [],
+  issues: [],
+  generatedAt: "",
+};
 
 const CREATE_OPTIONS: {
   kind: BpmNodeKind;
@@ -114,6 +131,7 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
   const [creatingKind, setCreatingKind] = useState<BpmNodeKind | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [connectSourceId, setConnectSourceId] = useState<string | null>(null);
+  const [showValidation, setShowValidation] = useState(false);
   const canvasRef = useRef<BpmCanvasHandle>(null);
 
   // Gera o fluxo inicial automaticamente ao abrir o Processo.
@@ -130,10 +148,52 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
 
   const pending = useMemo(() => pendingProcessChanges(doc, diagram), [doc, diagram]);
   const stale = pending.count > 0;
-  const issues = useMemo(
-    () => (diagram ? diagramIssueSummary(diagram) : { total: 0, errors: 0, warnings: 0 }),
-    [diagram],
+  // Fonte única de validação do BPMN nesta tela.
+  const validation = useMemo(() => validateBpmn(diagram ?? EMPTY_DIAGRAM, doc), [diagram, doc]);
+
+  const nodeSeverity = useMemo(() => {
+    const map = new Map<string, "erro" | "atencao">();
+    [...validation.errors, ...validation.warnings].forEach((issue) => {
+      if (!issue.nodeId) return;
+      if (issue.severity === "erro" || !map.has(issue.nodeId)) map.set(issue.nodeId, issue.severity);
+    });
+    return Object.fromEntries(map) as Record<string, "erro" | "atencao">;
+  }, [validation]);
+
+  const edgeSeverity = useMemo(() => {
+    const map = new Map<string, "erro" | "atencao">();
+    [...validation.errors, ...validation.warnings].forEach((issue) => {
+      if (!issue.edgeId) return;
+      if (issue.severity === "erro" || !map.has(issue.edgeId)) map.set(issue.edgeId, issue.severity);
+    });
+    return Object.fromEntries(map) as Record<string, "erro" | "atencao">;
+  }, [validation]);
+
+  const selectedNodeIssues = useMemo(
+    () =>
+      selectedId
+        ? [...validation.errors, ...validation.warnings].filter((i) => i.nodeId === selectedId)
+        : [],
+    [validation, selectedId],
   );
+
+  const selectedEdgeIssues = useMemo(
+    () =>
+      selectedEdgeId
+        ? [...validation.errors, ...validation.warnings].filter((i) => i.edgeId === selectedEdgeId)
+        : [],
+    [validation, selectedEdgeId],
+  );
+
+  const selectIssueNode = useCallback((nodeId: string) => {
+    setSelectedEdgeId(null);
+    setSelectedId(nodeId);
+  }, []);
+
+  const selectIssueEdge = useCallback((edgeId: string) => {
+    setSelectedId(null);
+    setSelectedEdgeId(edgeId);
+  }, []);
   const selected = diagram?.nodes.find((n) => n.id === selectedId) ?? null;
   const selectedEdge = diagram?.edges.find((e) => e.id === selectedEdgeId) ?? null;
 
@@ -348,15 +408,19 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
           onClick={() => setFullscreen((f) => !f)}
         />
 
-        <div className="ml-auto flex items-center gap-2 pr-1 text-[11px] text-muted-foreground">
-          <Sparkles className="h-3.5 w-3.5 text-primary" />
-          Gerado a partir do Processo · {doc.steps.length} etapas
-          {issues.total > 0 && (
-            <span className="flex items-center gap-1 rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-amber-700 dark:text-amber-400">
-              <AlertTriangle className="h-3 w-3" />
-              {issues.total} {issues.total === 1 ? "inconsistência" : "inconsistências"}
-            </span>
-          )}
+        <ToolButton
+          label={showValidation ? "Ocultar validação do BPMN" : "Validar BPMN"}
+          icon={ShieldCheck}
+          active={showValidation}
+          onClick={() => setShowValidation((v) => !v)}
+        />
+
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2 pr-1 text-[11px] text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+            Gerado a partir do Processo · {doc.steps.length} etapas
+          </span>
+          <BpmValidationStatusPills validation={validation} />
         </div>
       </div>
 
@@ -378,6 +442,27 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
           >
             <X className="h-3.5 w-3.5" />
             Cancelar
+          </Button>
+        </div>
+      )}
+
+      {/* Painel de validação (colapsável) */}
+      {showValidation && (
+        <div className="relative animate-fade-in">
+          <BpmValidationPanel
+            validation={validation}
+            onSelectNode={selectIssueNode}
+            onSelectEdge={selectIssueEdge}
+          />
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            aria-label="Fechar validação"
+            className="absolute right-2 top-2 h-6 w-6 p-0"
+            onClick={() => setShowValidation(false)}
+          >
+            <X className="h-3.5 w-3.5" />
           </Button>
         </div>
       )}
@@ -412,6 +497,8 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
           onConnectPick={handleConnectPick}
           onCancelInteraction={cancelModes}
           onZoomChange={setZoom}
+          nodeSeverity={nodeSeverity}
+          edgeSeverity={edgeSeverity}
           showMinimap={showMinimap}
           onMoveNode={(id, x, y) => updateBpmNode(doc.id, id, { x, y })}
           insets={{
@@ -451,6 +538,13 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
                     {diagram.nodes.find((n) => n.id === selectedEdge.target)?.name ?? "—"}
                   </h3>
                 </div>
+                {!!selectedEdgeIssues.length && (
+                  <ul className="space-y-1.5">
+                    {selectedEdgeIssues.map((issue) => (
+                      <BpmIssueRow key={issue.id} issue={issue} compact />
+                    ))}
+                  </ul>
+                )}
                 <Button
                   size="sm"
                   variant="outline"
@@ -464,6 +558,7 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
             ) : (
               <BpmPropertiesPanel
                 node={selected}
+                issues={selectedNodeIssues}
                 processId={doc.id}
                 processName={doc.name}
                 onNotesChange={(notes) => selected && updateBpmNode(doc.id, selected.id, { notes })}
