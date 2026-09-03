@@ -13,6 +13,14 @@ const STORAGE_KEY = "process-platform:pop-source-document:v1";
 
 export type PopSourceDocumentStatus = "enviado" | "processando" | "pronto" | "erro";
 
+export interface PopSourceDocumentParseSummary {
+  /** Quantidade de elementos estruturais extraídos. */
+  elementCount: number;
+  /** Avisos não fatais do parser. */
+  warnings: string[];
+  parsedAt: string;
+}
+
 export interface PopSourceDocument {
   id: string;
   originalFileName: string;
@@ -23,6 +31,11 @@ export interface PopSourceDocument {
   status: PopSourceDocumentStatus;
   importedAt: string;
   errorMessage?: string;
+  /**
+   * Resumo leve do último processamento. A estrutura completa NÃO é
+   * persistida: ela é reproduzida sob demanda a partir do arquivo original.
+   */
+  parseSummary?: PopSourceDocumentParseSummary;
 }
 
 type StoreState = Record<string, PopSourceDocument>;
@@ -116,4 +129,42 @@ export function createPopSourceDocument(input: CreatePopSourceDocumentInput): Po
   persist();
   emit();
   return doc;
+}
+
+type PopSourceDocumentPatch = {
+  [K in keyof PopSourceDocument]?: PopSourceDocument[K] | undefined;
+};
+
+function patch(id: string, changes: PopSourceDocumentPatch) {
+  ensureHydrated();
+  const current = state[id];
+  if (!current) return undefined;
+  const next = { ...current, ...changes } as PopSourceDocument;
+  if (next.errorMessage === undefined) delete next.errorMessage;
+  state = { ...state, [id]: next };
+  persist();
+  emit();
+  return next;
+}
+
+/** Marca o início do processamento estrutural do documento. */
+export function markPopSourceDocumentProcessing(id: string) {
+  return patch(id, { status: "processando", errorMessage: undefined });
+}
+
+/**
+ * Marca o documento como processado com sucesso.
+ * Warnings não fatais não impedem o estado "pronto".
+ */
+export function markPopSourceDocumentReady(id: string, summary?: PopSourceDocumentParseSummary) {
+  return patch(id, {
+    status: "pronto",
+    errorMessage: undefined,
+    ...(summary ? { parseSummary: summary } : {}),
+  });
+}
+
+/** Marca falha de processamento, preservando a mensagem para a UI. */
+export function markPopSourceDocumentError(id: string, errorMessage: string) {
+  return patch(id, { status: "erro", errorMessage });
 }

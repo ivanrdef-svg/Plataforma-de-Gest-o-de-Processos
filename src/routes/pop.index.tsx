@@ -12,7 +12,15 @@ import {
   MAX_POP_SOURCE_DOCUMENT_SIZE_BYTES,
   uploadPopSourceDocument,
 } from "@/lib/pop-documents.functions";
-import { createPopSourceDocument, usePopSourceDocuments } from "@/lib/pop-source-document-store";
+import {
+  createPopSourceDocument,
+  markPopSourceDocumentError,
+  markPopSourceDocumentProcessing,
+  markPopSourceDocumentReady,
+  usePopSourceDocuments,
+  type PopSourceDocumentStatus,
+} from "@/lib/pop-source-document-store";
+import { processPopSourceDocument } from "@/lib/pop-docx-parser.functions";
 
 /** Build 009 — o card do POP mostra claramente o estágio do ciclo de vida. */
 function PopCard({ doc }: { doc: PopDoc }) {
@@ -79,7 +87,14 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-/** Build 023 — importa o documento original. Ainda NÃO cria um POP. */
+const STATUS_LABEL: Record<PopSourceDocumentStatus, string> = {
+  enviado: "Enviado",
+  processando: "Processando…",
+  pronto: "Pronto",
+  erro: "Erro",
+};
+
+/** Build 023/024 — documento original importado e seu estado de processamento. */
 function ImportedDocumentsSection() {
   const documents = usePopSourceDocuments();
   if (documents.length === 0) return null;
@@ -89,11 +104,24 @@ function ImportedDocumentsSection() {
       <p className="text-xs font-medium text-muted-foreground">Documentos importados</p>
       <ul className="mt-3 space-y-2">
         {documents.map((doc) => (
-          <li key={doc.id} className="flex items-center justify-between gap-3 text-xs">
-            <span className="truncate">{doc.originalFileName}</span>
-            <span className="shrink-0 text-muted-foreground">
-              {new Date(doc.importedAt).toLocaleDateString("pt-BR")} · {doc.status}
-            </span>
+          <li key={doc.id} className="text-xs">
+            <div className="flex items-center justify-between gap-3">
+              <span className="truncate">{doc.originalFileName}</span>
+              <span className="shrink-0 text-muted-foreground">
+                {new Date(doc.importedAt).toLocaleDateString("pt-BR")} · {STATUS_LABEL[doc.status]}
+              </span>
+            </div>
+            {doc.status === "erro" && doc.errorMessage ? (
+              <p className="mt-1 text-[11px] text-destructive">{doc.errorMessage}</p>
+            ) : null}
+            {doc.status === "pronto" && doc.parseSummary ? (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {doc.parseSummary.elementCount} elemento(s) estruturais identificados
+                {doc.parseSummary.warnings.length > 0
+                  ? ` · ${doc.parseSummary.warnings.length} aviso(s)`
+                  : ""}
+              </p>
+            ) : null}
           </li>
         ))}
       </ul>
@@ -107,11 +135,34 @@ function PopIndex() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const upload = useServerFn(uploadPopSourceDocument);
+  const process = useServerFn(processPopSourceDocument);
 
   const create = () => {
     const doc = createPopDoc();
     toast.success("Novo POP criado");
     void navigate({ to: "/pop/$popId", params: { popId: doc.id } });
+  };
+
+  /** Extração estrutural determinística — sem IA, sem criar POP. */
+  const runProcessing = async (sourceDocumentId: string, storageObjectPath: string) => {
+    markPopSourceDocumentProcessing(sourceDocumentId);
+    try {
+      const result = await process({ data: { sourceDocumentId, storageObjectPath } });
+      if (result.ok) {
+        markPopSourceDocumentReady(sourceDocumentId, {
+          elementCount: result.structure.elements.length,
+          warnings: result.structure.warnings,
+          parsedAt: result.structure.parsedAt,
+        });
+      } else {
+        markPopSourceDocumentError(sourceDocumentId, result.message);
+      }
+    } catch (error) {
+      markPopSourceDocumentError(
+        sourceDocumentId,
+        error instanceof Error ? error.message : "Falha ao processar o documento.",
+      );
+    }
   };
 
   const handleFile = async (file: File) => {
@@ -147,9 +198,9 @@ function PopIndex() {
         sizeBytes: file.size,
       });
       toast.success("Documento importado", {
-        description:
-          "A estruturação automática chega em uma próxima atualização — por enquanto, o arquivo original fica preservado.",
+        description: "Extraindo a estrutura do documento — o arquivo original fica preservado.",
       });
+      void runProcessing(result.sourceDocumentId, result.storageObjectPath);
     } catch (error) {
       toast.error("Falha ao importar o documento", {
         description: error instanceof Error ? error.message : "Tente novamente.",
