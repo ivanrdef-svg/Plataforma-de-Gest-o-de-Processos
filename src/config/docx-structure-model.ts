@@ -51,10 +51,7 @@ export interface DocxTableElement extends DocxElementBase {
 }
 
 export type DocxElement =
-  | DocxHeadingElement
-  | DocxParagraphElement
-  | DocxListElement
-  | DocxTableElement;
+  DocxHeadingElement | DocxParagraphElement | DocxListElement | DocxTableElement;
 
 export interface DocxDocumentStructure {
   sourceDocumentId: string;

@@ -83,7 +83,10 @@ function extractText(nodes: OrderedNode[]): string {
 }
 
 function normalize(text: string): string {
-  return text.replace(/\u00a0/g, " ").replace(/[ \t]+\n/g, "\n").trim();
+  return text
+    .replace(/\u00a0/g, " ")
+    .replace(/[ \t]+\n/g, "\n")
+    .trim();
 }
 
 /** Extrai o nível de heading de um nome de estilo, de forma tolerante. */
@@ -220,7 +223,9 @@ export async function parseDocxStructure(
 
   const documentXml = await documentFile.async("string");
   const numberingFile = zip.file(NUMBERING_PATH);
-  const numberingMap = buildNumberingMap(numberingFile ? await numberingFile.async("string") : null);
+  const numberingMap = buildNumberingMap(
+    numberingFile ? await numberingFile.async("string") : null,
+  );
 
   let tree: OrderedNode[];
   try {
