@@ -1,4 +1,5 @@
-import { AlertTriangle, MousePointerSquareDashed, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, MousePointerSquareDashed, Trash2 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import {
   ObjectTypeIcon,
   RelationshipIndicators,
