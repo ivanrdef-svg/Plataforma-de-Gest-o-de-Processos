@@ -13,6 +13,14 @@ const STORAGE_KEY = "process-platform:pop-source-document:v1";
 
 export type PopSourceDocumentStatus = "enviado" | "processando" | "pronto" | "erro";
 
+export interface PopSourceDocumentParseSummary {
+  /** Quantidade de elementos estruturais extraídos. */
+  elementCount: number;
+  /** Avisos não fatais do parser. */
+  warnings: string[];
+  parsedAt: string;
+}
+
 export interface PopSourceDocument {
   id: string;
   originalFileName: string;
@@ -23,7 +31,13 @@ export interface PopSourceDocument {
   status: PopSourceDocumentStatus;
   importedAt: string;
   errorMessage?: string;
+  /**
+   * Resumo leve do último processamento. A estrutura completa NÃO é
+   * persistida: ela é reproduzida sob demanda a partir do arquivo original.
+   */
+  parseSummary?: PopSourceDocumentParseSummary;
 }
+
 
 type StoreState = Record<string, PopSourceDocument>;
 
