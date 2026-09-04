@@ -163,24 +163,14 @@ export const generatePopDraftProposal = createServerFn({ method: "POST" })
       return { ok: false, reason: "contexto-excedido", message: limits.reason };
     }
 
-    const apiKey = process.env["LOVABLE_API_KEY"];
-    if (!apiKey) {
-      return {
-        ok: false,
-        reason: "gateway-nao-configurado",
-        message: "O serviço de IA não está configurado neste ambiente.",
-      };
-    }
-
     const prompt = buildPopInterpretationPrompt(loaded.structure.elements);
 
     try {
-      const { streamObject } = await import("ai");
-      const { createLovableAiGatewayChatProvider } = await import("@/lib/ai-gateway.server");
-      const gateway = createLovableAiGatewayChatProvider(apiKey);
+      const { resolveAiProvider } = await import("@/lib/ai-provider.server");
+      const { provider, model } = resolveAiProvider();
 
-      const result = streamObject({
-        model: gateway(POP_INTERPRETATION_MODEL),
+      const result = await provider.interpretStructured<AiProposalOutput>({
+        model,
         schema: AiProposalOutputSchema,
         temperature: 0.2,
         messages: [
@@ -189,14 +179,9 @@ export const generatePopDraftProposal = createServerFn({ method: "POST" })
         ],
       });
 
-      // Consumido no servidor: mantém bytes fluindo (evita corte por inatividade)
-      // sem streaming na UI. Rejeita automaticamente saída fora do schema.
-      const output = await result.object;
-      const gatewayRequestId = await gateway.waitForRunId();
-
       return {
         ok: true,
-        proposal: assembleProposal(data.sourceDocumentId, output, gatewayRequestId),
+        proposal: assembleProposal(data.sourceDocumentId, result),
       };
     } catch (error) {
       // Nenhuma proposta parcial é montada ou devolvida em caso de falha.
