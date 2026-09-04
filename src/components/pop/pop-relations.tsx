@@ -39,9 +39,7 @@ export function PopHistory() {
       {POP_DEMO_HISTORY.map((entry) => (
         <li key={entry.title} className="relative">
           <span className="absolute -left-[1.9rem] top-1.5 h-2 w-2 rounded-full bg-primary" />
-          <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
-            {entry.date}
-          </p>
+          <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{entry.date}</p>
           <p className="mt-0.5 text-sm font-medium">{entry.title}</p>
           <p className="text-xs text-muted-foreground">
             {entry.detail} · {entry.author}

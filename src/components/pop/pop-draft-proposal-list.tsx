@@ -9,12 +9,8 @@ import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import type { PopDraftProposal } from "@/config/pop-draft-proposal-model";
-import {
-  startPopDraftReview,
-  usePopDraftProposalsForSource,
-} from "@/lib/pop-draft-proposal-store";
+import { startPopDraftReview, usePopDraftProposalsForSource } from "@/lib/pop-draft-proposal-store";
 import { popDraftFailureMessage } from "@/components/pop/pop-proposal-messages";
-
 
 const ORIGIN_LABEL: Record<string, string> = {
   documento: "Documento",
@@ -197,4 +193,3 @@ export function PopDraftProposalList({ sourceDocumentId }: { sourceDocumentId: s
     </ul>
   );
 }
-

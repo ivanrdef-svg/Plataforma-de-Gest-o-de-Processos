@@ -188,9 +188,7 @@ function ProposalReview() {
                       [section.id]: !(prev[section.id] ?? true),
                     }))
                   }
-                  onChange={(patch) =>
-                    apply(updateReviewedSection(proposal.id, section.id, patch))
-                  }
+                  onChange={(patch) => apply(updateReviewedSection(proposal.id, section.id, patch))}
                   onRemove={() => apply(removeReviewedSection(proposal.id, section.id))}
                 />
               ))}
@@ -200,9 +198,7 @@ function ProposalReview() {
               variant="outline"
               className="mt-4 gap-1.5"
               onClick={() =>
-                apply(
-                  addReviewedSection(proposal.id, { title: "Nova seção", content: "" }),
-                )
+                apply(addReviewedSection(proposal.id, { title: "Nova seção", content: "" }))
               }
             >
               <Plus className="h-4 w-4" />

@@ -73,9 +73,7 @@ export function PopSectionBlock({
           aria-label={open ? "Recolher seção" : "Expandir seção"}
           className="mt-0.5 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
-          <ChevronDown
-            className={cn("h-4 w-4 transition-transform", !open && "-rotate-90")}
-          />
+          <ChevronDown className={cn("h-4 w-4 transition-transform", !open && "-rotate-90")} />
         </button>
         <span className="mt-1 text-[11px] tabular-nums text-muted-foreground/70">
           {String(index + 1).padStart(2, "0")}

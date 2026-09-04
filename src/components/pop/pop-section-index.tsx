@@ -16,9 +16,7 @@ export function PopSectionIndex({
 }) {
   return (
     <nav aria-label="Seções do POP" className="space-y-0.5">
-      <p className="mb-2 text-[10px] uppercase tracking-wider text-muted-foreground/80">
-        Índice
-      </p>
+      <p className="mb-2 text-[10px] uppercase tracking-wider text-muted-foreground/80">Índice</p>
       {sections.map((s, i) => (
         <button
           key={s.id}
