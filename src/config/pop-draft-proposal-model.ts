@@ -49,11 +49,7 @@ export interface PopDraftFinding {
 
 /** Build 026 — ciclo completo da proposta (mutadores chegam na Etapa 2). */
 export type PopDraftProposalStatus =
-  | "proposto"
-  | "em revisão"
-  | "confirmado"
-  | "rejeitado"
-  | "erro";
+  "proposto" | "em revisão" | "confirmado" | "rejeitado" | "erro";
 
 export interface PopDraftProposalAiMeta {
   model: string;
