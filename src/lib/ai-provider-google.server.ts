@@ -17,9 +17,7 @@ import {
 export function createGoogleAiProvider(): AiProvider {
   return {
     name: "google",
-    async interpretStructured<T>(
-      request: StructuredAiRequest,
-    ): Promise<StructuredAiResult<T>> {
+    async interpretStructured<T>(request: StructuredAiRequest): Promise<StructuredAiResult<T>> {
       const apiKey = process.env["GOOGLE_GENERATIVE_AI_API_KEY"];
       if (!apiKey) {
         throw new AiProviderError(

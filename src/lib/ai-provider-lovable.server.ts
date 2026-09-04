@@ -17,9 +17,7 @@ import {
 export function createLovableAiProvider(): AiProvider {
   return {
     name: "lovable",
-    async interpretStructured<T>(
-      request: StructuredAiRequest,
-    ): Promise<StructuredAiResult<T>> {
+    async interpretStructured<T>(request: StructuredAiRequest): Promise<StructuredAiResult<T>> {
       const apiKey = process.env["LOVABLE_API_KEY"];
       if (!apiKey) {
         throw new AiProviderError(
