@@ -98,9 +98,9 @@ function classifyAiError(error: unknown): {
 /** Converte o output validado da IA em uma proposta com ids próprios do servidor. */
 function assembleProposal(
   sourceDocumentId: string,
-  output: AiProposalOutput,
-  gatewayRequestId: string | undefined,
+  result: StructuredAiResult<AiProposalOutput>,
 ): PopDraftProposal {
+  const output = result.object;
   const proposedSections: PopProposedSection[] = output.proposedSections.map((section) => ({
     id: rid("psec"),
     title: section.title,
@@ -136,9 +136,10 @@ function assembleProposal(
     proposedSections,
     findings,
     aiMeta: {
-      model: POP_INTERPRETATION_MODEL,
+      model: result.model,
+      provider: result.provider,
       processedAt: new Date().toISOString(),
-      ...(gatewayRequestId ? { gatewayRequestId } : {}),
+      ...(result.requestId ? { gatewayRequestId: result.requestId } : {}),
     },
     createdAt: new Date().toISOString(),
   };
