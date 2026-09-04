@@ -1,13 +1,20 @@
 /**
- * Build 025 — Etapa 3: visualização somente-leitura das propostas geradas por IA.
- *
- * Nenhuma ação de confirmação/aprovação/edição existe aqui — a proposta é um
- * artefato em revisão, nunca um POP. Nada deste componente toca `pop-store`.
+ * Build 025 — Etapa 3: visualização das propostas geradas por IA.
+ * Build 026 — Etapa 4.1: ações de entrada na revisão humana (a exibição das
+ * seções permanece somente leitura; toda a mutação é feita pelos mutadores).
  */
 
 import { AlertTriangle, HelpCircle, Sparkles } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import type { PopDraftProposal } from "@/config/pop-draft-proposal-model";
-import { usePopDraftProposalsForSource } from "@/lib/pop-draft-proposal-store";
+import {
+  startPopDraftReview,
+  usePopDraftProposalsForSource,
+} from "@/lib/pop-draft-proposal-store";
+import { popDraftFailureMessage } from "@/components/pop/pop-proposal-messages";
+
 
 const ORIGIN_LABEL: Record<string, string> = {
   documento: "Documento",
