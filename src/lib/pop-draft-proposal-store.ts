@@ -73,6 +73,10 @@ export function usePopDraftProposals(): PopDraftProposal[] {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
+export function usePopDraftProposal(id: string): PopDraftProposal | undefined {
+  return usePopDraftProposals().find((p) => p.id === id);
+}
+
 export function usePopDraftProposalsForSource(sourceDocumentId: string): PopDraftProposal[] {
   return usePopDraftProposals().filter((p) => p.sourceDocumentId === sourceDocumentId);
 }
@@ -271,7 +275,10 @@ export function rejectPopDraftProposal(proposalId: string): PopDraftReviewResult
 /* ------------------------------------------------------------------ */
 
 /** "em revisão" → "confirmado", criando um PopDoc rascunho a partir da revisão. */
-export function confirmPopDraftProposal(proposalId: string): PopDraftReviewResult {
+export function confirmPopDraftProposal(
+  proposalId: string,
+  options?: { name?: string },
+): PopDraftReviewResult {
   ensureHydrated();
   const current = state[proposalId];
   if (!current) return { ok: false, reason: "nao-encontrada" };
@@ -292,7 +299,7 @@ export function confirmPopDraftProposal(proposalId: string): PopDraftReviewResul
   let popDoc;
   try {
     popDoc = createPopDocFromSections({
-      name: "POP importado",
+      name: options?.name?.trim() || "POP importado",
       sections,
       importOrigin: {
         sourceDocumentId: current.sourceDocumentId,
