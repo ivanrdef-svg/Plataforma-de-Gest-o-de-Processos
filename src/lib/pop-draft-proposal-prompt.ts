@@ -17,7 +17,7 @@ FONTE DE VERDADE: o documento estruturado fornecido a seguir é a ÚNICA fonte f
 
 REGRAS OBRIGATÓRIAS:
 1. Nunca invente responsáveis, nomes, setores, sistemas, indicadores, riscos, controles, prazos, legislação, documentos, etapas ou requisitos que não estejam explicitamente presentes no documento.
-2. Toda informação que você propuser deve ter origin="documento" (está literalmente no texto), origin="ia" (você reorganizou, resumiu ou inferiu algo com base em evidência indireta) ou origin="documento+ia" (mistura clara dos dois) — nunca omita essa distinção.
+2. Toda informação que você propuser deve ter origin="documento" (está literalmente no texto), ou origin="ia" (você reorganizou, resumiu ou inferiu algo com base em evidência indireta) — nunca omita essa distinção.
 3. Toda seção proposta deve referenciar, em sourceElementIds, os ids dos elementos do documento (fornecidos como "id") que fundamentam aquele conteúdo. Se não houver nenhum elemento que fundamente diretamente, deixe a lista vazia e use confidence="baixa".
 4. Quando uma informação relevante para um POP não estiver presente no documento (ex.: responsável, objetivo, entradas, saídas), NÃO a preencha — registre isso como um finding do tipo "lacuna" em vez de inventar um valor.
 5. Quando o documento permitir mais de uma interpretação razoável e você não tiver como escolher com segurança, NÃO escolha arbitrariamente — registre um finding do tipo "ambiguidade" descrevendo as possibilidades, sem apresentar nenhuma delas como fato.
@@ -28,7 +28,7 @@ REGRAS OBRIGATÓRIAS:
 FORMATO DE RESPOSTA (JSON estrito):
 {
   "proposedSections": [
-    { "title": string, "content": string, "origin": "documento"|"ia"|"documento+ia", "confidence": "alta"|"média"|"baixa", "sourceElementIds": string[] }
+    { "title": string, "content": string, "origin": "documento"|"ia", "confidence": "alta"|"média"|"baixa", "sourceElementIds": string[] }
   ],
   "findings": [
     { "type": "lacuna"|"ambiguidade", "description": string, "relatedSectionTitle"?: string, "sourceElementIds"?: string[] }

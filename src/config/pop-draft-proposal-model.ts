@@ -8,7 +8,16 @@
  */
 
 /** Procedência do conteúdo proposto. */
-export type PopContentOrigin = "documento" | "ia" | "documento+ia";
+export type PopContentOrigin = "documento" | "ia" | "manual";
+
+/**
+ * Build 026 — procedência unificada, compartilhada entre proposta e POP final.
+ * `sourceElementIds` pode ser vazio quando não há fundamento direto.
+ */
+export interface PopProvenance {
+  sourceDocumentId: string;
+  sourceElementIds: string[];
+}
 
 export type PopConfidenceLevel = "alta" | "média" | "baixa";
 
@@ -18,11 +27,13 @@ export interface PopProposedSection {
   content: string;
   origin: PopContentOrigin;
   confidence: PopConfidenceLevel;
+  /** Ausente quando a seção não tem fundamento no documento original. */
+  provenance?: PopProvenance;
   /**
-   * Ids de `DocxElement` que embasaram esta seção. Vazio apenas quando não há
-   * fundamento direto — nesse caso `confidence` deve ser "baixa".
+   * Build 026 — só é escrito no lado da revisão humana (`reviewedSections`).
+   * O lado da IA nunca preenche este campo.
    */
-  sourceElementIds: string[];
+  humanEdited?: boolean;
 }
 
 export type PopDraftFindingType = "lacuna" | "ambiguidade";
@@ -36,11 +47,9 @@ export interface PopDraftFinding {
   sourceElementIds?: string[];
 }
 
-/**
- * Build 025 cobre apenas "proposto" e "erro".
- * "em revisão" | "confirmado" | "rejeitado" pertencem ao Build 026.
- */
-export type PopDraftProposalStatus = "proposto" | "erro";
+/** Build 026 — ciclo completo da proposta (mutadores chegam na Etapa 2). */
+export type PopDraftProposalStatus =
+  "proposto" | "em revisão" | "confirmado" | "rejeitado" | "erro";
 
 export interface PopDraftProposalAiMeta {
   model: string;
@@ -54,11 +63,14 @@ export interface PopDraftProposal {
   id: string;
   sourceDocumentId: string;
   status: PopDraftProposalStatus;
+  /** Imutável após a criação — nunca reescrito pela revisão. */
   proposedSections: PopProposedSection[];
+  /** Build 026 — ausente até a revisão começar (Etapa 2). */
+  reviewedSections?: PopProposedSection[];
   findings: PopDraftFinding[];
   aiMeta?: PopDraftProposalAiMeta;
   createdAt: string;
   errorMessage?: string;
-  /** Reservado para o Build 026 — nunca preenchido neste build. */
+  /** Preenchido apenas na confirmação (Etapa 2+). */
   confirmedPopId?: string;
 }

@@ -11,7 +11,7 @@ import { z } from "zod";
 export const AiProposedSectionSchema = z.object({
   title: z.string().min(1),
   content: z.string(),
-  origin: z.enum(["documento", "ia", "documento+ia"]),
+  origin: z.enum(["documento", "ia"]),
   confidence: z.enum(["alta", "média", "baixa"]),
   sourceElementIds: z.array(z.string()),
 });
