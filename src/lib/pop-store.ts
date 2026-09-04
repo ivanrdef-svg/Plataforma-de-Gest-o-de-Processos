@@ -9,18 +9,14 @@
 import { useSyncExternalStore } from "react";
 import type { KnowledgeCategory } from "@/config/knowledge-demo";
 import { POP_SECTION_TEMPLATES, type PopSectionId } from "@/config/pop-structure";
+import type { PopContentOrigin, PopProvenance } from "@/config/pop-draft-proposal-model";
 
 const STORAGE_KEY = "process-platform:pop:v1";
 
 export type PopStatus = "rascunho" | "em revisão" | "publicado";
 
-/** Build 023 — procedência de uma seção (opcional, retrocompatível). */
-export type PopSectionOrigin = "manual" | "ia" | "documento";
-
-export interface PopSectionSourceReference {
-  sourceDocumentId: string;
-  sourceSectionReference?: string;
-}
+// Build 026 — taxonomia de origem/procedência é única na plataforma.
+export type { PopContentOrigin, PopProvenance };
 
 export interface PopSection {
   id: string;
@@ -30,10 +26,10 @@ export interface PopSection {
   hint?: string;
   content: string;
   notes: string;
-  /** Build 023 — origem da seção. Ausente em todo POP criado até hoje. */
-  origin?: PopSectionOrigin;
-  /** Build 023 — vínculo com o documento original importado. */
-  sourceReference?: PopSectionSourceReference;
+  /** Build 026 — origem unificada. Ausente em POPs criados antes disso. */
+  origin?: PopContentOrigin;
+  /** Build 026 — procedência unificada (substitui `sourceReference`). */
+  provenance?: PopProvenance;
 }
 
 /** Build 023 — vínculo do POP com a importação que o originou. */

@@ -74,7 +74,9 @@ function assembleProposal(
     content: section.content,
     origin: section.origin,
     confidence: section.confidence,
-    sourceElementIds: section.sourceElementIds,
+    ...(section.sourceElementIds.length > 0
+      ? { provenance: { sourceDocumentId, sourceElementIds: section.sourceElementIds } }
+      : {}),
   }));
 
   const idByTitle = new Map<string, string>();

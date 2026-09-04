@@ -12,7 +12,7 @@ import { usePopDraftProposalsForSource } from "@/lib/pop-draft-proposal-store";
 const ORIGIN_LABEL: Record<string, string> = {
   documento: "Documento",
   ia: "Inferência da IA",
-  "documento+ia": "Documento + IA",
+  manual: "Edição humana",
 };
 
 function formatDateTime(iso: string) {
@@ -45,9 +45,10 @@ function ProposalDetails({ proposal }: { proposal: PopDraftProposal }) {
                   {section.content}
                 </p>
               ) : null}
-              {section.sourceElementIds.length > 0 ? (
+              {section.provenance && section.provenance.sourceElementIds.length > 0 ? (
                 <p className="mt-2 text-[11px] text-muted-foreground">
-                  Baseado em elementos do documento original ({section.sourceElementIds.length}).
+                  Baseado em elementos do documento original (
+                  {section.provenance.sourceElementIds.length}).
                 </p>
               ) : null}
             </li>
