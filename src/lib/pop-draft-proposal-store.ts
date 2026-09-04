@@ -7,7 +7,7 @@
  */
 
 import { useSyncExternalStore } from "react";
-import type { PopDraftProposal } from "@/config/pop-draft-proposal-model";
+import type { PopDraftProposal, PopProposedSection } from "@/config/pop-draft-proposal-model";
 
 const STORAGE_KEY = "process-platform:pop-draft-proposal:v1";
 
@@ -181,11 +181,11 @@ export function updateReviewedSection(
   const nextContent = changes.content ?? section.content;
   const changed = nextTitle !== section.title || nextContent !== section.content;
 
-  const nextSection = {
+  const nextSection: PopProposedSection = {
     ...section,
     title: nextTitle,
     content: nextContent,
-    humanEdited: changed ? true : section.humanEdited,
+    ...(changed || section.humanEdited ? { humanEdited: true } : {}),
   };
 
   const nextSections = sections.slice();
