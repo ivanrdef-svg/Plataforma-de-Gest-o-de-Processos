@@ -8,6 +8,7 @@
 
 import { useSyncExternalStore } from "react";
 import type { PopDraftProposal, PopProposedSection } from "@/config/pop-draft-proposal-model";
+import { createPopDocFromSections, type CreatePopDocSectionInput } from "@/lib/pop-store";
 
 const STORAGE_KEY = "process-platform:pop-draft-proposal:v1";
 
@@ -119,7 +120,9 @@ export type PopDraftReviewFailure =
   | "status-invalido"
   | "revisao-nao-iniciada"
   | "secao-nao-encontrada"
-  | "ordenacao-invalida";
+  | "ordenacao-invalida"
+  | "ja-confirmada"
+  | "falha-na-materializacao";
 
 function deepCopy<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
@@ -261,4 +264,46 @@ export function rejectPopDraftProposal(proposalId: string): PopDraftReviewResult
     return { ok: false, reason: "status-invalido" };
   }
   return write({ ...current, status: "rejeitado" });
+}
+
+/* ------------------------------------------------------------------ */
+/* Build 026 — Etapa 3: confirmação (materializa a revisão em PopDoc).  */
+/* ------------------------------------------------------------------ */
+
+/** "em revisão" → "confirmado", criando um PopDoc rascunho a partir da revisão. */
+export function confirmPopDraftProposal(proposalId: string): PopDraftReviewResult {
+  ensureHydrated();
+  const current = state[proposalId];
+  if (!current) return { ok: false, reason: "nao-encontrada" };
+  if (current.status !== "em revisão") return { ok: false, reason: "status-invalido" };
+  if (current.confirmedPopId) return { ok: false, reason: "ja-confirmada" };
+  if (!Array.isArray(current.reviewedSections)) {
+    return { ok: false, reason: "revisao-nao-iniciada" };
+  }
+
+  const sections: CreatePopDocSectionInput[] = current.reviewedSections.map((s) => ({
+    title: s.title,
+    content: s.content,
+    ...(s.origin ? { origin: s.origin } : {}),
+    ...(s.provenance ? { provenance: deepCopy(s.provenance) } : {}),
+  }));
+
+  const confirmedAt = new Date().toISOString();
+  let popDoc;
+  try {
+    popDoc = createPopDocFromSections({
+      name: "POP importado",
+      sections,
+      importOrigin: {
+        sourceDocumentId: current.sourceDocumentId,
+        draftProposalId: current.id,
+        confirmedAt,
+      },
+    });
+  } catch {
+    return { ok: false, reason: "falha-na-materializacao" };
+  }
+  if (!popDoc) return { ok: false, reason: "falha-na-materializacao" };
+
+  return write({ ...current, status: "confirmado", confirmedPopId: popDoc.id });
 }

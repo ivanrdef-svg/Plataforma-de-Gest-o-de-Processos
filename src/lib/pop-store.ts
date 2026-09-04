@@ -231,3 +231,61 @@ export function duplicatePopDoc(id: string): PopDoc | undefined {
   emit();
   return copy;
 }
+
+/* ------------------------------------------------------------------ */
+/* Build 026 — Etapa 3: materialização de uma revisão em PopDoc.        */
+/* Entrada estritamente tipada: campos da proposta (confidence,         */
+/* humanEdited, findings, aiMeta) não podem vazar por construção.       */
+/* ------------------------------------------------------------------ */
+
+export interface CreatePopDocSectionInput {
+  title: string;
+  content: string;
+  notes?: string;
+  templateId?: PopSectionId;
+  origin?: PopContentOrigin;
+  provenance?: PopProvenance;
+}
+
+export interface CreatePopDocFromSectionsInput {
+  name: string;
+  sections: CreatePopDocSectionInput[];
+  importOrigin?: PopImportOrigin;
+}
+
+/** Sempre cria um POP novo (id/code novos) — nunca faz upsert. */
+export function createPopDocFromSections(input: CreatePopDocFromSectionsInput): PopDoc {
+  ensureHydrated();
+  const now = new Date();
+  const id = uniqueId(`pop-${now.getTime().toString(36)}`);
+  const doc: PopDoc = {
+    id,
+    code: nextCode(),
+    name: input.name,
+    category: "Operações",
+    status: "rascunho",
+    version: "v0.1",
+    owner: "Você",
+    createdAt: formatDate(now),
+    revisedAt: formatDate(now),
+    description: "Procedimento Operacional Padrão em elaboração.",
+    tags: ["POP"],
+    keywords: [],
+    favorite: false,
+    sections: input.sections.map((s) => ({
+      id: sectionId(),
+      ...(s.templateId ? { templateId: s.templateId } : {}),
+      title: s.title,
+      content: s.content,
+      notes: s.notes ?? "",
+      ...(s.origin ? { origin: s.origin } : {}),
+      ...(s.provenance ? { provenance: s.provenance } : {}),
+    })),
+    savedAt: now.toISOString(),
+    ...(input.importOrigin ? { importOrigin: input.importOrigin } : {}),
+  };
+  state = { ...state, [id]: doc };
+  persist();
+  emit();
+  return doc;
+}
