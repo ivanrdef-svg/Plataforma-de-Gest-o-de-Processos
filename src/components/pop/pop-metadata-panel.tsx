@@ -41,9 +41,7 @@ function TagField({
 
   return (
     <div className="space-y-1.5">
-      <Label className="text-[11px] uppercase tracking-wider text-muted-foreground">
-        {label}
-      </Label>
+      <Label className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</Label>
       {values.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {values.map((v) => (
@@ -84,9 +82,7 @@ function TagField({
 function ReadOnlyField({ label, value }: { label: string; value: string }) {
   return (
     <div className="space-y-1">
-      <Label className="text-[11px] uppercase tracking-wider text-muted-foreground">
-        {label}
-      </Label>
+      <Label className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</Label>
       <p className="text-xs text-foreground/90">{value}</p>
     </div>
   );
@@ -141,13 +137,8 @@ export function PopMetadataPanel({
       </div>
 
       <div className="space-y-1.5">
-        <Label className="text-[11px] uppercase tracking-wider text-muted-foreground">
-          Status
-        </Label>
-        <Select
-          value={doc.status}
-          onValueChange={(v) => onChange({ status: v as PopStatus })}
-        >
+        <Label className="text-[11px] uppercase tracking-wider text-muted-foreground">Status</Label>
+        <Select value={doc.status} onValueChange={(v) => onChange({ status: v as PopStatus })}>
           <SelectTrigger className="h-8 text-xs">
             <SelectValue />
           </SelectTrigger>
@@ -162,9 +153,7 @@ export function PopMetadataPanel({
       </div>
 
       <div className="space-y-1.5">
-        <Label className="text-[11px] uppercase tracking-wider text-muted-foreground">
-          Versão
-        </Label>
+        <Label className="text-[11px] uppercase tracking-wider text-muted-foreground">Versão</Label>
         <Input
           value={doc.version}
           onChange={(e) => onChange({ version: e.target.value })}

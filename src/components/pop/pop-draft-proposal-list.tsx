@@ -1,13 +1,16 @@
 /**
- * Build 025 — Etapa 3: visualização somente-leitura das propostas geradas por IA.
- *
- * Nenhuma ação de confirmação/aprovação/edição existe aqui — a proposta é um
- * artefato em revisão, nunca um POP. Nada deste componente toca `pop-store`.
+ * Build 025 — Etapa 3: visualização das propostas geradas por IA.
+ * Build 026 — Etapa 4.1: ações de entrada na revisão humana (a exibição das
+ * seções permanece somente leitura; toda a mutação é feita pelos mutadores).
  */
 
 import { AlertTriangle, HelpCircle, Sparkles } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import type { PopDraftProposal } from "@/config/pop-draft-proposal-model";
-import { usePopDraftProposalsForSource } from "@/lib/pop-draft-proposal-store";
+import { startPopDraftReview, usePopDraftProposalsForSource } from "@/lib/pop-draft-proposal-store";
+import { popDraftFailureMessage } from "@/components/pop/pop-proposal-messages";
 
 const ORIGIN_LABEL: Record<string, string> = {
   documento: "Documento",
@@ -91,6 +94,73 @@ function ProposalDetails({ proposal }: { proposal: PopDraftProposal }) {
   );
 }
 
+function ProposalActions({ proposal }: { proposal: PopDraftProposal }) {
+  const navigate = useNavigate();
+  const open = () =>
+    void navigate({
+      to: "/pop/propostas/$proposalId",
+      params: { proposalId: proposal.id },
+    });
+
+  if (proposal.status === "proposto") {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        className="mt-2"
+        onClick={() => {
+          const result = startPopDraftReview(proposal.id);
+          if (!result.ok) {
+            toast.error("Não foi possível iniciar a revisão", {
+              description: popDraftFailureMessage(result.reason),
+            });
+            return;
+          }
+          open();
+        }}
+      >
+        Revisar proposta
+      </Button>
+    );
+  }
+
+  if (proposal.status === "em revisão") {
+    return (
+      <Button variant="outline" size="sm" className="mt-2" onClick={open}>
+        Continuar revisão
+      </Button>
+    );
+  }
+
+  if (proposal.status === "confirmado" && proposal.confirmedPopId) {
+    const popId = proposal.confirmedPopId;
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        className="mt-2"
+        onClick={() => void navigate({ to: "/pop/$popId", params: { popId } })}
+      >
+        Ver POP
+      </Button>
+    );
+  }
+
+  if (proposal.status === "rejeitado") {
+    return <p className="mt-2 text-[11px] text-muted-foreground">Proposta rejeitada.</p>;
+  }
+
+  return null;
+}
+
+const STATUS_HEADLINE: Record<string, string> = {
+  proposto: "Proposta gerada — aguardando revisão",
+  "em revisão": "Proposta em revisão",
+  confirmado: "Proposta confirmada",
+  rejeitado: "Proposta rejeitada",
+  erro: "Falha na interpretação",
+};
+
 export function PopDraftProposalList({ sourceDocumentId }: { sourceDocumentId: string }) {
   const proposals = usePopDraftProposalsForSource(sourceDocumentId);
   if (proposals.length === 0) return null;
@@ -102,9 +172,7 @@ export function PopDraftProposalList({ sourceDocumentId }: { sourceDocumentId: s
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="flex items-center gap-1.5 text-[11px] font-medium">
               <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-              {proposal.status === "proposto"
-                ? "Proposta gerada — aguardando revisão"
-                : "Falha na interpretação"}
+              {STATUS_HEADLINE[proposal.status] ?? proposal.status}
             </p>
             <p className="text-[11px] text-muted-foreground">
               {formatDateTime(proposal.createdAt)}
@@ -117,7 +185,9 @@ export function PopDraftProposalList({ sourceDocumentId }: { sourceDocumentId: s
             <p className="mt-1 text-[11px] text-destructive">{proposal.errorMessage}</p>
           ) : null}
 
-          {proposal.status === "proposto" ? <ProposalDetails proposal={proposal} /> : null}
+          {proposal.status !== "erro" ? <ProposalDetails proposal={proposal} /> : null}
+
+          <ProposalActions proposal={proposal} />
         </li>
       ))}
     </ul>

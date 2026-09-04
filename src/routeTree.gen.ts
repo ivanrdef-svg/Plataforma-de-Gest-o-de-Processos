@@ -36,6 +36,7 @@ import { Route as WorkflowIndexRouteImport } from './routes/workflow.index'
 import { Route as WorkflowWorkflowIdRouteImport } from './routes/workflow.$workflowId'
 import { Route as WorkspacesIndexRouteImport } from './routes/workspaces.index'
 import { Route as WorkspacesWorkspaceIdRouteImport } from './routes/workspaces.$workspaceId'
+import { Route as PopPropostasProposalIdRouteImport } from './routes/pop.propostas.$proposalId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -172,6 +173,11 @@ const WorkspacesWorkspaceIdRoute = WorkspacesWorkspaceIdRouteImport.update({
   path: '/$workspaceId',
   getParentRoute: () => WorkspacesRoute,
 } as any)
+const PopPropostasProposalIdRoute = PopPropostasProposalIdRouteImport.update({
+  id: '/propostas/$proposalId',
+  path: '/propostas/$proposalId',
+  getParentRoute: () => PopRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -201,6 +207,7 @@ export interface FileRoutesByFullPath {
   '/templates/': typeof TemplatesIndexRoute
   '/workflow/': typeof WorkflowIndexRoute
   '/workspaces/': typeof WorkspacesIndexRoute
+  '/pop/propostas/$proposalId': typeof PopPropostasProposalIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -222,6 +229,7 @@ export interface FileRoutesByTo {
   '/templates': typeof TemplatesIndexRoute
   '/workflow': typeof WorkflowIndexRoute
   '/workspaces': typeof WorkspacesIndexRoute
+  '/pop/propostas/$proposalId': typeof PopPropostasProposalIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -252,6 +260,7 @@ export interface FileRoutesById {
   '/templates/': typeof TemplatesIndexRoute
   '/workflow/': typeof WorkflowIndexRoute
   '/workspaces/': typeof WorkspacesIndexRoute
+  '/pop/propostas/$proposalId': typeof PopPropostasProposalIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -283,6 +292,7 @@ export interface FileRouteTypes {
     | '/templates/'
     | '/workflow/'
     | '/workspaces/'
+    | '/pop/propostas/$proposalId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -304,6 +314,7 @@ export interface FileRouteTypes {
     | '/templates'
     | '/workflow'
     | '/workspaces'
+    | '/pop/propostas/$proposalId'
   id:
     | '__root__'
     | '/'
@@ -333,6 +344,7 @@ export interface FileRouteTypes {
     | '/templates/'
     | '/workflow/'
     | '/workspaces/'
+    | '/pop/propostas/$proposalId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -541,6 +553,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspacesWorkspaceIdRouteImport
       parentRoute: typeof WorkspacesRoute
     }
+    '/pop/propostas/$proposalId': {
+      id: '/pop/propostas/$proposalId'
+      path: '/propostas/$proposalId'
+      fullPath: '/pop/propostas/$proposalId'
+      preLoaderRoute: typeof PopPropostasProposalIdRouteImport
+      parentRoute: typeof PopRoute
+    }
   }
 }
 
@@ -587,11 +606,13 @@ const KnowledgeRouteWithChildren = KnowledgeRoute._addFileChildren(
 interface PopRouteChildren {
   PopPopIdRoute: typeof PopPopIdRoute
   PopIndexRoute: typeof PopIndexRoute
+  PopPropostasProposalIdRoute: typeof PopPropostasProposalIdRoute
 }
 
 const PopRouteChildren: PopRouteChildren = {
   PopPopIdRoute: PopPopIdRoute,
   PopIndexRoute: PopIndexRoute,
+  PopPropostasProposalIdRoute: PopPropostasProposalIdRoute,
 }
 
 const PopRouteWithChildren = PopRoute._addFileChildren(PopRouteChildren)
