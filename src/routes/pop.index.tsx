@@ -21,6 +21,9 @@ import {
   type PopSourceDocumentStatus,
 } from "@/lib/pop-source-document-store";
 import { processPopSourceDocument } from "@/lib/pop-docx-parser.functions";
+import { generatePopDraftProposal } from "@/lib/pop-draft-proposal.functions";
+import { createPopDraftProposal } from "@/lib/pop-draft-proposal-store";
+import { PopDraftProposalList } from "@/components/pop/pop-draft-proposal-list";
 
 /** Build 009 — o card do POP mostra claramente o estágio do ciclo de vida. */
 function PopCard({ doc }: { doc: PopDoc }) {
