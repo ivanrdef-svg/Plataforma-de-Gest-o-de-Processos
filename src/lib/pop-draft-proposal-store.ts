@@ -105,3 +105,160 @@ export function createPopDraftProposal(input: CreatePopDraftProposalInput): PopD
   emit();
   return proposal;
 }
+
+/* ------------------------------------------------------------------ */
+/* Build 026 — Etapa 2: ciclo de vida da revisão humana.               */
+/* Nenhum PopDoc é criado aqui; a confirmação/materialização é Etapa 3. */
+/* ------------------------------------------------------------------ */
+
+export type PopDraftReviewResult =
+  { ok: true; proposal: PopDraftProposal } | { ok: false; reason: PopDraftReviewFailure };
+
+export type PopDraftReviewFailure =
+  | "nao-encontrada"
+  | "status-invalido"
+  | "revisao-nao-iniciada"
+  | "secao-nao-encontrada"
+  | "ordenacao-invalida";
+
+function deepCopy<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function write(next: PopDraftProposal): PopDraftReviewResult {
+  state = { ...state, [next.id]: next };
+  persist();
+  emit();
+  return { ok: true, proposal: next };
+}
+
+function inReview(
+  proposalId: string,
+): { ok: true; proposal: PopDraftProposal } | { ok: false; reason: PopDraftReviewFailure } {
+  ensureHydrated();
+  const current = state[proposalId];
+  if (!current) return { ok: false, reason: "nao-encontrada" };
+  if (current.status !== "em revisão") return { ok: false, reason: "status-invalido" };
+  if (!current.reviewedSections) return { ok: false, reason: "revisao-nao-iniciada" };
+  return { ok: true, proposal: current };
+}
+
+/** "proposto" → "em revisão". Idempotente: nunca sobrescreve revisão em andamento. */
+export function startPopDraftReview(proposalId: string): PopDraftReviewResult {
+  ensureHydrated();
+  const current = state[proposalId];
+  if (!current) return { ok: false, reason: "nao-encontrada" };
+
+  if (current.status === "em revisão") {
+    if (current.reviewedSections) return { ok: true, proposal: current };
+    return write({ ...current, reviewedSections: deepCopy(current.proposedSections) });
+  }
+
+  if (current.status !== "proposto") return { ok: false, reason: "status-invalido" };
+
+  return write({
+    ...current,
+    status: "em revisão",
+    reviewedSections: deepCopy(current.proposedSections),
+  });
+}
+
+/** Só `title`/`content`; `humanEdited` apenas em mudança real de valor. */
+export function updateReviewedSection(
+  proposalId: string,
+  sectionId: string,
+  changes: { title?: string; content?: string },
+): PopDraftReviewResult {
+  const guard = inReview(proposalId);
+  if (!guard.ok) return guard;
+  const current = guard.proposal;
+  const sections = current.reviewedSections ?? [];
+  const index = sections.findIndex((s) => s.id === sectionId);
+  if (index < 0) return { ok: false, reason: "secao-nao-encontrada" };
+
+  const section = sections[index]!;
+  const nextTitle = changes.title ?? section.title;
+  const nextContent = changes.content ?? section.content;
+  const changed = nextTitle !== section.title || nextContent !== section.content;
+
+  const nextSection = {
+    ...section,
+    title: nextTitle,
+    content: nextContent,
+    humanEdited: changed ? true : section.humanEdited,
+  };
+
+  const nextSections = sections.slice();
+  nextSections[index] = nextSection;
+  return write({ ...current, reviewedSections: nextSections });
+}
+
+/** Nova seção escrita pelo humano: origem manual, sem procedência. */
+export function addReviewedSection(
+  proposalId: string,
+  section: { title: string; content: string },
+): PopDraftReviewResult {
+  const guard = inReview(proposalId);
+  if (!guard.ok) return guard;
+  const current = guard.proposal;
+  return write({
+    ...current,
+    reviewedSections: [
+      ...(current.reviewedSections ?? []),
+      {
+        id: rid("pps"),
+        title: section.title,
+        content: section.content,
+        origin: "manual",
+        confidence: "alta",
+        humanEdited: true,
+      },
+    ],
+  });
+}
+
+export function removeReviewedSection(proposalId: string, sectionId: string): PopDraftReviewResult {
+  const guard = inReview(proposalId);
+  if (!guard.ok) return guard;
+  const current = guard.proposal;
+  const sections = current.reviewedSections ?? [];
+  if (!sections.some((s) => s.id === sectionId)) {
+    return { ok: false, reason: "secao-nao-encontrada" };
+  }
+  return write({ ...current, reviewedSections: sections.filter((s) => s.id !== sectionId) });
+}
+
+/** Reordenação pura: mesmo conjunto de ids, sem marcar `humanEdited`. */
+export function reorderReviewedSections(
+  proposalId: string,
+  orderedSectionIds: string[],
+): PopDraftReviewResult {
+  const guard = inReview(proposalId);
+  if (!guard.ok) return guard;
+  const current = guard.proposal;
+  const sections = current.reviewedSections ?? [];
+
+  const unique = new Set(orderedSectionIds);
+  if (unique.size !== orderedSectionIds.length) return { ok: false, reason: "ordenacao-invalida" };
+  if (unique.size !== sections.length) return { ok: false, reason: "ordenacao-invalida" };
+  const byId = new Map(sections.map((s) => [s.id, s] as const));
+  if (orderedSectionIds.some((id) => !byId.has(id))) {
+    return { ok: false, reason: "ordenacao-invalida" };
+  }
+
+  return write({
+    ...current,
+    reviewedSections: orderedSectionIds.map((id) => byId.get(id)!),
+  });
+}
+
+/** Único caminho de saída de "em revisão" nesta etapa. */
+export function rejectPopDraftProposal(proposalId: string): PopDraftReviewResult {
+  ensureHydrated();
+  const current = state[proposalId];
+  if (!current) return { ok: false, reason: "nao-encontrada" };
+  if (current.status !== "proposto" && current.status !== "em revisão") {
+    return { ok: false, reason: "status-invalido" };
+  }
+  return write({ ...current, status: "rejeitado" });
+}
