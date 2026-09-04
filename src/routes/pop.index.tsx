@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useRef, useState } from "react";
-import { FileText, Loader2, Plus, Upload } from "lucide-react";
+import { FileText, Loader2, Plus, Sparkles, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,9 @@ import {
   type PopSourceDocumentStatus,
 } from "@/lib/pop-source-document-store";
 import { processPopSourceDocument } from "@/lib/pop-docx-parser.functions";
+import { generatePopDraftProposal } from "@/lib/pop-draft-proposal.functions";
+import { createPopDraftProposal } from "@/lib/pop-draft-proposal-store";
+import { PopDraftProposalList } from "@/components/pop/pop-draft-proposal-list";
 
 /** Build 009 — o card do POP mostra claramente o estágio do ciclo de vida. */
 function PopCard({ doc }: { doc: PopDoc }) {
@@ -94,36 +97,88 @@ const STATUS_LABEL: Record<PopSourceDocumentStatus, string> = {
   erro: "Erro",
 };
 
-/** Build 023/024 — documento original importado e seu estado de processamento. */
+/** Build 023/024/025 — documento original importado, estado e propostas de IA. */
 function ImportedDocumentsSection() {
   const documents = usePopSourceDocuments();
+  const interpret = useServerFn(generatePopDraftProposal);
+  const [interpreting, setInterpreting] = useState<Set<string>>(new Set());
+
+  const runInterpretation = async (sourceDocumentId: string, storageObjectPath: string) => {
+    setInterpreting((prev) => new Set(prev).add(sourceDocumentId));
+    try {
+      const result = await interpret({ data: { sourceDocumentId, storageObjectPath } });
+      if (result.ok) {
+        createPopDraftProposal({ kind: "proposto", proposal: result.proposal });
+        toast.success("Proposta gerada — aguardando revisão.");
+      } else {
+        createPopDraftProposal({
+          kind: "erro",
+          sourceDocumentId,
+          errorMessage: result.message,
+        });
+        toast.error("Falha na interpretação", { description: result.message });
+      }
+    } catch {
+      const message = "Não foi possível concluir a interpretação. Tente novamente.";
+      createPopDraftProposal({ kind: "erro", sourceDocumentId, errorMessage: message });
+      toast.error("Falha na interpretação", { description: message });
+    } finally {
+      setInterpreting((prev) => {
+        const next = new Set(prev);
+        next.delete(sourceDocumentId);
+        return next;
+      });
+    }
+  };
+
   if (documents.length === 0) return null;
 
   return (
     <div className="mt-10 rounded-xl border bg-card p-4">
       <p className="text-xs font-medium text-muted-foreground">Documentos importados</p>
-      <ul className="mt-3 space-y-2">
-        {documents.map((doc) => (
-          <li key={doc.id} className="text-xs">
-            <div className="flex items-center justify-between gap-3">
-              <span className="truncate">{doc.originalFileName}</span>
-              <span className="shrink-0 text-muted-foreground">
-                {new Date(doc.importedAt).toLocaleDateString("pt-BR")} · {STATUS_LABEL[doc.status]}
-              </span>
-            </div>
-            {doc.status === "erro" && doc.errorMessage ? (
-              <p className="mt-1 text-[11px] text-destructive">{doc.errorMessage}</p>
-            ) : null}
-            {doc.status === "pronto" && doc.parseSummary ? (
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                {doc.parseSummary.elementCount} elemento(s) estruturais identificados
-                {doc.parseSummary.warnings.length > 0
-                  ? ` · ${doc.parseSummary.warnings.length} aviso(s)`
-                  : ""}
-              </p>
-            ) : null}
-          </li>
-        ))}
+      <ul className="mt-3 space-y-4">
+        {documents.map((doc) => {
+          const busy = interpreting.has(doc.id);
+          return (
+            <li key={doc.id} className="text-xs">
+              <div className="flex items-center justify-between gap-3">
+                <span className="truncate">{doc.originalFileName}</span>
+                <span className="shrink-0 text-muted-foreground">
+                  {new Date(doc.importedAt).toLocaleDateString("pt-BR")} ·{" "}
+                  {STATUS_LABEL[doc.status]}
+                </span>
+              </div>
+              {doc.status === "erro" && doc.errorMessage ? (
+                <p className="mt-1 text-[11px] text-destructive">{doc.errorMessage}</p>
+              ) : null}
+              {doc.status === "pronto" && doc.parseSummary ? (
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {doc.parseSummary.elementCount} elemento(s) estruturais identificados
+                  {doc.parseSummary.warnings.length > 0
+                    ? ` · ${doc.parseSummary.warnings.length} aviso(s)`
+                    : ""}
+                </p>
+              ) : null}
+              {doc.status === "pronto" ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 gap-1.5"
+                  disabled={busy}
+                  onClick={() => void runInterpretation(doc.id, doc.storageObjectPath)}
+                >
+                  {busy ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                  )}
+                  Interpretar com IA
+                </Button>
+              ) : null}
+              <PopDraftProposalList sourceDocumentId={doc.id} />
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
