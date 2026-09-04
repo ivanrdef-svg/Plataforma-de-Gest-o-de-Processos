@@ -14,9 +14,7 @@ import type {
   PopProposedSection,
 } from "@/config/pop-draft-proposal-model";
 import { AiProposalOutputSchema, type AiProposalOutput } from "@/lib/pop-draft-proposal-schema";
-
-/** Modelo de chat usado na interpretação (não-OpenAI: caminho chat/completions). */
-export const POP_INTERPRETATION_MODEL = "google/gemini-3.7-flash";
+import type { AiProviderFailureReason, StructuredAiResult } from "@/lib/ai-provider.server";
 
 const GenerateInput = z.object({
   sourceDocumentId: z.string().min(1),
@@ -27,11 +25,12 @@ export type GeneratePopDraftProposalFailureReason =
   | "documento-invalido"
   | "storage"
   | "contexto-excedido"
+  // Causas neutras vindas do provider de IA (Etapa 2.1).
+  | AiProviderFailureReason
+  // Nomes históricos preservados por retrocompatibilidade.
   | "gateway-nao-configurado"
   | "gateway-indisponivel"
-  | "gateway-nao-autorizado"
-  | "resposta-invalida"
-  | "desconhecido";
+  | "gateway-nao-autorizado";
 
 export type GeneratePopDraftProposalResult =
   | { ok: true; proposal: PopDraftProposal }
@@ -41,53 +40,21 @@ function rid(prefix: string) {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-/** Traduz erros do SDK/gateway em motivos controlados, sem vazar detalhes crus. */
+/**
+ * Erros já vêm classificados pelo adapter (`AiProviderError`); esta função só
+ * os repassa e cobre o caso residual de um erro inesperado da orquestração.
+ */
 function classifyAiError(error: unknown): {
   reason: GeneratePopDraftProposalFailureReason;
   message: string;
 } {
-  const raw = error instanceof Error ? error.message : String(error);
-  const name = error instanceof Error ? error.name : "";
-  const status =
-    typeof error === "object" && error !== null && "statusCode" in error
-      ? Number((error as { statusCode?: unknown }).statusCode)
-      : undefined;
-
-  if (name === "AbortError" || /timeout|timed out|aborted/i.test(raw)) {
-    return {
-      reason: "gateway-indisponivel",
-      message:
-        "A interpretação demorou mais do que o esperado e foi interrompida. Tente novamente.",
-    };
-  }
-  if (status === 401 || status === 403) {
-    return {
-      reason: "gateway-nao-autorizado",
-      message: "O serviço de IA recusou a solicitação (credencial ou permissão inválida).",
-    };
-  }
-  if (status === 402) {
-    return {
-      reason: "gateway-indisponivel",
-      message: "O serviço de IA está sem créditos disponíveis para processar esta solicitação.",
-    };
-  }
-  if (status === 429 || (typeof status === "number" && status >= 500)) {
-    return {
-      reason: "gateway-indisponivel",
-      message: "O serviço de IA está temporariamente indisponível. Tente novamente em instantes.",
-    };
-  }
   if (
-    name === "AI_NoObjectGeneratedError" ||
-    name === "AI_TypeValidationError" ||
-    /no object generated|schema|validation/i.test(raw)
+    typeof error === "object" &&
+    error !== null &&
+    (error as { name?: unknown }).name === "AiProviderError"
   ) {
-    return {
-      reason: "resposta-invalida",
-      message:
-        "A resposta da IA não respeitou o formato exigido e foi descartada. Nenhuma proposta foi criada.",
-    };
+    const typed = error as { reason: AiProviderFailureReason; message: string };
+    return { reason: typed.reason, message: typed.message };
   }
   return {
     reason: "desconhecido",
@@ -98,9 +65,9 @@ function classifyAiError(error: unknown): {
 /** Converte o output validado da IA em uma proposta com ids próprios do servidor. */
 function assembleProposal(
   sourceDocumentId: string,
-  output: AiProposalOutput,
-  gatewayRequestId: string | undefined,
+  result: StructuredAiResult<AiProposalOutput>,
 ): PopDraftProposal {
+  const output = result.object;
   const proposedSections: PopProposedSection[] = output.proposedSections.map((section) => ({
     id: rid("psec"),
     title: section.title,
@@ -136,9 +103,10 @@ function assembleProposal(
     proposedSections,
     findings,
     aiMeta: {
-      model: POP_INTERPRETATION_MODEL,
+      model: result.model,
+      provider: result.provider,
       processedAt: new Date().toISOString(),
-      ...(gatewayRequestId ? { gatewayRequestId } : {}),
+      ...(result.requestId ? { gatewayRequestId: result.requestId } : {}),
     },
     createdAt: new Date().toISOString(),
   };
@@ -163,24 +131,14 @@ export const generatePopDraftProposal = createServerFn({ method: "POST" })
       return { ok: false, reason: "contexto-excedido", message: limits.reason };
     }
 
-    const apiKey = process.env["LOVABLE_API_KEY"];
-    if (!apiKey) {
-      return {
-        ok: false,
-        reason: "gateway-nao-configurado",
-        message: "O serviço de IA não está configurado neste ambiente.",
-      };
-    }
-
     const prompt = buildPopInterpretationPrompt(loaded.structure.elements);
 
     try {
-      const { streamObject } = await import("ai");
-      const { createLovableAiGatewayChatProvider } = await import("@/lib/ai-gateway.server");
-      const gateway = createLovableAiGatewayChatProvider(apiKey);
+      const { resolveAiProvider } = await import("@/lib/ai-provider.server");
+      const { provider, model } = resolveAiProvider();
 
-      const result = streamObject({
-        model: gateway(POP_INTERPRETATION_MODEL),
+      const result = await provider.interpretStructured<AiProposalOutput>({
+        model,
         schema: AiProposalOutputSchema,
         temperature: 0.2,
         messages: [
@@ -189,14 +147,9 @@ export const generatePopDraftProposal = createServerFn({ method: "POST" })
         ],
       });
 
-      // Consumido no servidor: mantém bytes fluindo (evita corte por inatividade)
-      // sem streaming na UI. Rejeita automaticamente saída fora do schema.
-      const output = await result.object;
-      const gatewayRequestId = await gateway.waitForRunId();
-
       return {
         ok: true,
-        proposal: assembleProposal(data.sourceDocumentId, output, gatewayRequestId),
+        proposal: assembleProposal(data.sourceDocumentId, result),
       };
     } catch (error) {
       // Nenhuma proposta parcial é montada ou devolvida em caso de falha.

@@ -46,6 +46,8 @@ export interface PopDraftProposalAiMeta {
   model: string;
   processedAt: string;
   gatewayRequestId?: string;
+  /** Build 025 — Etapa 2.1: provider concreto usado (ex.: "lovable", "google"). */
+  provider?: string;
 }
 
 export interface PopDraftProposal {
