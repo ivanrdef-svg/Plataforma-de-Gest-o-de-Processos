@@ -280,6 +280,8 @@ export function PopMetadataPanel({
         />
       </div>
 
+      <ProcessLinkField doc={doc} />
+
       <div className="grid grid-cols-2 gap-3">
         <ReadOnlyField label="Criado em" value={doc.createdAt} />
         <ReadOnlyField label="Última revisão" value={doc.revisedAt} />
