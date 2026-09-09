@@ -29,7 +29,7 @@ export function LinkPopProcessDialog({
   onOpenChange,
 }: {
   popId: string;
-  currentProcessId?: string;
+  currentProcessId?: string | undefined;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
