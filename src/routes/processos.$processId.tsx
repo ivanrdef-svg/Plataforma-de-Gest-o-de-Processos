@@ -4,6 +4,7 @@ import {
   ChevronLeft,
   Copy,
   Download,
+  FileText,
   Save,
   Share2,
   Star,
@@ -33,8 +34,12 @@ import { RelationshipsTab } from "@/components/relationships/relationships-tab";
 import { RelationshipSummary } from "@/components/relationships/relationship-summary";
 import { EmptyState } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Pill } from "@/components/ui/pill";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { usePopsForProcess } from "@/lib/pop-store";
+
 import { DEMO_ENVIRONMENT } from "@/config/workspace-demo";
 import {
   PROCESS_DEMO_HISTORY,
