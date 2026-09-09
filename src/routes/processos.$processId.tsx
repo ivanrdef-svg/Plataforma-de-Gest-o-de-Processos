@@ -215,7 +215,59 @@ function ProcessHistory() {
   );
 }
 
+/** Build 028 — POPs estruturalmente vinculados a este Processo. */
+function LinkedPopsSection({ processId }: { processId: string }) {
+  const linkedPops = usePopsForProcess(processId);
+
+  return (
+    <section className="space-y-3">
+      <div>
+        <h2 className="text-sm font-medium">POPs vinculados</h2>
+        <p className="text-xs text-muted-foreground">
+          Procedimentos Operacionais Padrão estruturalmente ligados a este processo.
+        </p>
+      </div>
+
+      {linkedPops.length === 0 ? (
+        <EmptyState
+          icon={<FileText className="h-5 w-5" />}
+          title="Nenhum POP vinculado a este Processo."
+          description="O vínculo é criado a partir do workspace de cada POP."
+        />
+      ) : (
+        <div className="space-y-2">
+          {linkedPops.map((pop) => (
+            <Card
+              key={pop.id}
+              className="transition-colors hover:bg-muted/30"
+            >
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <Link
+                      to="/pop/$popId"
+                      params={{ popId: pop.id }}
+                      className="block truncate text-sm font-medium text-foreground hover:underline"
+                    >
+                      {pop.name}
+                    </Link>
+                    <p className="font-mono text-[11px] text-muted-foreground">
+                      {pop.code} · v{pop.version} · {pop.owner}
+                    </p>
+                  </div>
+                  <Pill size="sm">{pop.status}</Pill>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function ProcessWorkspace() {
+
   const { processId } = Route.useParams();
   const doc = useProcessDoc(processId);
 
