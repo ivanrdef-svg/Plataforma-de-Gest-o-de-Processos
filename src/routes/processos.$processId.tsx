@@ -1,14 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  ChevronLeft,
-  Copy,
-  Download,
-  Save,
-  Share2,
-  Star,
-  Workflow,
-} from "lucide-react";
+import { ChevronLeft, Copy, Download, FileText, Save, Share2, Star, Workflow } from "lucide-react";
 import { toast } from "sonner";
 import { WorkspaceLayout } from "@/components/workspace/workspace-layout";
 import { WorkspaceAiPanel } from "@/components/workspace/workspace-ai-panel";
@@ -33,13 +25,14 @@ import { RelationshipsTab } from "@/components/relationships/relationships-tab";
 import { RelationshipSummary } from "@/components/relationships/relationship-summary";
 import { EmptyState } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Pill } from "@/components/ui/pill";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { usePopsForProcess } from "@/lib/pop-store";
+
 import { DEMO_ENVIRONMENT } from "@/config/workspace-demo";
-import {
-  PROCESS_DEMO_HISTORY,
-  PROCESS_DEMO_ORIGIN,
-} from "@/config/process-structure";
+import { PROCESS_DEMO_HISTORY, PROCESS_DEMO_ORIGIN } from "@/config/process-structure";
 import {
   addProcessParticipant,
   addProcessRule,
@@ -165,9 +158,7 @@ function ProcessStructure({ doc }: { doc: ProcessDoc }) {
           <button
             type="button"
             className="text-[11px] text-muted-foreground transition-colors hover:text-foreground"
-            onClick={() =>
-              setCollapsed(Object.fromEntries(doc.sections.map((s) => [s.id, true])))
-            }
+            onClick={() => setCollapsed(Object.fromEntries(doc.sections.map((s) => [s.id, true])))}
           >
             Recolher tudo
           </button>
@@ -181,9 +172,7 @@ function ProcessStructure({ doc }: { doc: ProcessDoc }) {
             index={i}
             section={section}
             open={!collapsed[section.id]}
-            onToggle={() =>
-              setCollapsed((c) => ({ ...c, [section.id]: !c[section.id] }))
-            }
+            onToggle={() => setCollapsed((c) => ({ ...c, [section.id]: !c[section.id] }))}
             onChange={(patch) => updateProcessSection(doc.id, section.id, patch)}
           />
         ))}
@@ -200,13 +189,59 @@ function ProcessHistory() {
           <span className="absolute -left-[27px] top-1.5 h-2 w-2 rounded-full bg-primary/60 ring-4 ring-background" />
           <p className="text-[11px] text-muted-foreground">{event.date}</p>
           <p className="mt-0.5 text-sm font-medium">{event.title}</p>
-          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-            {event.detail}
-          </p>
+          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{event.detail}</p>
           <p className="mt-1 text-[11px] text-muted-foreground/80">por {event.author}</p>
         </li>
       ))}
     </ol>
+  );
+}
+
+/** Build 028 — POPs estruturalmente vinculados a este Processo. */
+function LinkedPopsSection({ processId }: { processId: string }) {
+  const linkedPops = usePopsForProcess(processId);
+
+  return (
+    <section className="space-y-3">
+      <div>
+        <h2 className="text-sm font-medium">POPs vinculados</h2>
+        <p className="text-xs text-muted-foreground">
+          Procedimentos Operacionais Padrão estruturalmente ligados a este processo.
+        </p>
+      </div>
+
+      {linkedPops.length === 0 ? (
+        <EmptyState
+          icon={<FileText className="h-5 w-5" />}
+          title="Nenhum POP vinculado a este Processo."
+          description="O vínculo é criado a partir do workspace de cada POP."
+        />
+      ) : (
+        <div className="space-y-2">
+          {linkedPops.map((pop) => (
+            <Card key={pop.id} className="transition-colors hover:bg-muted/30">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <Link
+                      to="/pop/$popId"
+                      params={{ popId: pop.id }}
+                      className="block truncate text-sm font-medium text-foreground hover:underline"
+                    >
+                      {pop.name}
+                    </Link>
+                    <p className="font-mono text-[11px] text-muted-foreground">
+                      {pop.code} · v{pop.version} · {pop.owner}
+                    </p>
+                  </div>
+                  <Pill size="sm">{pop.status}</Pill>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -288,9 +323,7 @@ function ProcessWorkspace() {
           <ActionButton
             label="Exportar"
             icon={Download}
-            onClick={() =>
-              toast("Exportar", { description: "Disponível em uma próxima build." })
-            }
+            onClick={() => toast("Exportar", { description: "Disponível em uma próxima build." })}
           />
           <ActionButton
             label="Compartilhar"
@@ -370,15 +403,11 @@ function ProcessWorkspace() {
               participants={doc.participants ?? []}
               steps={doc.steps}
               onChange={(id, p) => updateProcessParticipant(doc.id, id, p)}
-              onToggleStep={(id, stepId) =>
-                toggleParticipantStep(doc.id, id, stepId)
-              }
+              onToggleStep={(id, stepId) => toggleParticipantStep(doc.id, id, stepId)}
               onRemove={(id) => removeProcessParticipant(doc.id, id)}
               onAdd={() => addProcessParticipant(doc.id)}
               onImportFromSteps={() => {
-                const mapped = new Set(
-                  (doc.participants ?? []).map((p) => p.name.trim()),
-                );
+                const mapped = new Set((doc.participants ?? []).map((p) => p.name.trim()));
                 const owners = [
                   ...new Set(doc.steps.map((s) => s.owner.trim()).filter(Boolean)),
                 ].filter((o) => !mapped.has(o));
@@ -386,9 +415,7 @@ function ProcessWorkspace() {
                   addProcessParticipant(doc.id, {
                     name: owner,
                     area: doc.area,
-                    stepIds: doc.steps
-                      .filter((s) => s.owner.trim() === owner)
-                      .map((s) => s.id),
+                    stepIds: doc.steps.filter((s) => s.owner.trim() === owner).map((s) => s.id),
                   }),
                 );
                 toast.success("Participantes importados", {
@@ -419,12 +446,15 @@ function ProcessWorkspace() {
           label: "Relacionamentos",
           content: (
             <div className="space-y-8">
+              <LinkedPopsSection processId={doc.id} />
+
+              <Separator />
+
               <section className="space-y-3">
                 <div>
                   <h2 className="text-sm font-medium">Resumo de relacionamentos</h2>
                   <p className="text-xs text-muted-foreground">
-                    Conhecimentos, POPs, normas, riscos e controles ligados a este
-                    processo.
+                    Conhecimentos, POPs, normas, riscos e controles ligados a este processo.
                   </p>
                 </div>
                 <RelationshipSummary objectId={doc.id} />
@@ -432,15 +462,12 @@ function ProcessWorkspace() {
 
               <section className="space-y-3">
                 <h2 className="text-sm font-medium">Rede de relacionamentos</h2>
-                <RelationshipsTab
-                  objectId={doc.id}
-                  objectName={doc.name}
-                  objectType="Processo"
-                />
+                <RelationshipsTab objectId={doc.id} objectName={doc.name} objectType="Processo" />
               </section>
             </div>
           ),
         },
+
         {
           id: "governanca",
           label: "Governança",
