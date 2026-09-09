@@ -1,5 +1,18 @@
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { X } from "lucide-react";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -10,7 +23,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { KNOWLEDGE_CATEGORIES, type KnowledgeCategory } from "@/config/knowledge-demo";
-import type { PopDoc, PopStatus } from "@/lib/pop-store";
+import { LinkPopProcessDialog } from "@/components/pop/link-pop-process-dialog";
+import { useProcessDocs } from "@/lib/process-store";
+import { unlinkPopFromProcess, type PopDoc, type PopStatus } from "@/lib/pop-store";
 
 /**
  * Build 004 — painel de metadados do POP.
