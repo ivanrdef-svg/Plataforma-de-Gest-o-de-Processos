@@ -72,9 +72,7 @@ export function LinkPopProcessDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Vincular processo</DialogTitle>
-          <DialogDescription>
-            Selecione o processo ao qual este POP pertence.
-          </DialogDescription>
+          <DialogDescription>Selecione o processo ao qual este POP pertence.</DialogDescription>
         </DialogHeader>
 
         <Input

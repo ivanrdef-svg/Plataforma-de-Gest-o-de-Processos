@@ -129,7 +129,12 @@ function ProcessLinkField({ doc }: { doc: PopDoc }) {
       {!doc.processId ? (
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">Nenhum processo vinculado</p>
-          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setPickerOpen(true)}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            onClick={() => setPickerOpen(true)}
+          >
             Vincular processo
           </Button>
         </div>
@@ -143,7 +148,12 @@ function ProcessLinkField({ doc }: { doc: PopDoc }) {
                 Ver processo
               </Link>
             </Button>
-            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setPickerOpen(true)}>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs"
+              onClick={() => setPickerOpen(true)}
+            >
               Alterar
             </Button>
             <Button

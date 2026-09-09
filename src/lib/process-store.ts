@@ -24,11 +24,7 @@ import {
 
 const STORAGE_KEY = "process-platform:process:v1";
 
-export type ProcessStatus =
-  | "rascunho"
-  | "em desenvolvimento"
-  | "em revisão"
-  | "publicado";
+export type ProcessStatus = "rascunho" | "em desenvolvimento" | "em revisão" | "publicado";
 
 export const PROCESS_STATUS_OPTIONS: ProcessStatus[] = [
   "rascunho",
@@ -288,9 +284,7 @@ export function updateProcessSection(
   const doc = state[docId];
   if (!doc) return undefined;
   return updateProcessDoc(docId, {
-    sections: doc.sections.map((s) =>
-      s.id === sectionKey ? { ...s, ...patch } : s,
-    ),
+    sections: doc.sections.map((s) => (s.id === sectionKey ? { ...s, ...patch } : s)),
   });
 }
 
@@ -369,7 +363,6 @@ export function duplicateProcessDoc(id: string): ProcessDoc | undefined {
   emit();
   return copy;
 }
-
 
 /* ------------------------------------------------------------------ */
 /* Build 007 — Process Modeling Engine                                 */
@@ -505,11 +498,7 @@ export function removeProcessParticipant(docId: string, participantId: string) {
   });
 }
 
-export function toggleParticipantStep(
-  docId: string,
-  participantId: string,
-  stepId: string,
-) {
+export function toggleParticipantStep(docId: string, participantId: string, stepId: string) {
   const doc = state[docId];
   const participant = doc?.participants?.find((p) => p.id === participantId);
   if (!doc || !participant) return undefined;
