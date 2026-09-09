@@ -57,6 +57,8 @@ export interface PopDoc {
   savedAt: string;
   /** Build 023 — presente apenas em POPs criados por importação (Build 026). */
   importOrigin?: PopImportOrigin;
+  /** Build 027.1 — vínculo estrutural com um Processo. Opcional/retrocompatível. */
+  processId?: string;
 }
 
 type StoreState = Record<string, PopDoc>;
