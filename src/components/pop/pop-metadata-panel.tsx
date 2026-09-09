@@ -103,6 +103,99 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** Build 027.1 — vínculo estrutural com um Processo. */
+function ProcessLinkField({ doc }: { doc: PopDoc }) {
+  const processes = useProcessDocs();
+  const linked = doc.processId ? processes.find((p) => p.id === doc.processId) : undefined;
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [confirmUnlink, setConfirmUnlink] = useState(false);
+
+  const unlink = () => {
+    const updated = unlinkPopFromProcess(doc.id);
+    if (!updated) {
+      toast.error("Não foi possível desvincular este POP.");
+      return;
+    }
+    toast.success("Processo desvinculado.");
+    setConfirmUnlink(false);
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-[11px] uppercase tracking-wider text-muted-foreground">
+        Processo vinculado
+      </Label>
+
+      {!doc.processId ? (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">Nenhum processo vinculado</p>
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setPickerOpen(true)}>
+            Vincular processo
+          </Button>
+        </div>
+      ) : linked ? (
+        <div className="space-y-2">
+          <p className="text-xs text-foreground/90">{linked.name}</p>
+          <p className="font-mono text-[11px] text-muted-foreground">{linked.code}</p>
+          <div className="flex flex-wrap gap-1.5">
+            <Button asChild size="sm" variant="outline" className="h-7 text-xs">
+              <Link to="/processos/$processId" params={{ processId: linked.id }}>
+                Ver processo
+              </Link>
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setPickerOpen(true)}>
+              Alterar
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs text-muted-foreground"
+              onClick={() => setConfirmUnlink(true)}
+            >
+              Desvincular
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <p className="text-xs text-destructive">Processo vinculado não encontrado</p>
+          <p className="font-mono text-[11px] text-muted-foreground">{doc.processId}</p>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 text-xs text-muted-foreground"
+            onClick={() => setConfirmUnlink(true)}
+          >
+            Desvincular
+          </Button>
+        </div>
+      )}
+
+      <LinkPopProcessDialog
+        popId={doc.id}
+        currentProcessId={doc.processId}
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+      />
+
+      <AlertDialog open={confirmUnlink} onOpenChange={setConfirmUnlink}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desvincular processo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O POP deixa de apontar para este processo. Nenhum conteúdo é apagado.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={unlink}>Desvincular</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
 export function PopMetadataPanel({
   doc,
   onChange,
