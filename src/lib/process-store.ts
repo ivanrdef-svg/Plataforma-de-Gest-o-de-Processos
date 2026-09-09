@@ -179,6 +179,15 @@ export function useProcessDoc(id: string): ProcessDoc | undefined {
   return useProcessDocs().find((d) => d.id === id);
 }
 
+/**
+ * Build 027.1 — leitura pontual (fora de React) para checagem de existência.
+ * Estritamente somente leitura: não persiste, não emite, não muta o estado.
+ */
+export function getProcessDoc(id: string): ProcessDoc | undefined {
+  ensureHydrated();
+  return state[id];
+}
+
 function rid(prefix: string) {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 }
