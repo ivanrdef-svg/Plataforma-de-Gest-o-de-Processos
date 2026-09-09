@@ -476,6 +476,10 @@ function ProcessWorkspace() {
           label: "Relacionamentos",
           content: (
             <div className="space-y-8">
+              <LinkedPopsSection processId={doc.id} />
+
+              <Separator />
+
               <section className="space-y-3">
                 <div>
                   <h2 className="text-sm font-medium">Resumo de relacionamentos</h2>
@@ -498,6 +502,7 @@ function ProcessWorkspace() {
             </div>
           ),
         },
+
         {
           id: "governanca",
           label: "Governança",
