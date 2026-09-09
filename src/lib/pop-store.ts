@@ -123,6 +123,20 @@ export function usePopDoc(id: string): PopDoc | undefined {
   return usePopDocs().find((d) => d.id === id);
 }
 
+/** Build 028 — POPs estruturalmente vinculados a um Processo (somente leitura). */
+export function getPopsForProcess(processId: string): PopDoc[] {
+  ensureHydrated();
+  return Object.values(state)
+    .filter((p) => p.processId === processId)
+    .sort((a, b) => (b.savedAt ?? "").localeCompare(a.savedAt ?? ""));
+}
+
+/** Build 028 — hook reativo equivalente a `getPopsForProcess`. */
+export function usePopsForProcess(processId: string): PopDoc[] {
+  return usePopDocs().filter((p) => p.processId === processId);
+}
+
+
 function sectionId() {
   return `s_${Math.random().toString(36).slice(2, 10)}`;
 }
