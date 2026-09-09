@@ -136,7 +136,6 @@ export function usePopsForProcess(processId: string): PopDoc[] {
   return usePopDocs().filter((p) => p.processId === processId);
 }
 
-
 function sectionId() {
   return `s_${Math.random().toString(36).slice(2, 10)}`;
 }

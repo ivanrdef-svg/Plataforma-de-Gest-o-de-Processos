@@ -1,15 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  ChevronLeft,
-  Copy,
-  Download,
-  FileText,
-  Save,
-  Share2,
-  Star,
-  Workflow,
-} from "lucide-react";
+import { ChevronLeft, Copy, Download, FileText, Save, Share2, Star, Workflow } from "lucide-react";
 import { toast } from "sonner";
 import { WorkspaceLayout } from "@/components/workspace/workspace-layout";
 import { WorkspaceAiPanel } from "@/components/workspace/workspace-ai-panel";
@@ -41,10 +32,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { usePopsForProcess } from "@/lib/pop-store";
 
 import { DEMO_ENVIRONMENT } from "@/config/workspace-demo";
-import {
-  PROCESS_DEMO_HISTORY,
-  PROCESS_DEMO_ORIGIN,
-} from "@/config/process-structure";
+import { PROCESS_DEMO_HISTORY, PROCESS_DEMO_ORIGIN } from "@/config/process-structure";
 import {
   addProcessParticipant,
   addProcessRule,
@@ -170,9 +158,7 @@ function ProcessStructure({ doc }: { doc: ProcessDoc }) {
           <button
             type="button"
             className="text-[11px] text-muted-foreground transition-colors hover:text-foreground"
-            onClick={() =>
-              setCollapsed(Object.fromEntries(doc.sections.map((s) => [s.id, true])))
-            }
+            onClick={() => setCollapsed(Object.fromEntries(doc.sections.map((s) => [s.id, true])))}
           >
             Recolher tudo
           </button>
@@ -186,9 +172,7 @@ function ProcessStructure({ doc }: { doc: ProcessDoc }) {
             index={i}
             section={section}
             open={!collapsed[section.id]}
-            onToggle={() =>
-              setCollapsed((c) => ({ ...c, [section.id]: !c[section.id] }))
-            }
+            onToggle={() => setCollapsed((c) => ({ ...c, [section.id]: !c[section.id] }))}
             onChange={(patch) => updateProcessSection(doc.id, section.id, patch)}
           />
         ))}
@@ -205,9 +189,7 @@ function ProcessHistory() {
           <span className="absolute -left-[27px] top-1.5 h-2 w-2 rounded-full bg-primary/60 ring-4 ring-background" />
           <p className="text-[11px] text-muted-foreground">{event.date}</p>
           <p className="mt-0.5 text-sm font-medium">{event.title}</p>
-          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-            {event.detail}
-          </p>
+          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{event.detail}</p>
           <p className="mt-1 text-[11px] text-muted-foreground/80">por {event.author}</p>
         </li>
       ))}
@@ -237,10 +219,7 @@ function LinkedPopsSection({ processId }: { processId: string }) {
       ) : (
         <div className="space-y-2">
           {linkedPops.map((pop) => (
-            <Card
-              key={pop.id}
-              className="transition-colors hover:bg-muted/30"
-            >
+            <Card key={pop.id} className="transition-colors hover:bg-muted/30">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between gap-4">
                   <div className="min-w-0">
@@ -267,7 +246,6 @@ function LinkedPopsSection({ processId }: { processId: string }) {
 }
 
 function ProcessWorkspace() {
-
   const { processId } = Route.useParams();
   const doc = useProcessDoc(processId);
 
@@ -345,9 +323,7 @@ function ProcessWorkspace() {
           <ActionButton
             label="Exportar"
             icon={Download}
-            onClick={() =>
-              toast("Exportar", { description: "Disponível em uma próxima build." })
-            }
+            onClick={() => toast("Exportar", { description: "Disponível em uma próxima build." })}
           />
           <ActionButton
             label="Compartilhar"
@@ -427,15 +403,11 @@ function ProcessWorkspace() {
               participants={doc.participants ?? []}
               steps={doc.steps}
               onChange={(id, p) => updateProcessParticipant(doc.id, id, p)}
-              onToggleStep={(id, stepId) =>
-                toggleParticipantStep(doc.id, id, stepId)
-              }
+              onToggleStep={(id, stepId) => toggleParticipantStep(doc.id, id, stepId)}
               onRemove={(id) => removeProcessParticipant(doc.id, id)}
               onAdd={() => addProcessParticipant(doc.id)}
               onImportFromSteps={() => {
-                const mapped = new Set(
-                  (doc.participants ?? []).map((p) => p.name.trim()),
-                );
+                const mapped = new Set((doc.participants ?? []).map((p) => p.name.trim()));
                 const owners = [
                   ...new Set(doc.steps.map((s) => s.owner.trim()).filter(Boolean)),
                 ].filter((o) => !mapped.has(o));
@@ -443,9 +415,7 @@ function ProcessWorkspace() {
                   addProcessParticipant(doc.id, {
                     name: owner,
                     area: doc.area,
-                    stepIds: doc.steps
-                      .filter((s) => s.owner.trim() === owner)
-                      .map((s) => s.id),
+                    stepIds: doc.steps.filter((s) => s.owner.trim() === owner).map((s) => s.id),
                   }),
                 );
                 toast.success("Participantes importados", {
@@ -484,8 +454,7 @@ function ProcessWorkspace() {
                 <div>
                   <h2 className="text-sm font-medium">Resumo de relacionamentos</h2>
                   <p className="text-xs text-muted-foreground">
-                    Conhecimentos, POPs, normas, riscos e controles ligados a este
-                    processo.
+                    Conhecimentos, POPs, normas, riscos e controles ligados a este processo.
                   </p>
                 </div>
                 <RelationshipSummary objectId={doc.id} />
@@ -493,11 +462,7 @@ function ProcessWorkspace() {
 
               <section className="space-y-3">
                 <h2 className="text-sm font-medium">Rede de relacionamentos</h2>
-                <RelationshipsTab
-                  objectId={doc.id}
-                  objectName={doc.name}
-                  objectType="Processo"
-                />
+                <RelationshipsTab objectId={doc.id} objectName={doc.name} objectType="Processo" />
               </section>
             </div>
           ),
