@@ -10,6 +10,7 @@ import { useSyncExternalStore } from "react";
 import type { KnowledgeCategory } from "@/config/knowledge-demo";
 import { POP_SECTION_TEMPLATES, type PopSectionId } from "@/config/pop-structure";
 import type { PopContentOrigin, PopProvenance } from "@/config/pop-draft-proposal-model";
+import { getProcessDoc } from "@/lib/process-store";
 
 const STORAGE_KEY = "process-platform:pop:v1";
 
@@ -57,6 +58,8 @@ export interface PopDoc {
   savedAt: string;
   /** Build 023 — presente apenas em POPs criados por importação (Build 026). */
   importOrigin?: PopImportOrigin;
+  /** Build 027.1 — vínculo estrutural com um Processo. Opcional/retrocompatível. */
+  processId?: string;
 }
 
 type StoreState = Record<string, PopDoc>;
@@ -288,4 +291,47 @@ export function createPopDocFromSections(input: CreatePopDocFromSectionsInput): 
   persist();
   emit();
   return doc;
+}
+
+/* ------------------------------------------------------------------ */
+/* Build 027.1 — vínculo estrutural POP → Processo.                     */
+/* Sinalização de falha por `undefined`, como o restante do arquivo.    */
+/* Não usa relationship-store: o vínculo é um campo do próprio POP.     */
+/* ------------------------------------------------------------------ */
+
+/** Vincula o POP a um Processo existente. Recusa (undefined) se qualquer lado não existir. */
+export function linkPopToProcess(popId: string, processId: string): PopDoc | undefined {
+  ensureHydrated();
+  const current = state[popId];
+  if (!current) return undefined;
+  // Leitura pura do process-store — nenhuma escrita naquele domínio.
+  if (!getProcessDoc(processId)) return undefined;
+  const next: PopDoc = {
+    ...current,
+    processId,
+    revisedAt: formatDate(),
+    savedAt: new Date().toISOString(),
+  };
+  state = { ...state, [popId]: next };
+  persist();
+  emit();
+  return next;
+}
+
+/** Remove o vínculo, omitindo a chave `processId`. */
+export function unlinkPopFromProcess(popId: string): PopDoc | undefined {
+  ensureHydrated();
+  const current = state[popId];
+  if (!current) return undefined;
+  const { processId: _removed, ...rest } = current;
+  void _removed;
+  const next: PopDoc = {
+    ...rest,
+    revisedAt: formatDate(),
+    savedAt: new Date().toISOString(),
+  };
+  state = { ...state, [popId]: next };
+  persist();
+  emit();
+  return next;
 }
