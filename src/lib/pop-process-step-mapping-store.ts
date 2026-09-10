@@ -21,7 +21,7 @@
 
 import { useSyncExternalStore } from "react";
 import { getPopDoc } from "@/lib/pop-store";
-import { getProcessDoc, useProcessDocs } from "@/lib/process-store";
+import { getProcessDoc } from "@/lib/process-store";
 import type {
   CreateManualMappingInput,
   PopProcessStepMapping,
@@ -324,6 +324,3 @@ export function removeMapping(mappingId: string): PopProcessStepMappingResult {
   emit();
   return { ok: true, mapping: current };
 }
-
-/** Reexport de conveniência para telas que já listam Processos. */
-export { useProcessDocs };
