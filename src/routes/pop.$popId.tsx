@@ -167,6 +167,9 @@ function ActionButton({
 function PopWorkspace() {
   const { popId } = Route.useParams();
   const doc = usePopDoc(popId);
+  const processes = useProcessDocs();
+  const linkedProcess = processes.find((p) => p.id === doc?.processId);
+
 
   const contextGroups = useMemo(
     () =>
