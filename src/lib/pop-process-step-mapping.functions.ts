@@ -35,9 +35,7 @@ const SuggestInput = z.object({
 
 /** Mesma taxonomia neutra do Build 025, mais as causas próprias desta chamada. */
 export type SuggestPopProcessStepMappingsFailureReason =
-  | "pop-sem-secoes"
-  | "processo-sem-etapas"
-  | AiProviderFailureReason;
+  "pop-sem-secoes" | "processo-sem-etapas" | AiProviderFailureReason;
 
 export type SuggestPopProcessStepMappingsResult =
   | {

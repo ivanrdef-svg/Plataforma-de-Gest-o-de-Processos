@@ -1,14 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  ChevronLeft,
-  Copy,
-  Download,
-  FileText,
-  Save,
-  Share2,
-  Star,
-} from "lucide-react";
+import { ChevronLeft, Copy, Download, FileText, Save, Share2, Star } from "lucide-react";
 import { toast } from "sonner";
 import { WorkspaceLayout } from "@/components/workspace/workspace-layout";
 import { WorkspaceAiPanel } from "@/components/workspace/workspace-ai-panel";
@@ -56,8 +48,7 @@ export const Route = createFileRoute("/pop/$popId")({
       { property: "og:title", content: "POP Builder — Process Platform" },
       {
         property: "og:description",
-        content:
-          "Crie POPs como objetos estruturados da plataforma, não como documentos de texto.",
+        content: "Crie POPs como objetos estruturados da plataforma, não como documentos de texto.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -88,11 +79,7 @@ function PopEditor({
   return (
     <div className="flex gap-8">
       <aside className="sticky top-6 hidden h-fit w-56 shrink-0 md:block">
-        <PopSectionIndex
-          sections={doc.sections}
-          activeId={active}
-          onSelect={goTo}
-        />
+        <PopSectionIndex sections={doc.sections} activeId={active} onSelect={goTo} />
         <Separator className="my-3" />
         <div className="flex gap-2">
           <button
@@ -106,11 +93,7 @@ function PopEditor({
           <button
             type="button"
             className="text-[11px] text-muted-foreground transition-colors hover:text-foreground"
-            onClick={() =>
-              setCollapsed(
-                Object.fromEntries(doc.sections.map((s) => [s.id, true])),
-              )
-            }
+            onClick={() => setCollapsed(Object.fromEntries(doc.sections.map((s) => [s.id, true])))}
           >
             Recolher tudo
           </button>
@@ -124,9 +107,7 @@ function PopEditor({
             index={i}
             section={section}
             open={!collapsed[section.id]}
-            onToggle={() =>
-              setCollapsed((c) => ({ ...c, [section.id]: !c[section.id] }))
-            }
+            onToggle={() => setCollapsed((c) => ({ ...c, [section.id]: !c[section.id] }))}
             onChange={(patch) => onSection(section.id, patch)}
           />
         ))}
@@ -169,7 +150,6 @@ function PopWorkspace() {
   const doc = usePopDoc(popId);
   const processes = useProcessDocs();
   const linkedProcess = processes.find((p) => p.id === doc?.processId);
-
 
   const contextGroups = useMemo(
     () =>
@@ -247,9 +227,7 @@ function PopWorkspace() {
           <ActionButton
             label="Exportar"
             icon={Download}
-            onClick={() =>
-              toast("Exportar", { description: "Disponível em uma próxima build." })
-            }
+            onClick={() => toast("Exportar", { description: "Disponível em uma próxima build." })}
           />
           <ActionButton
             label="Compartilhar"
@@ -301,8 +279,8 @@ function PopWorkspace() {
                 <div>
                   <h2 className="text-sm font-medium">Resumo de relacionamentos</h2>
                   <p className="text-xs text-muted-foreground">
-                    Normas, conhecimentos, processos, checklists, riscos e controles
-                    ligados a este POP.
+                    Normas, conhecimentos, processos, checklists, riscos e controles ligados a este
+                    POP.
                   </p>
                 </div>
                 <RelationshipSummary objectId={doc.id} />
@@ -310,11 +288,7 @@ function PopWorkspace() {
 
               <section className="space-y-3">
                 <h2 className="text-sm font-medium">Rede de relacionamentos</h2>
-                <RelationshipsTab
-                  objectId={doc.id}
-                  objectName={doc.name}
-                  objectType="POP"
-                />
+                <RelationshipsTab objectId={doc.id} objectName={doc.name} objectType="POP" />
               </section>
 
               <section className="space-y-3">

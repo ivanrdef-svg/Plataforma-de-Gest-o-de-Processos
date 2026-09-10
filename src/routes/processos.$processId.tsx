@@ -240,9 +240,8 @@ function LinkedPopsSection({ processId }: { processId: string }) {
                   <div className="flex shrink-0 items-center gap-2">
                     <span className="text-[11px] text-muted-foreground">
                       {
-                        mappings.filter(
-                          (m) => m.popId === pop.id && m.status === "confirmado",
-                        ).length
+                        mappings.filter((m) => m.popId === pop.id && m.status === "confirmado")
+                          .length
                       }{" "}
                       seções mapeadas
                     </span>

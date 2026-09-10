@@ -265,9 +265,7 @@ export function updateMappingTarget(
 }
 
 /** Mapeamento manual: nasce `source:"manual"` e `status:"confirmado"` (I6). */
-export function createManualMapping(
-  input: CreateManualMappingInput,
-): PopProcessStepMappingResult {
+export function createManualMapping(input: CreateManualMappingInput): PopProcessStepMappingResult {
   ensureHydrated();
   const invalid = validateTarget(input.popId, input.processId, input.processStepId);
   if (invalid) return invalid;

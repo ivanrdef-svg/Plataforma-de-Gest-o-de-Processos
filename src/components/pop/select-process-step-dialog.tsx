@@ -52,8 +52,7 @@ export function SelectProcessStepDialog({
     const q = query.trim().toLowerCase();
     if (!q) return steps;
     return steps.filter(
-      (s) =>
-        s.name.toLowerCase().includes(q) || (s.description ?? "").toLowerCase().includes(q),
+      (s) => s.name.toLowerCase().includes(q) || (s.description ?? "").toLowerCase().includes(q),
     );
   }, [steps, query]);
 

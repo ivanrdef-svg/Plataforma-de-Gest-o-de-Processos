@@ -97,9 +97,7 @@ function MappingRow({
               <Pill tone="bg-primary/10 text-primary">Sugestão da IA</Pill>
             ) : (
               <Pill tone="bg-muted text-muted-foreground">
-                {mapping.source === "ia"
-                  ? "Sugestão da IA — confirmada"
-                  : "Adicionada manualmente"}
+                {mapping.source === "ia" ? "Sugestão da IA — confirmada" : "Adicionada manualmente"}
               </Pill>
             )}
             {mapping.status === "sugerido" && confidenceLabel(mapping.confidence) ? (
@@ -284,8 +282,8 @@ export function PopProcessMappingTab({
         <div className="space-y-1">
           {hasAnalysis ? (
             <p className="text-sm text-foreground">
-              {counts.confirmados} confirmados · {counts.rejeitados} rejeitados ·{" "}
-              {counts.pendentes} pendentes
+              {counts.confirmados} confirmados · {counts.rejeitados} rejeitados · {counts.pendentes}{" "}
+              pendentes
             </p>
           ) : (
             <p className="text-sm text-muted-foreground">Nenhuma análise realizada ainda.</p>
@@ -434,8 +432,8 @@ export function PopProcessMappingTab({
           <AlertDialogHeader>
             <AlertDialogTitle>Remover esta relação?</AlertDialogTitle>
             <AlertDialogDescription>
-              A correspondência confirmada entre esta seção e a etapa será excluída. Nem o POP nem
-              o Processo são alterados.
+              A correspondência confirmada entre esta seção e a etapa será excluída. Nem o POP nem o
+              Processo são alterados.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
