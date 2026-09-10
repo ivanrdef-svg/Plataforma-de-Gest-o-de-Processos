@@ -123,6 +123,15 @@ export function usePopDoc(id: string): PopDoc | undefined {
   return usePopDocs().find((d) => d.id === id);
 }
 
+/**
+ * Build 029 — leitura pontual (fora de React) para checagem de existência.
+ * Mesmo padrão de `getProcessDoc`: não persiste, não emite, não muta o estado.
+ */
+export function getPopDoc(id: string): PopDoc | undefined {
+  ensureHydrated();
+  return state[id];
+}
+
 /** Build 028 — POPs estruturalmente vinculados a um Processo (somente leitura). */
 export function getPopsForProcess(processId: string): PopDoc[] {
   ensureHydrated();
