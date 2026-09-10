@@ -184,6 +184,16 @@ export function getProcessDoc(id: string): ProcessDoc | undefined {
   return state[id];
 }
 
+/**
+ * Build 029 — leitura pura de todos os Processos, fora de React.
+ * Mesmo padrão de `getProcessDoc`: não persiste, não emite, não muta o estado.
+ * Existe para que outros stores não precisem conhecer a chave de localStorage daqui.
+ */
+export function getProcessDocs(): ProcessDoc[] {
+  ensureHydrated();
+  return Object.values(state);
+}
+
 function rid(prefix: string) {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 }
