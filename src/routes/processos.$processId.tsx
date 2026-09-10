@@ -30,6 +30,7 @@ import { Pill } from "@/components/ui/pill";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { usePopsForProcess } from "@/lib/pop-store";
+import { useProcessStepMappings } from "@/lib/pop-process-step-mapping-store";
 
 import { DEMO_ENVIRONMENT } from "@/config/workspace-demo";
 import { PROCESS_DEMO_HISTORY, PROCESS_DEMO_ORIGIN } from "@/config/process-structure";
@@ -200,6 +201,8 @@ function ProcessHistory() {
 /** Build 028 — POPs estruturalmente vinculados a este Processo. */
 function LinkedPopsSection({ processId }: { processId: string }) {
   const linkedPops = usePopsForProcess(processId);
+  // Build 029 — contagem derivada de seções mapeadas (somente leitura).
+  const mappings = useProcessStepMappings(processId);
 
   return (
     <section className="space-y-3">
@@ -234,7 +237,16 @@ function LinkedPopsSection({ processId }: { processId: string }) {
                       {pop.code} · v{pop.version} · {pop.owner}
                     </p>
                   </div>
-                  <Pill size="sm">{pop.status}</Pill>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="text-[11px] text-muted-foreground">
+                      {
+                        mappings.filter((m) => m.popId === pop.id && m.status === "confirmado")
+                          .length
+                      }{" "}
+                      seções mapeadas
+                    </span>
+                    <Pill size="sm">{pop.status}</Pill>
+                  </div>
                 </div>
               </CardContent>
             </Card>
