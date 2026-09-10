@@ -24,6 +24,8 @@ import { PopSectionIndex } from "@/components/pop/pop-section-index";
 import { PopMetadataPanel } from "@/components/pop/pop-metadata-panel";
 import { PopRelations, PopHistory } from "@/components/pop/pop-relations";
 import { RelationshipsTab } from "@/components/relationships/relationships-tab";
+import { PopProcessMappingTab } from "@/components/pop/pop-process-mapping-tab";
+import { useProcessDocs } from "@/lib/process-store";
 import { RelationshipSummary } from "@/components/relationships/relationship-summary";
 import { EmptyState } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
@@ -318,6 +320,11 @@ function PopWorkspace() {
               </section>
             </div>
           ),
+        },
+        {
+          id: "mapeamento",
+          label: "Mapeamento com Processo",
+          content: <PopProcessMappingTab doc={doc} process={linkedProcess} />,
         },
         {
           id: "governanca",
