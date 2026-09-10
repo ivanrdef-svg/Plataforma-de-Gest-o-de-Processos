@@ -21,7 +21,7 @@
 
 import { useSyncExternalStore } from "react";
 import { getPopDoc } from "@/lib/pop-store";
-import { getProcessDoc } from "@/lib/process-store";
+import { getProcessDoc, getProcessDocs } from "@/lib/process-store";
 import type {
   CreateManualMappingInput,
   PopProcessStepMapping,
@@ -150,21 +150,11 @@ function validateTarget(
 }
 
 function existsInAnotherProcess(processId: string, processStepId: string): boolean {
-  // Varredura somente leitura sobre os Processos conhecidos.
-  const seen = new Set<string>([processId]);
-  const candidates = allProcessIds().filter((id) => !seen.has(id));
-  return candidates.some((id) => getProcessDoc(id)?.steps.some((s) => s.id === processStepId));
-}
-
-function allProcessIds(): string[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem("process-platform:process:v1");
-    if (!raw) return [];
-    return Object.keys(JSON.parse(raw) as Record<string, unknown>);
-  } catch {
-    return [];
-  }
+  // Leitura pura via process-store: a chave de localStorage daquele domínio
+  // não é conhecida aqui.
+  return getProcessDocs().some(
+    (p) => p.id !== processId && p.steps.some((s) => s.id === processStepId),
+  );
 }
 
 function rid() {
