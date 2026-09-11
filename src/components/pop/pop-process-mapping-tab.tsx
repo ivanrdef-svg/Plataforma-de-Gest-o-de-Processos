@@ -16,7 +16,8 @@
  */
 import { useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Sparkles } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { ArrowUpRight, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -46,6 +47,10 @@ import {
   usePopProcessStepMappings,
 } from "@/lib/pop-process-step-mapping-store";
 import { suggestPopProcessStepMappings } from "@/lib/pop-process-step-mapping.functions";
+import { useBpmDiagram } from "@/lib/bpm-store";
+import { getPopTraceabilitySummary, type PopSectionTraceability } from "@/lib/pop-traceability";
+import { useWorkflowDocs } from "@/lib/workflow-store";
+import { useWorkflowInstances } from "@/lib/runtime-store";
 import { cn } from "@/lib/utils";
 
 /** Conversão puramente visual do número 0–1 em faixa legível. */
@@ -172,6 +177,101 @@ function MappingRow({
   );
 }
 
+const INCONSISTENCY_LABELS: Record<
+  NonNullable<PopSectionTraceability["processStepInconsistency"]>,
+  string
+> = {
+  "step-inexistente": "Etapa não encontrada no Processo atual",
+  "step-de-outro-processo": "Etapa pertence a outro Processo",
+  "processo-nao-vinculado": "Processo vinculado não encontrado",
+};
+
+function SectionTraceability({ trace }: { trace: PopSectionTraceability }) {
+  if (trace.mappingStatus === "sugerido") {
+    return (
+      <p className="border-l-2 border-border pl-3 text-xs leading-relaxed text-muted-foreground">
+        Esta sugestão ainda não está confirmada e não participa da rastreabilidade operacional.
+      </p>
+    );
+  }
+
+  if (trace.mappingStatus !== "confirmado") return null;
+
+  if (trace.processStepInconsistency) {
+    return (
+      <p className="border-l-2 border-destructive/60 pl-3 text-xs font-medium text-destructive">
+        ⚠ {INCONSISTENCY_LABELS[trace.processStepInconsistency]}
+      </p>
+    );
+  }
+
+  return (
+    <div className="ml-3 space-y-3 border-l border-border pl-4">
+      <div className="space-y-1.5">
+        <p className="text-[11px] font-medium uppercase text-muted-foreground">BPMN</p>
+        {trace.bpmNodes.length > 0 ? (
+          <div className="space-y-1.5">
+            {trace.bpmNodes.map((node) => (
+              <div key={node.nodeId} className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs text-foreground">{node.nodeName}</span>
+                <Button asChild size="sm" variant="ghost" className="h-7 text-xs">
+                  <Link
+                    to="/processos/$processId"
+                    params={{ processId: node.diagramProcessId }}
+                    search={{ tab: "bpmn" }}
+                  >
+                    Ver no BPMN
+                    <ArrowUpRight className="h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Esta etapa ainda não está representada no BPMN.
+          </p>
+        )}
+      </div>
+
+      <div className="space-y-1.5">
+        <p className="text-[11px] font-medium uppercase text-muted-foreground">Workflow</p>
+        {trace.workflowSteps.length > 0 ? (
+          <div className="space-y-1.5">
+            {trace.workflowSteps.map((step) => (
+              <div
+                key={`${step.workflowId}:${step.stepId}`}
+                className="flex flex-wrap items-center justify-between gap-2"
+              >
+                <div className="min-w-0">
+                  <p className="text-xs text-foreground">
+                    {step.workflowName} · {step.stepName}
+                  </p>
+                  {step.instanceCount > 0 ? (
+                    <p className="text-[11px] text-muted-foreground">
+                      {step.instanceCount} {step.instanceCount === 1 ? "execução" : "execuções"}
+                    </p>
+                  ) : null}
+                </div>
+                <Button asChild size="sm" variant="ghost" className="h-7 text-xs">
+                  <Link to="/workflow/$workflowId" params={{ workflowId: step.workflowId }}>
+                    Ver no Workflow
+                    <ArrowUpRight className="h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Esta etapa ainda não está associada a um Workflow.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function PopProcessMappingTab({
   doc,
   process,
@@ -180,6 +280,9 @@ export function PopProcessMappingTab({
   process: ProcessDoc | undefined;
 }) {
   const mappings = usePopProcessStepMappings(doc.id);
+  const bpmDiagram = useBpmDiagram(doc.processId ?? "");
+  const workflowDocs = useWorkflowDocs();
+  const instances = useWorkflowInstances();
   const suggest = useServerFn(suggestPopProcessStepMappings);
   const [analyzing, setAnalyzing] = useState(false);
   const [showRejected, setShowRejected] = useState(false);
@@ -194,6 +297,21 @@ export function PopProcessMappingTab({
       pendentes: mappings.filter((m) => m.status === "sugerido").length,
     }),
     [mappings],
+  );
+  const traceability = useMemo(
+    () =>
+      getPopTraceabilitySummary(doc, doc.sections, {
+        mappings,
+        ...(process ? { process } : {}),
+        ...(bpmDiagram ? { bpmDiagram } : {}),
+        workflowDocs,
+        instances,
+      }),
+    [doc, mappings, process, bpmDiagram, workflowDocs, instances],
+  );
+  const traceabilityBySection = useMemo(
+    () => new Map(traceability.map((trace) => [trace.popSectionId, trace])),
+    [traceability],
   );
 
   if (!doc.processId || !process) {
@@ -319,6 +437,7 @@ export function PopProcessMappingTab({
         {doc.sections.map((section, index) => {
           const all = mappings.filter((m) => m.popSectionId === section.id);
           const visible = showRejected ? all : all.filter((m) => m.status !== "rejeitado");
+          const trace = traceabilityBySection.get(section.id);
           return (
             <section key={section.id} className="space-y-2">
               <div className="flex items-baseline gap-2">
@@ -351,6 +470,7 @@ export function PopProcessMappingTab({
                       onRemove={setRemoving}
                     />
                   ))}
+                  {trace ? <SectionTraceability trace={trace} /> : null}
                   <Button
                     size="sm"
                     variant="ghost"
