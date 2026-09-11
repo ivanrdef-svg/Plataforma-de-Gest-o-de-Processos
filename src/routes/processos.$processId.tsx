@@ -57,7 +57,7 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/processos/$processId")({
   validateSearch: (search: Record<string, unknown>): { tab?: "bpmn" } => ({
-    tab: search.tab === "bpmn" ? "bpmn" : undefined,
+    ...(search["tab"] === "bpmn" ? { tab: "bpmn" as const } : {}),
   }),
   component: ProcessWorkspace,
   head: () => ({

@@ -302,8 +302,8 @@ export function PopProcessMappingTab({
     () =>
       getPopTraceabilitySummary(doc, doc.sections, {
         mappings,
-        process,
-        bpmDiagram,
+        ...(process ? { process } : {}),
+        ...(bpmDiagram ? { bpmDiagram } : {}),
         workflowDocs,
         instances,
       }),
