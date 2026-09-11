@@ -70,10 +70,10 @@ export interface PopTraceabilityInput {
 /* ------------------------------------------------------------------ */
 
 interface TraceIndexes {
-  process?: ProcessDoc;
+  process: ProcessDoc | undefined;
   /** processStepId → { step, order } */
   processSteps: Map<string, { name: string; order: number }>;
-  bpmProcessId?: string;
+  bpmProcessId: string | undefined;
   /** processStepId → nós do diagrama */
   bpmNodesByStep: Map<string, BpmTraceRef[]>;
   /** processStepId → etapas de workflow (do mesmo Processo) já com contagem */
