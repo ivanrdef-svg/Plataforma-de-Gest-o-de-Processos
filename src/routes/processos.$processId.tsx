@@ -56,6 +56,9 @@ import {
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/processos/$processId")({
+  validateSearch: (search: Record<string, unknown>): { tab?: "bpmn" } => ({
+    tab: search.tab === "bpmn" ? "bpmn" : undefined,
+  }),
   component: ProcessWorkspace,
   head: () => ({
     meta: [
@@ -259,6 +262,7 @@ function LinkedPopsSection({ processId }: { processId: string }) {
 
 function ProcessWorkspace() {
   const { processId } = Route.useParams();
+  const { tab } = Route.useSearch();
   const doc = useProcessDoc(processId);
 
   /* Build 007 — injeta os blocos do modelo organizacional em processos
@@ -496,7 +500,7 @@ function ProcessWorkspace() {
           ),
         },
       ]}
-      defaultTab="estrutura"
+      defaultTab={tab ?? "estrutura"}
       sidePanel={
         <div className="space-y-6">
           <LifecyclePanel seed={lifecycleSeed} showTimeline={false} />
