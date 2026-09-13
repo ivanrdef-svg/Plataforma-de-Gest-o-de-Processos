@@ -157,6 +157,35 @@ export function validateExecutionRules(doc: Pick<WorkflowDoc, "steps">): RuleIss
   doc.steps.forEach((step, index) => {
     const kind = stepKind(step);
 
+    // Preserved references must remain visible as errors, never silently repaired.
+    for (const [field, label] of [
+      ["correctionStepId", "Destino de correção"],
+      ["conditionTargetStepId", "Destino da condição"],
+    ] as const) {
+      const target = step[field];
+      if (target && !doc.steps.some((s) => s.id === target)) {
+        issues.push({
+          id: `${step.id}-${field}-destino-inexistente`,
+          severity: "erro",
+          step: step.name,
+          message: `${label} aponta para uma etapa inexistente (${target}). Revise a configuração.`,
+        });
+      }
+    }
+
+    // Options may survive a kind change; their explicit targets still need review.
+    for (const option of decisionOptions(step)) {
+      if (option.nextStepId && !isEndTarget(option.nextStepId) &&
+          !doc.steps.some((s) => s.id === option.nextStepId)) {
+        issues.push({
+          id: `${option.id}-destino-inexistente`,
+          severity: "erro",
+          step: step.name,
+          message: `Opção "${option.label}" aponta para uma etapa inexistente.`,
+        });
+      }
+    }
+
     if (kind === "aprovação" && !(step.approver ?? step.owner).trim()) {
       issues.push({
         id: `${step.id}-aprovador`,
@@ -194,18 +223,7 @@ export function validateExecutionRules(doc: Pick<WorkflowDoc, "steps">): RuleIss
             message: "Opção de decisão sem rótulo.",
           });
         }
-        if (isEndTarget(option.nextStepId)) {
-          /* Encerramento explícito — configuração válida. */
-        } else if (option.nextStepId) {
-          if (!doc.steps.some((s) => s.id === option.nextStepId)) {
-            issues.push({
-              id: `${option.id}-destino-inexistente`,
-              severity: "erro",
-              step: step.name,
-              message: `Opção "${option.label}" aponta para uma etapa inexistente.`,
-            });
-          }
-        } else if (!nextSequentialStepId(doc, step)) {
+        if (!option.nextStepId && !nextSequentialStepId(doc, step)) {
           issues.push({
             id: `${option.id}-destino`,
             severity: "erro",
