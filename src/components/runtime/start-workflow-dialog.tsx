@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Pill } from "@/components/ui/pill";
 import type { WorkflowDoc } from "@/lib/workflow-store";
 import { useGovernance, governanceHealth } from "@/lib/governance-store";
-import { lifecycleStatusOf } from "@/lib/workflow-store";
+import { lifecycleStatusOf, publishedWorkflowVersion } from "@/lib/workflow-store";
 
 /**
  * Build 012 — confirmação de início de execução.
@@ -38,14 +38,16 @@ export function StartWorkflowDialog({
     updatedAt: doc.savedAt,
   });
   const health = governanceHealth(governance);
+  const version = publishedWorkflowVersion(doc);
+  const content = version?.content;
 
   const rows: Array<[string, string]> = [
     ["Workflow", doc.name],
-    ["Processo", doc.processName],
-    ["Versão", doc.version],
+    ["Processo", content?.processName ?? "Informação indisponível"],
+    ["Versão", content && version ? `V${version.number}` : "Informação indisponível"],
     ["Responsável", doc.owner || "—"],
-    ["Etapas executáveis", String(doc.steps.length)],
-    ["Participantes", String(doc.participants.length)],
+    ["Etapas executáveis", content ? String(content.steps.length) : "—"],
+    ["Participantes", content ? String(content.participants.length) : "—"],
   ];
 
   return (
@@ -54,7 +56,7 @@ export function StartWorkflowDialog({
         <DialogHeader>
           <DialogTitle>Iniciar execução</DialogTitle>
           <DialogDescription>
-            Uma nova instância será criada a partir desta definição. A definição
+            Uma nova instância será criada a partir da versão publicada. A definição
             permanece inalterada.
           </DialogDescription>
         </DialogHeader>
@@ -94,7 +96,7 @@ export function StartWorkflowDialog({
           <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button size="sm" onClick={onConfirm}>
+          <Button size="sm" onClick={onConfirm} disabled={!content}>
             <PlayCircle className="mr-1.5 h-4 w-4" />
             Iniciar Workflow
           </Button>

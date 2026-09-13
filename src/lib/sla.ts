@@ -15,7 +15,7 @@ import {
   type TimeUnit,
 } from "@/config/sla-model";
 import type { RuleIssue } from "@/lib/execution-rules";
-import type { WorkflowDoc, WorkflowStep } from "@/lib/workflow-store";
+import type { WorkflowDoc, WorkflowStep, WorkflowVersionContent } from "@/lib/workflow-store";
 
 /* ------------------------------------------------------------------ */
 /* Cálculo                                                             */
@@ -181,16 +181,16 @@ export function useNow(intervalMs = 30_000): number {
 /* Definição do Workflow                                               */
 /* ------------------------------------------------------------------ */
 
-export function instanceSpecOf(doc: WorkflowDoc): SlaSpec | undefined {
+export function instanceSpecOf(doc: WorkflowVersionContent): SlaSpec | undefined {
   return toSpec(doc.slaAmount, doc.slaUnit);
 }
 
-export function defaultTaskSpecOf(doc: WorkflowDoc): SlaSpec | undefined {
+export function defaultTaskSpecOf(doc: WorkflowVersionContent): SlaSpec | undefined {
   return toSpec(doc.taskSlaAmount, doc.taskSlaUnit);
 }
 
 /** Prazo específico da etapa prevalece sobre o padrão do workflow. */
-export function stepSpecOf(doc: WorkflowDoc, step: WorkflowStep): SlaSpec | undefined {
+export function stepSpecOf(doc: WorkflowVersionContent, step: WorkflowStep): SlaSpec | undefined {
   return toSpec(step.slaAmount, step.slaUnit) ?? defaultTaskSpecOf(doc);
 }
 
@@ -207,7 +207,7 @@ export function workflowHasSla(doc: WorkflowDoc): boolean {
 }
 
 /** Validação temporal, no mesmo padrão de `validateExecutionRules`. */
-export function validateSlaRules(doc: WorkflowDoc): RuleIssue[] {
+export function validateSlaRules(doc: WorkflowVersionContent & Partial<Pick<WorkflowDoc, "id" | "name">>): RuleIssue[] {
   const issues: RuleIssue[] = [];
 
   const checkAmount = (
@@ -245,12 +245,12 @@ export function validateSlaRules(doc: WorkflowDoc): RuleIssue[] {
     }
   };
 
-  checkAmount(doc.slaAmount, doc.slaUnit, `${doc.id}-sla`, doc.name, "SLA da instância");
+  checkAmount(doc.slaAmount, doc.slaUnit, `${doc.id ?? "workflow"}-sla`, doc.name ?? "Workflow", "SLA da instância");
   checkAmount(
     doc.taskSlaAmount,
     doc.taskSlaUnit,
-    `${doc.id}-sla-tarefa`,
-    doc.name,
+    `${doc.id ?? "workflow"}-sla-tarefa`,
+    doc.name ?? "Workflow",
     "SLA padrão das tarefas",
   );
 
@@ -274,9 +274,9 @@ export function validateSlaRules(doc: WorkflowDoc): RuleIssue[] {
   }, 0);
   if (instanceSpec && stepsSum > specMs(instanceSpec)) {
     issues.push({
-      id: `${doc.id}-sla-soma`,
+      id: `${doc.id ?? "workflow"}-sla-soma`,
       severity: "atenção",
-      step: doc.name,
+      step: doc.name ?? "Workflow",
       message:
         "A soma dos prazos das etapas ultrapassa o SLA da instância — o workflow tende a atrasar.",
     });

@@ -14,6 +14,7 @@ import type { PopDoc, PopSection } from "@/lib/pop-store";
 import type { ProcessDoc } from "@/lib/process-store";
 import type { WorkflowDoc } from "@/lib/workflow-store";
 import type { WorkflowInstance } from "@/lib/runtime-store";
+import { getExecutedWorkflowVersion } from "@/lib/runtime-history";
 
 export interface BpmTraceRef {
   diagramProcessId: string;
@@ -27,6 +28,9 @@ export interface WorkflowTraceRef {
   stepId: string;
   stepName: string;
   instanceCount: number;
+  /** Present only on historical rows; current editorial rows have no executions. */
+  workflowVersionId?: string;
+  workflowVersion?: number;
 }
 
 export interface ProcessStepTraceRef {
@@ -112,31 +116,52 @@ function buildIndexes(input: {
   if (process) {
     const relevant = workflowDocs.filter((wf) => wf.processId === process.id);
     for (const wf of relevant) {
-      // Instâncias desta definição, indexadas pelos `stepId` executados.
-      const executedStepIds = new Set<string>();
-      const countByStepId = new Map<string, number>();
-      for (const instance of instances) {
-        if (instance.workflowId !== wf.id) continue;
-        const seen = new Set<string>();
-        for (const task of instance.tasks) {
-          if (seen.has(task.stepId)) continue;
-          seen.add(task.stepId);
-          executedStepIds.add(task.stepId);
-          countByStepId.set(task.stepId, (countByStepId.get(task.stepId) ?? 0) + 1);
-        }
-      }
       for (const step of wf.steps) {
         const ref: WorkflowTraceRef = {
           workflowId: wf.id,
           workflowName: wf.name,
           stepId: step.id,
           stepName: step.name,
-          instanceCount: countByStepId.get(step.id) ?? 0,
+          instanceCount: 0,
         };
         const list = workflowStepsByProcessStep.get(step.processStepId) ?? [];
         list.push(ref);
         workflowStepsByProcessStep.set(step.processStepId, list);
       }
+    }
+  }
+
+  // Historical joins use the executed snapshot, even if current steps were removed/remapped.
+  const historicalRefs = new Map<string, WorkflowTraceRef>();
+  for (const instance of instances) {
+    if (!process || instance.processId !== process.id) continue;
+    const version = getExecutedWorkflowVersion(instance, workflowDocs.find(wf => wf.id === instance.workflowId));
+    if (!version?.content || version.content.processId !== process.id) continue;
+    const seen = new Set<string>();
+    for (const task of instance.tasks) {
+      if (seen.has(task.stepId)) continue;
+      seen.add(task.stepId);
+      const step = version.content.steps.find(s => s.id === task.stepId);
+      if (!step) continue;
+      const key = JSON.stringify([instance.workflowId, version.versionId, step.id]);
+      const existing = historicalRefs.get(key);
+      if (existing) {
+        existing.instanceCount += 1;
+        continue;
+      }
+      const ref: WorkflowTraceRef = {
+        workflowId: instance.workflowId,
+        workflowName: instance.workflowName,
+        stepId: task.stepId,
+        stepName: task.name,
+        instanceCount: 1,
+        workflowVersionId: version.versionId,
+        workflowVersion: version.number,
+      };
+      historicalRefs.set(key, ref);
+      const list = workflowStepsByProcessStep.get(step.processStepId) ?? [];
+      list.push(ref);
+      workflowStepsByProcessStep.set(step.processStepId, list);
     }
   }
 
@@ -212,7 +237,7 @@ function traceWithIndexes(
       result.bpmNodes.push(node);
     }
     for (const wfStep of idx.workflowStepsByProcessStep.get(mapping.processStepId) ?? []) {
-      const key = `${wfStep.workflowId}:${wfStep.stepId}`;
+      const key = JSON.stringify([wfStep.workflowId, wfStep.workflowVersionId ?? null, wfStep.stepId]);
       if (seenWfSteps.has(key)) continue;
       seenWfSteps.add(key);
       result.workflowSteps.push(wfStep);

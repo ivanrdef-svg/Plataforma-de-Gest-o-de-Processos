@@ -17,8 +17,9 @@ import {
   appendWorkflowEvent,
   currentWorkflowVersion,
   publishedWorkflowVersion,
-  recordWorkflowValidation,
   type WorkflowDoc,
+  type WorkflowVersion,
+  type WorkflowVersionContent,
 } from "@/lib/workflow-store";
 
 
@@ -448,25 +449,21 @@ function write(
  * da versão publicada; o rascunho em edição nunca é executado.
  */
 export function startInstanceFromWorkflow(doc: WorkflowDoc): WorkflowInstance {
+  const result = tryStartInstanceFromWorkflow(doc);
+  if (!result.ok) throw new Error(`Cannot start workflow: ${result.reason}`);
+  return result.instance;
+}
+
+/** Receives the exact content already validated by the command. */
+function materializeRuntime(
+  doc: WorkflowDoc,
+  originVersion: WorkflowVersion,
+  source: WorkflowVersionContent,
+): WorkflowInstance {
   ensureHydrated();
   const now = new Date();
   const iso = now.toISOString();
   const id = `exe-${now.getTime().toString(36)}`;
-
-  /* Build 017 — a instância registra explicitamente a versão de origem. */
-  const originVersion = publishedWorkflowVersion(doc) ?? currentWorkflowVersion(doc);
-
-  /* Fonte de verdade da execução: conteúdo congelado da versão publicada. */
-  let source: WorkflowDoc = doc;
-  const frozen = originVersion?.content;
-  if (frozen) {
-    const merged: WorkflowDoc = { ...doc };
-    delete merged.slaAmount;
-    delete merged.slaUnit;
-    delete merged.taskSlaAmount;
-    delete merged.taskSlaUnit;
-    source = { ...merged, ...frozen };
-  }
 
   const docInstanceSpec = instanceSpecOf(source);
   const docTaskSpec = defaultTaskSpecOf(source);
@@ -562,7 +559,7 @@ export function startInstanceFromWorkflow(doc: WorkflowDoc): WorkflowInstance {
       : {}),
     processId: source.processId,
     processName: source.processName,
-    version: doc.version,
+    version: `V${originVersion.number}`,
     state: "em execução",
     owner: doc.owner,
     area: doc.area,
@@ -1328,7 +1325,7 @@ export function allSlaOccurrences(
 
 /**
  * Porta de entrada do Runtime: uma definição com erros de validação NUNCA
- * gera instância. Não substitui `startInstanceFromWorkflow` — apenas a protege.
+ * gera instância. Todos os pontos públicos de início passam por este comando.
  *
  * Build H4-E1: workflows arquivados também são bloqueados, com motivo distinto
  * para a UI poder exibir mensagem específica.
@@ -1344,27 +1341,22 @@ export function tryStartInstanceFromWorkflow(
   if (doc.status === "arquivado") {
     return { ok: false, reason: "arquivado" };
   }
+  // Resolve once: validation and materialization share this exact snapshot.
+  const version = publishedWorkflowVersion(doc);
   /* Build 017 — versão arquivada não origina novas execuções. */
   if (
-    currentWorkflowVersion(doc)?.status === "arquivada" &&
-    !publishedWorkflowVersion(doc)
+    !version &&
+    currentWorkflowVersion(doc)?.status === "arquivada"
   ) {
     return { ok: false, reason: "arquivado" };
   }
   /* Build 017.1 — sem versão publicada não há o que executar (nunca o rascunho). */
-  if (!publishedWorkflowVersion(doc)) {
+  const source = version?.content;
+  if (!version || !source) {
     return { ok: false, reason: "no-published-version" };
   }
-  const validation = validateWorkflow(doc, ctx);
-  recordWorkflowValidation(
-    doc.id,
-    {
-      status: validation.status,
-      errors: validation.errors.length,
-      warnings: validation.warnings.length,
-    },
-    { silent: true },
-  );
+  const validation = validateWorkflow(source, ctx);
+  // An execution check must not overwrite the current draft's validation.
   if (!validation.canStart) {
     appendWorkflowEvent(
       doc.id,
@@ -1373,5 +1365,5 @@ export function tryStartInstanceFromWorkflow(
     );
     return { ok: false, reason: "validation", validation };
   }
-  return { ok: true, instance: startInstanceFromWorkflow(doc), validation };
+  return { ok: true, instance: materializeRuntime(doc, version, source), validation };
 }

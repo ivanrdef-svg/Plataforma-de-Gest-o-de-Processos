@@ -240,12 +240,13 @@ function SectionTraceability({ trace }: { trace: PopSectionTraceability }) {
           <div className="space-y-1.5">
             {trace.workflowSteps.map((step) => (
               <div
-                key={`${step.workflowId}:${step.stepId}`}
+                key={JSON.stringify([step.workflowId, step.workflowVersionId ?? null, step.stepId])}
                 className="flex flex-wrap items-center justify-between gap-2"
               >
                 <div className="min-w-0">
                   <p className="text-xs text-foreground">
                     {step.workflowName} · {step.stepName}
+                    {step.workflowVersion !== undefined ? ` · V${step.workflowVersion} executada` : " · definição atual"}
                   </p>
                   {step.instanceCount > 0 ? (
                     <p className="text-[11px] text-muted-foreground">

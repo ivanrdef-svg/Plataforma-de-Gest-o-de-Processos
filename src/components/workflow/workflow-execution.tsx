@@ -53,9 +53,9 @@ export function WorkflowExecution({ doc }: { doc: WorkflowDoc }) {
   const [open, setOpen] = useState(false);
   const instances = useWorkflowInstances().filter((i) => i.workflowId === doc.id);
   // Build 016 — definição inválida não gera instância.
-  const validation = validateWorkflow(doc);
   // Build 017.1 — a execução usa sempre a versão publicada, nunca o rascunho.
   const published = publishedWorkflowVersion(doc);
+  const validation = published?.content ? validateWorkflow(published.content) : undefined;
   const current = currentWorkflowVersion(doc);
   const viewingDraft = Boolean(
     published && current && current.number !== published.number,
@@ -95,7 +95,7 @@ export function WorkflowExecution({ doc }: { doc: WorkflowDoc }) {
       <section className="rounded-xl border bg-card p-5">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h3 className="text-sm font-medium">Prontidão para execução</h3>
+            <h3 className="text-sm font-medium">Prontidão do conteúdo em edição</h3>
             <p className="mt-1 text-xs text-muted-foreground">
               Quanto mais completa a definição, mais confiável é a execução.
             </p>
@@ -137,7 +137,7 @@ export function WorkflowExecution({ doc }: { doc: WorkflowDoc }) {
         <Button
           size="sm"
           className="mt-4 h-8"
-          disabled={!published || !validation.canStart || isArchived}
+          disabled={!published?.content || !validation?.canStart || isArchived}
           onClick={() => setOpen(true)}
         >
           <PlayCircle className="mr-1.5 h-3.5 w-3.5" />
@@ -148,22 +148,22 @@ export function WorkflowExecution({ doc }: { doc: WorkflowDoc }) {
             <ShieldAlert className="h-3 w-3" />
             Este Workflow está arquivado e não pode iniciar novas execuções.
           </p>
-        ) : !published ? (
+        ) : !published?.content ? (
           <p className="mt-3 inline-flex items-center gap-1.5 text-[11px] text-destructive">
             <ShieldAlert className="h-3 w-3" />
             Este Workflow não possui uma versão publicada disponível para execução.
           </p>
-        ) : !validation.canStart ? (
+        ) : validation && !validation.canStart ? (
           <p className="mt-3 inline-flex items-center gap-1.5 text-[11px] text-destructive">
             <ShieldAlert className="h-3 w-3" />
             {validation.errors.length} erro(s) de validação bloqueiam novas execuções
-            — veja a aba Validação.
+            na versão publicada.
           </p>
         ) : (
           !ready && (
             <p className="mt-3 inline-flex items-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400">
               <ShieldAlert className="h-3 w-3" />
-              Ainda há configuração pendente nas etapas.
+              Ainda há configuração pendente no conteúdo em edição.
             </p>
           )
         )}

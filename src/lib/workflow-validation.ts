@@ -11,7 +11,11 @@
 
 import { validateExecutionRules, type RuleIssue } from "@/lib/execution-rules";
 import { validateSlaRules } from "@/lib/sla";
-import type { WorkflowDoc } from "@/lib/workflow-store";
+import type { WorkflowDoc, WorkflowVersionContent } from "@/lib/workflow-store";
+
+/** Executable content, optionally accompanied by editorial governance fields. */
+export type WorkflowValidationSource = WorkflowVersionContent &
+  Partial<Pick<WorkflowDoc, "id" | "name" | "owner">>;
 
 export type ValidationStatus = "válido" | "válido com avisos" | "inválido";
 
@@ -93,7 +97,7 @@ function enrich(
 /* ------------------------------------------------------------------ */
 
 function structuralIssues(
-  doc: WorkflowDoc,
+  doc: WorkflowValidationSource,
   ctx: ValidationContext,
 ): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
@@ -122,11 +126,11 @@ function structuralIssues(
 
   if (doc.steps.length === 0) {
     push(
-      `${doc.id}-sem-etapas`,
+      `${doc.id ?? "workflow"}-sem-etapas`,
       "erro",
       "Workflow sem etapas executáveis",
       "A definição não possui nenhuma etapa para executar.",
-      doc.name,
+      doc.name ?? "Workflow",
       "Nenhuma tarefa seria criada na execução.",
       "Reimporte as etapas do processo de origem.",
       "etapas",
@@ -135,35 +139,37 @@ function structuralIssues(
 
   if (!doc.processId) {
     push(
-      `${doc.id}-sem-processo`,
+      `${doc.id ?? "workflow"}-sem-processo`,
       "erro",
       "Processo de origem ausente",
       "A definição não referencia um processo modelado.",
-      doc.name,
+      doc.name ?? "Workflow",
       "A execução perde a rastreabilidade com o processo.",
       "Vincule o workflow a um processo existente.",
       "resumo",
     );
   } else if (ctx.processExists === false) {
     push(
-      `${doc.id}-processo-inexistente`,
+      `${doc.id ?? "workflow"}-processo-inexistente`,
       "erro",
       "Processo de origem inexistente",
       `O processo "${doc.processName}" referenciado não existe mais.`,
-      doc.name,
+      doc.name ?? "Workflow",
       "A execução seria criada sem origem válida.",
       "Revincule o workflow a um processo existente.",
       "resumo",
     );
   }
 
-  if (!doc.owner.trim()) {
+  // Governance owner is checked when validating an editorial document.
+  // Historical snapshots do not contain it; never borrow it from a later draft.
+  if (doc.owner !== undefined && !doc.owner.trim()) {
     push(
-      `${doc.id}-sem-responsavel`,
+      `${doc.id ?? "workflow"}-sem-responsavel`,
       "erro",
       "Workflow sem responsável",
       "Nenhum responsável de governança está definido para a definição.",
-      doc.name,
+      doc.name ?? "Workflow",
       "Não há a quem atribuir a responsabilidade pela execução.",
       "Informe o responsável no painel de propriedades.",
       "resumo",
@@ -223,11 +229,11 @@ function structuralIssues(
 
   if (doc.participants.length === 0 && doc.steps.length > 0) {
     push(
-      `${doc.id}-sem-participantes`,
+      `${doc.id ?? "workflow"}-sem-participantes`,
       "atenção",
       "Workflow sem participantes",
       "Nenhum participante foi associado às etapas executáveis.",
-      doc.name,
+      doc.name ?? "Workflow",
       "A distribuição das tarefas fica implícita.",
       "Associe participantes na aba Participantes.",
       "resumo",
@@ -242,7 +248,7 @@ function structuralIssues(
 /* ------------------------------------------------------------------ */
 
 export function validateWorkflow(
-  doc: WorkflowDoc,
+  doc: WorkflowValidationSource,
   ctx: ValidationContext = {},
 ): WorkflowValidation {
   const all: ValidationIssue[] = [

@@ -5,10 +5,11 @@ import { RelationshipSummary } from "@/components/relationships/relationship-sum
 import { RelationshipsTab } from "@/components/relationships/relationships-tab";
 import { currentTask, type WorkflowInstance } from "@/lib/runtime-store";
 import { useWorkflowDoc } from "@/lib/workflow-store";
+import { getRuntimeHistory } from "@/lib/runtime-history";
 
 /** Build 012 — processo de origem visível durante a execução. */
 export function RuntimeProcess({ instance }: { instance: WorkflowInstance }) {
-  const workflow = useWorkflowDoc(instance.workflowId);
+  const history = getRuntimeHistory(instance, useWorkflowDoc(instance.workflowId));
   const active = currentTask(instance);
 
   return (
@@ -49,7 +50,7 @@ export function RuntimeProcess({ instance }: { instance: WorkflowInstance }) {
         </div>
 
         <ol className="mt-5 space-y-2">
-          {(workflow?.steps ?? []).map((step, index) => {
+          {history.steps.map((step, index) => {
             const isCurrent = active?.stepId === step.id;
             return (
               <li
@@ -73,9 +74,9 @@ export function RuntimeProcess({ instance }: { instance: WorkflowInstance }) {
               </li>
             );
           })}
-          {(workflow?.steps ?? []).length === 0 && (
+          {history.provenance === "unknown" && (
             <li className="text-xs text-muted-foreground">
-              A definição de workflow não está mais disponível localmente.
+              Informação histórica da versão indisponível. Exibindo apenas tarefas registradas na execução.
             </li>
           )}
         </ol>

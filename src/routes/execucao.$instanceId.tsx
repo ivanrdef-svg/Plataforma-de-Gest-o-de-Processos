@@ -234,9 +234,11 @@ function RuntimeWorkspace() {
           },
           {
             id: "governanca",
-            label: "Governança",
+            label: "Governança atual do Workflow",
             content: (
-              <GovernanceTab seed={governanceSeed} lifecycleSeed={governanceSeed} />
+              workflow ? <GovernanceTab seed={governanceSeed} lifecycleSeed={governanceSeed} /> : (
+                <p className="text-xs text-muted-foreground">Workflow de origem indisponível.</p>
+              )
             ),
           },
           {

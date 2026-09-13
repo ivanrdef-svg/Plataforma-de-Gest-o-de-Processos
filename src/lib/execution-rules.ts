@@ -26,23 +26,23 @@ export function decisionOptions(step: WorkflowStep): DecisionOption[] {
   return step.decisionOptions ?? [];
 }
 
-export function stepName(doc: WorkflowDoc, stepId: string | undefined): string {
+export function stepName(doc: Pick<WorkflowDoc, "steps">, stepId: string | undefined): string {
   if (!stepId) return "";
   return doc.steps.find((s) => s.id === stepId)?.name ?? "";
 }
 
-export function nextSequentialStepId(doc: WorkflowDoc, step: WorkflowStep): string {
+export function nextSequentialStepId(doc: Pick<WorkflowDoc, "steps">, step: WorkflowStep): string {
   const index = doc.steps.findIndex((s) => s.id === step.id);
   return doc.steps[index + 1]?.id ?? "";
 }
 
-export function previousStepId(doc: WorkflowDoc, step: WorkflowStep): string {
+export function previousStepId(doc: Pick<WorkflowDoc, "steps">, step: WorkflowStep): string {
   const index = doc.steps.findIndex((s) => s.id === step.id);
   return index > 0 ? (doc.steps[index - 1]?.id ?? "") : "";
 }
 
 /** Etapa para onde uma rejeição/correção devolve o fluxo. */
-export function correctionStepId(doc: WorkflowDoc, step: WorkflowStep): string {
+export function correctionStepId(doc: Pick<WorkflowDoc, "steps">, step: WorkflowStep): string {
   return step.correctionStepId || previousStepId(doc, step);
 }
 
@@ -55,7 +55,7 @@ export function outcomesOf(step: WorkflowStep): TaskOutcome[] {
  * Build 016: pode retornar `END_OF_WORKFLOW` quando o encerramento é explícito.
  */
 export function resolveNextStepId(
-  doc: WorkflowDoc,
+  doc: Pick<WorkflowDoc, "steps">,
   step: WorkflowStep,
   outcome: TaskOutcome,
 ): string {
@@ -69,7 +69,7 @@ export function resolveNextStepId(
 
 /** Destino de uma opção de decisão, respeitando o encerramento explícito. */
 export function optionTargetId(
-  doc: WorkflowDoc,
+  doc: Pick<WorkflowDoc, "steps">,
   step: WorkflowStep,
   option: DecisionOption,
 ): string {
@@ -78,7 +78,7 @@ export function optionTargetId(
 }
 
 /** Rótulo legível de um destino de transição. */
-export function targetLabel(doc: WorkflowDoc, target: string): string {
+export function targetLabel(doc: Pick<WorkflowDoc, "steps">, target: string): string {
   if (isEndTarget(target)) return END_OF_WORKFLOW_LABEL;
   if (!target) return "Fim do caminho";
   return stepName(doc, target) || "Etapa inexistente";
@@ -92,7 +92,7 @@ export interface StepTransition {
   implicit: boolean;
 }
 
-export function transitionsOf(doc: WorkflowDoc, step: WorkflowStep): StepTransition[] {
+export function transitionsOf(doc: Pick<WorkflowDoc, "steps">, step: WorkflowStep): StepTransition[] {
   return outcomesOf(step).map((outcome) => {
     const explicit = step.outcomeTransitions?.[outcome] ?? "";
     const nextStepId = resolveNextStepId(doc, step, outcome);
@@ -119,7 +119,7 @@ export interface StepRuleSnapshot {
 }
 
 export function snapshotStepRules(
-  doc: WorkflowDoc,
+  doc: Pick<WorkflowDoc, "steps">,
   step: WorkflowStep,
 ): StepRuleSnapshot {
   const nextByOutcome: Record<string, string> = {};
@@ -152,7 +152,7 @@ export interface RuleIssue {
   message: string;
 }
 
-export function validateExecutionRules(doc: WorkflowDoc): RuleIssue[] {
+export function validateExecutionRules(doc: Pick<WorkflowDoc, "steps">): RuleIssue[] {
   const issues: RuleIssue[] = [];
   doc.steps.forEach((step, index) => {
     const kind = stepKind(step);

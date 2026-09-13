@@ -1,11 +1,12 @@
 import { Pill } from "@/components/ui/pill";
 import { type WorkflowInstance } from "@/lib/runtime-store";
 import { useWorkflowDoc } from "@/lib/workflow-store";
+import { getRuntimeHistory } from "@/lib/runtime-history";
 
 /** Build 012 — participantes da execução, herdados da definição de workflow. */
 export function RuntimeParticipants({ instance }: { instance: WorkflowInstance }) {
-  const workflow = useWorkflowDoc(instance.workflowId);
-  const participants = workflow?.participants ?? [];
+  const history = getRuntimeHistory(instance, useWorkflowDoc(instance.workflowId));
+  const participants = history.participants;
 
   const load = (name: string) =>
     instance.tasks.filter((t) => t.owner.trim() === name.trim());
@@ -14,7 +15,9 @@ export function RuntimeParticipants({ instance }: { instance: WorkflowInstance }
     <div className="space-y-3">
       {participants.length === 0 && (
         <p className="text-xs text-muted-foreground">
-          Nenhum participante definido no workflow de origem.
+          {history.provenance === "unknown"
+            ? "Informação histórica dos participantes indisponível."
+            : "Nenhum participante definido na versão executada."}
         </p>
       )}
       {participants.map((p) => {
