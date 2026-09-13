@@ -3,11 +3,15 @@
   "private": true,
   "sideEffects": false,
   "type": "module",
+  "packageManager": "bun@1.4.2",
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
+    "test": "bun --no-env-file --no-install test --isolate ./tests",
+    "test:watch": "bun --no-env-file --no-install test --isolate --watch ./tests",
+    "typecheck": "tsc --noEmit && tsc --project tsconfig.test.json --noEmit",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
@@ -75,6 +79,7 @@
   "devDependencies": {
     "@eslint/js": "^9.32.0",
     "@lovable.dev/vite-tanstack-config": "2.13.1",
+    "@types/bun": "1.4.2",
     "@types/node": "^22.16.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
