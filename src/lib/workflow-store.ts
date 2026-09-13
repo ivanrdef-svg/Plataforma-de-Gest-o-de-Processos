@@ -735,9 +735,42 @@ export function removeWorkflowParticipant(docId: string, participantId: string) 
 }
 
 /**
- * Reimporta as etapas do Processo de origem, preservando a configuração de
- * execução já feita pelo usuário (prazos, condições, ações esperadas).
+ * Process owns identity linkage, descriptive fields and optional type.
+ * Workflow owns its ID and all executable configuration. Empty dependsOn
+ * keeps the existing sync fallback; other configured empty values are retained.
+ * ID generation stays with the caller so this merge remains pure.
  */
+function mergeWorkflowStepFromProcess(
+  step: ProcessStep,
+  existing: WorkflowStep | undefined,
+  id: string,
+  previousStepName: string,
+): WorkflowStep {
+  const next: WorkflowStep = {
+    ...(existing ?? {
+      id,
+      role: roleForStep(step),
+      precondition: step.preconditions ?? "",
+      condition: "",
+      deadline: step.duration,
+      expectedAction: "",
+    }),
+    processStepId: step.id,
+    name: step.name,
+    description: step.description,
+    owner: step.owner,
+    inputs: step.inputs,
+    outputs: step.outputs,
+    duration: step.duration,
+    dependsOn: existing?.dependsOn || step.dependsOn || previousStepName,
+  };
+  // Absence is authoritative too: do not retain a type removed from Process.
+  delete next.type;
+  if (step.type !== undefined) next.type = step.type;
+  return next;
+}
+
+/** Updates Process-owned fields without rebuilding executable configuration. */
 export function syncWorkflowWithProcess(docId: string, process: ProcessDoc) {
   if (!editable(docId)) return undefined;
   const doc = state[docId];
@@ -745,30 +778,12 @@ export function syncWorkflowWithProcess(docId: string, process: ProcessDoc) {
   const byProcessStep = new Map(doc.steps.map((s) => [s.processStepId, s]));
   const steps: WorkflowStep[] = process.steps.map((step, index) => {
     const existing = byProcessStep.get(step.id);
-    return {
-      id: existing?.id ?? rid("we"),
-      processStepId: step.id,
-      name: step.name,
-      description: step.description,
-      owner: step.owner,
-      role: existing?.role ?? roleForStep(step),
-      ...(step.type ? { type: step.type } : {}),
-      inputs: step.inputs,
-      outputs: step.outputs,
-      duration: step.duration,
-      dependsOn:
-        existing?.dependsOn ||
-        step.dependsOn ||
-        (index > 0 ? process.steps[index - 1]!.name : ""),
-      precondition: existing?.precondition ?? step.preconditions ?? "",
-      condition: existing?.condition ?? "",
-      deadline: existing?.deadline ?? step.duration,
-      expectedAction: existing?.expectedAction ?? "",
-      /* Build 014 — o prazo específico configurado pelo usuário é preservado. */
-      ...(existing?.slaAmount !== undefined ? { slaAmount: existing.slaAmount } : {}),
-      ...(existing?.slaUnit ? { slaUnit: existing.slaUnit } : {}),
-    };
-
+    return mergeWorkflowStepFromProcess(
+      step,
+      existing,
+      existing?.id ?? rid("we"),
+      index > 0 ? process.steps[index - 1]!.name : "",
+    );
   });
   return updateWorkflowDoc(docId, {
     steps,
