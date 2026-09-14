@@ -27,7 +27,6 @@ import {
   getProcessVersion,
   getWorkingProcessVersion,
   getPublishedProcessVersion,
-  getAuthoringProcessVersion,
   type ProcessDoc,
   type LegacyProcessDoc,
   type ProcessDefinition,
@@ -371,10 +370,10 @@ export function moveProcessStep(docId: string, stepKey: string, delta: number) {
   return updateWorkingProcessDefinition(docId, { steps });
 }
 
-export function duplicateProcessDoc(id: string): ProcessDoc | undefined {
+export function duplicateProcessDoc(id: string, sourceVersionId: string): ProcessDoc | undefined {
   ensureHydrated();
   const source = state[id];
-  const sourceVersion = source && getAuthoringProcessVersion(source);
+  const sourceVersion = source && getProcessVersion(source, sourceVersionId);
   if (!source || !sourceVersion) return undefined;
   const now = new Date().toISOString();
   const newId = uniqueId("prc-" + Date.now().toString(36));

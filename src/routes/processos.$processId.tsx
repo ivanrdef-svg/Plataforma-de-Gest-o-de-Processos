@@ -393,7 +393,7 @@ function ProcessWorkspace() {
             label="Duplicar"
             icon={Copy}
             onClick={() => {
-              const copy = duplicateProcessDoc(doc.id);
+              const copy = duplicateProcessDoc(doc.id, selectedVersion.id);
               toast.success("Processo duplicado", { description: copy ? getAuthoringProcessVersion(copy)?.definition.name : undefined });
             }}
           />
