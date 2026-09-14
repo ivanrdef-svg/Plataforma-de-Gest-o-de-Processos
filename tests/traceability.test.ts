@@ -1,3 +1,4 @@
+import { getPublishedProcessVersion } from "@/lib/process-store";
 import { expect, test } from "bun:test";
 import { generateDiagramFromProcess } from "@/config/bpm-model";
 import type { PopProcessStepMapping } from "@/config/pop-process-step-mapping-model";
@@ -6,6 +7,7 @@ import { deepFreeze, processFixture } from "./support/fixtures";
 
 function inputFor(status: PopProcessStepMapping["status"]): PopTraceabilityInput {
   const process = processFixture();
+    const version = getPublishedProcessVersion(process)!;
   return {
     section: {
       id: "section-fixture",
@@ -26,8 +28,8 @@ function inputFor(status: PopProcessStepMapping["status"]): PopTraceabilityInput
         updatedAt: "2026-01-15T12:00:00.000Z",
       },
     ],
-    process,
-    bpmDiagram: generateDiagramFromProcess(process),
+    process: { id: process.id, versionId: version.id, definition: version.definition },
+    bpmDiagram: generateDiagramFromProcess(process.id, version.id, version.definition),
     workflowDocs: [],
     instances: [],
   };

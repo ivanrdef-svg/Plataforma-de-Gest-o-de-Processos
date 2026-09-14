@@ -19,7 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Pill } from "@/components/ui/pill";
 import { cn } from "@/lib/utils";
-import { useProcessDocs } from "@/lib/process-store";
+import { getAuthoringProcessVersion, useProcessDocs } from "@/lib/process-store";
 import { linkPopToProcess } from "@/lib/pop-store";
 
 export function LinkPopProcessDialog({
@@ -50,7 +50,7 @@ export function LinkPopProcessDialog({
     const q = query.trim().toLowerCase();
     if (!q) return processes;
     return processes.filter(
-      (p) => p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q),
+      (p) => (getAuthoringProcessVersion(p)?.definition.name ?? "").toLowerCase().includes(q) || p.code.toLowerCase().includes(q),
     );
   }, [processes, query]);
 
@@ -103,12 +103,12 @@ export function LinkPopProcessDialog({
                 )}
               >
                 <span className="min-w-0">
-                  <span className="block truncate text-sm text-foreground">{p.name}</span>
+                  <span className="block truncate text-sm text-foreground">{getAuthoringProcessVersion(p)?.definition.name ?? p.code}</span>
                   <span className="block font-mono text-[11px] text-muted-foreground">
                     {p.code}
                   </span>
                 </span>
-                <Pill size="sm">{p.status}</Pill>
+                <Pill size="sm">Versão: {getAuthoringProcessVersion(p)?.status ?? "indisponível"}</Pill>
               </button>
             ))
           )}

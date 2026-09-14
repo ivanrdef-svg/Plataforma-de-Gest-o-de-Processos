@@ -54,7 +54,7 @@ import {
 } from "@/lib/bpm-store";
 import type { BpmDiagram, BpmNodeKind } from "@/config/bpm-model";
 import { validateBpmn } from "@/lib/bpm-validation";
-import type { ProcessDoc } from "@/lib/process-store";
+import type { ProcessDoc, ProcessVersion } from "@/lib/process-store";
 import { cn } from "@/lib/utils";
 
 /**
@@ -118,7 +118,7 @@ function ToolButton({
   );
 }
 
-export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
+export function BpmDesigner({ doc, version }: { doc: ProcessDoc; version: ProcessVersion }) {
   const diagram = useBpmDiagram(doc.id);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
@@ -135,7 +135,7 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
 
   // Gera o fluxo inicial automaticamente ao abrir o Processo.
   useEffect(() => {
-    ensureDiagram(doc);
+    ensureDiagram(doc.id, version.id, version.definition);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doc.id]);
 
@@ -145,10 +145,10 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
     return () => window.clearTimeout(id);
   }, [fullscreen, showSource, showProps]);
 
-  const pending = useMemo(() => pendingProcessChanges(doc, diagram), [doc, diagram]);
-  const stale = pending.count > 0;
+  const pending = useMemo(() => pendingProcessChanges(doc.id, version.id, version.definition, diagram), [doc.id, version, diagram]);
+  const stale = pending.count > 0 || diagram?.syncedFromProcessVersionId !== version.id;
   // Fonte única de validação do BPMN nesta tela.
-  const validation = useMemo(() => validateBpmn(diagram ?? EMPTY_DIAGRAM, doc), [diagram, doc]);
+  const validation = useMemo(() => validateBpmn(diagram ?? EMPTY_DIAGRAM, version.definition), [diagram, version]);
 
   const nodeSeverity = useMemo(() => {
     const map = new Map<string, "erro" | "atencao">();
@@ -199,9 +199,9 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
   const selectedEdge = diagram?.edges.find((e) => e.id === selectedEdgeId) ?? null;
 
   const regenerate = () => {
-    syncDiagramWithProcess(doc);
+    syncDiagramWithProcess(doc.id, version.id, version.definition);
     toast.success("Diagrama atualizado", {
-      description: "As novas etapas do Processo foram adicionadas ao fluxo.",
+      description: `Fonte V${version.number} registrada; desenho existente preservado.`,
     });
   };
 
@@ -419,8 +419,9 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
         <div className="ml-auto flex flex-wrap items-center justify-end gap-2 pr-1 text-[11px] text-muted-foreground">
           <span className="flex items-center gap-1.5">
             <Sparkles className="h-3.5 w-3.5 text-primary" />
-            Gerado a partir do Processo · {doc.steps.length} etapas
+            Fonte selecionada: V{version.number} ({version.status}) · {version.definition.steps.length} etapas
           </span>
+          <span>Última fonte sincronizada: {diagram?.syncedFromProcessVersionId ? `V${doc.versions.find(v => v.id === diagram.syncedFromProcessVersionId)?.number ?? "?"}` : "legado sem versão registrada"}</span>
           <BpmValidationStatusPills validation={validation} />
         </div>
       </div>
@@ -472,8 +473,7 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
       {stale && (
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2">
           <p className="text-[11px] text-muted-foreground">
-            {pending.count} {pending.count === 1 ? "etapa" : "etapas"} do Processo ainda{" "}
-            {pending.count === 1 ? "não está" : "não estão"} no BPMN.
+            Fonte para sincronizar: V{version.number} ({version.status}). {pending.count} etapa(s) a adicionar; nós e conexões existentes serão preservados.
           </p>
           <Button size="sm" className="ml-auto h-7 gap-1.5 text-xs" onClick={regenerate}>
             <RefreshCw className="h-3.5 w-3.5" />
@@ -513,7 +513,7 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
         {showSource && (
           <aside className="absolute bottom-3 left-3 top-3 z-10 w-[224px] animate-fade-in overflow-y-auto rounded-xl border bg-card/95 p-3 shadow-sm backdrop-blur">
             <BpmSourcePanel
-              doc={doc}
+              doc={version.definition}
               selectedStepId={selected?.stepId}
               onSelectStep={(stepId) => {
                 const node = diagram.nodes.find((n) => n.stepId === stepId);
@@ -561,7 +561,7 @@ export function BpmDesigner({ doc }: { doc: ProcessDoc }) {
                 node={selected}
                 issues={selectedNodeIssues}
                 processId={doc.id}
-                processName={doc.name}
+                processName={version.definition.name}
                 onNotesChange={(notes) => selected && updateBpmNode(doc.id, selected.id, { notes })}
                 onPropertyChange={(patch) =>
                   selected && updateNodeProperties(doc.id, selected.id, patch)

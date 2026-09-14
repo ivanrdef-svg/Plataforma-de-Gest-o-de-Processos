@@ -1,3 +1,4 @@
+import { getPublishedProcessVersion } from "@/lib/process-store";
 import { expect } from "bun:test";
 import { isolatedTest } from "./support/isolated-test";
 import { processFixture, present } from "./support/fixtures";
@@ -17,7 +18,11 @@ isolatedTest(
   import.meta.url,
   () => {
     const process = processFixture();
-    const doc = createWorkflowFromProcess(process);
+    const sourceVersion = present(getPublishedProcessVersion(process));
+    const definition = sourceVersion.definition;
+    const created = createWorkflowFromProcess(process);
+    if (!created.ok) throw new Error(created.reason);
+    const doc = created.doc;
     const first = doc.steps[0]!;
     const target = doc.steps[1]!.id;
     const configured: Partial<WorkflowStep> = {
@@ -39,7 +44,7 @@ isolatedTest(
     };
     updateWorkflowStep(doc.id, first.id, configured);
     const before = structuredClone(present(getWorkflowDoc(doc.id)));
-    Object.assign(process.steps[0]!, {
+    Object.assign(definition.steps[0]!, {
       name: "Novo nome",
       description: "Nova descrição",
       owner: "Novo dono",
@@ -48,12 +53,12 @@ isolatedTest(
       outputs: "Nova saída",
       duration: "9 horas",
     });
-    process.name = "Processo atualizado";
-    process.version = "2.0";
-    const synced = present(syncWorkflowWithProcess(doc.id, process));
+    definition.name = "Processo atualizado";
+    sourceVersion.number = 2;
+    const synced = present(syncWorkflowWithProcess(doc.id, process.id, sourceVersion));
     expect(synced.steps[0]).toEqual({
       ...before.steps[0]!,
-      processStepId: process.steps[0]!.id,
+      processStepId: definition.steps[0]!.id,
       name: "Novo nome",
       description: "Nova descrição",
       owner: "Novo dono",
@@ -63,10 +68,10 @@ isolatedTest(
       duration: "9 horas",
     });
     expect(synced.processName).toBe("Processo atualizado");
-    expect(synced.processVersion).toBe("2.0");
+    expect(synced.processVersion).toBe("V2");
     expect(synced.participants).toEqual(before.participants);
     expect(synced.steps.map((s) => s.id)).toEqual(before.steps.map((s) => s.id));
-    expect(syncWorkflowWithProcess(doc.id, process)).toEqual(synced);
+    expect(syncWorkflowWithProcess(doc.id, process.id, sourceVersion)).toEqual(synced);
   },
 );
 
@@ -75,7 +80,11 @@ isolatedTest(
   import.meta.url,
   () => {
     const process = processFixture();
-    const doc = createWorkflowFromProcess(process);
+    const sourceVersion = present(getPublishedProcessVersion(process));
+    const definition = sourceVersion.definition;
+    const created = createWorkflowFromProcess(process);
+    if (!created.ok) throw new Error(created.reason);
+    const doc = created.doc;
     const target = doc.steps[1]!.id;
     const config = {
       kind: "decisão" as const,
@@ -84,20 +93,24 @@ isolatedTest(
       outcomeTransitions: { concluído: target },
     };
     updateWorkflowStep(doc.id, doc.steps[0]!.id, config);
-    expect(present(syncWorkflowWithProcess(doc.id, process)).steps[0]).toMatchObject(config);
+    expect(present(syncWorkflowWithProcess(doc.id, process.id, sourceVersion)).steps[0]).toMatchObject(config);
   },
 );
 
 isolatedTest("R06 approval and correction target survive sync", import.meta.url, () => {
   const process = processFixture();
-  const doc = createWorkflowFromProcess(process);
+    const sourceVersion = present(getPublishedProcessVersion(process));
+    const definition = sourceVersion.definition;
+  const created = createWorkflowFromProcess(process);
+    if (!created.ok) throw new Error(created.reason);
+    const doc = created.doc;
   const config = {
     kind: "aprovação" as const,
     approver: "Revisor escolhido",
     correctionStepId: doc.steps[0]!.id,
   };
   updateWorkflowStep(doc.id, doc.steps[1]!.id, config);
-  expect(present(syncWorkflowWithProcess(doc.id, process)).steps[1]).toMatchObject(config);
+  expect(present(syncWorkflowWithProcess(doc.id, process.id, sourceVersion)).steps[1]).toMatchObject(config);
 });
 
 isolatedTest(
@@ -105,11 +118,15 @@ isolatedTest(
   import.meta.url,
   () => {
     const process = processFixture();
-    const doc = createWorkflowFromProcess(process);
+    const sourceVersion = present(getPublishedProcessVersion(process));
+    const definition = sourceVersion.definition;
+    const created = createWorkflowFromProcess(process);
+    if (!created.ok) throw new Error(created.reason);
+    const doc = created.doc;
     const config = { condition: "Se completo", conditionTargetStepId: doc.steps[1]!.id };
     updateWorkflowStep(doc.id, doc.steps[0]!.id, config);
-    delete process.steps[0]!.type;
-    const synced = present(syncWorkflowWithProcess(doc.id, process));
+    delete definition.steps[0]!.type;
+    const synced = present(syncWorkflowWithProcess(doc.id, process.id, sourceVersion));
     expect(synced.steps[0]).toMatchObject(config);
     expect(synced.steps[0]).not.toHaveProperty("type");
   },
@@ -120,17 +137,21 @@ isolatedTest(
   import.meta.url,
   () => {
     const process = processFixture();
-    const doc = createWorkflowFromProcess(process);
+    const sourceVersion = present(getPublishedProcessVersion(process));
+    const definition = sourceVersion.definition;
+    const created = createWorkflowFromProcess(process);
+    if (!created.ok) throw new Error(created.reason);
+    const doc = created.doc;
     updateWorkflowStep(doc.id, doc.steps[0]!.id, { kind: "aprovação", approver: "Manual" });
     const before = structuredClone(present(getWorkflowDoc(doc.id)));
-    process.steps.push({
-      ...process.steps[0]!,
+    definition.steps.push({
+      ...definition.steps[0]!,
       id: "new-process-step",
       type: "aprovacao",
       preconditions: "Documento recebido",
       execution: "condicional",
     });
-    const synced = present(syncWorkflowWithProcess(doc.id, process));
+    const synced = present(syncWorkflowWithProcess(doc.id, process.id, sourceVersion));
     expect(synced.steps.slice(0, 3)).toEqual(before.steps);
     const added = present(synced.steps[3]);
     expect(before.steps.map((s) => s.id)).not.toContain(added.id);
@@ -144,7 +165,7 @@ isolatedTest(
       expectedAction: "",
     });
     expect(synced.participants).toEqual(before.participants);
-    expect(syncWorkflowWithProcess(doc.id, process)).toEqual(synced);
+    expect(syncWorkflowWithProcess(doc.id, process.id, sourceVersion)).toEqual(synced);
   },
 );
 
@@ -153,7 +174,11 @@ isolatedTest(
   import.meta.url,
   () => {
     const process = processFixture();
-    const doc = createWorkflowFromProcess(process);
+    const sourceVersion = present(getPublishedProcessVersion(process));
+    const definition = sourceVersion.definition;
+    const created = createWorkflowFromProcess(process);
+    if (!created.ok) throw new Error(created.reason);
+    const doc = created.doc;
     updateWorkflowStep(doc.id, doc.steps[1]!.id, {
       precondition: "",
       deadline: "",
@@ -161,10 +186,10 @@ isolatedTest(
       condition: "",
       dependsOn: "",
     });
-    process.steps[1]!.preconditions = "Novo default";
-    process.steps[1]!.duration = "8 horas";
-    process.steps[1]!.dependsOn = "Dependência do Processo";
-    expect(present(syncWorkflowWithProcess(doc.id, process)).steps[1]).toMatchObject({
+    definition.steps[1]!.preconditions = "Novo default";
+    definition.steps[1]!.duration = "8 horas";
+    definition.steps[1]!.dependsOn = "Dependência do Processo";
+    expect(present(syncWorkflowWithProcess(doc.id, process.id, sourceVersion)).steps[1]).toMatchObject({
       precondition: "",
       deadline: "",
       expectedAction: "",
@@ -181,11 +206,13 @@ isolatedTest(
     const doc = publishedWorkflow();
     const published = structuredClone(present(publishedWorkflowVersion(doc)));
     const process = processFixture();
-    process.steps[0]!.name = "Nome atualizado";
-    expect(syncWorkflowWithProcess(doc.id, process)).toBeUndefined();
+    const sourceVersion = present(getPublishedProcessVersion(process));
+    const definition = sourceVersion.definition;
+    definition.steps[0]!.name = "Nome atualizado";
+    expect(syncWorkflowWithProcess(doc.id, process.id, sourceVersion)).toBeUndefined();
     expect(publishedWorkflowVersion(present(getWorkflowDoc(doc.id)))).toEqual(published);
     expect(createWorkflowVersion(doc.id).ok).toBe(true);
-    expect(present(syncWorkflowWithProcess(doc.id, process)).steps[0]?.name).toBe(
+    expect(present(syncWorkflowWithProcess(doc.id, process.id, sourceVersion)).steps[0]?.name).toBe(
       "Nome atualizado",
     );
     expect(publishedWorkflowVersion(present(getWorkflowDoc(doc.id)))).toEqual(published);

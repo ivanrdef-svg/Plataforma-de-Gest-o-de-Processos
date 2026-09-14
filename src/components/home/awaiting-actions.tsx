@@ -11,7 +11,7 @@ import {
 } from "@/lib/lifecycle-store";
 import { useKnowledgeDocs } from "@/lib/knowledge-store";
 import { usePopDocs } from "@/lib/pop-store";
-import { useProcessDocs } from "@/lib/process-store";
+import { getAuthoringProcessVersion, useProcessDocs } from "@/lib/process-store";
 
 /**
  * Build 009 — widget "Objetos aguardando ação".
@@ -27,7 +27,7 @@ interface AwaitingItem extends LifecycleSeed {
 
 export function AwaitingActions() {
   // Assina o store para atualizar sempre que um estado mudar.
-  useLifecycleEntries();
+  const lifecycleEntries = useLifecycleEntries();
   const knowledge = useKnowledgeDocs();
   const pops = usePopDocs();
   const processes = useProcessDocs();
@@ -53,10 +53,10 @@ export function AwaitingActions() {
       ...processes.map((doc) => ({
         objectId: doc.id,
         kind: "processo" as const,
-        name: doc.name,
-        owner: doc.owner,
-        status: doc.status,
-        updatedAt: doc.savedAt || doc.revisedAt,
+        name: getAuthoringProcessVersion(doc)?.definition.name ?? doc.code,
+        owner: getAuthoringProcessVersion(doc)?.definition.owner ?? "",
+        status: doc.legacyLifecycleSeedStatus ?? "",
+        updatedAt: doc.savedAt || doc.createdAt,
       })),
     ];
 
@@ -65,7 +65,7 @@ export function AwaitingActions() {
       .filter(({ entry }) => AWAITING_STATES.includes(entry.state))
       .sort((a, b) => b.entry.updatedAt.localeCompare(a.entry.updatedAt))
       .slice(0, 5);
-  }, [knowledge, pops, processes]);
+  }, [knowledge, pops, processes, lifecycleEntries]);
 
   return (
     <section className="rounded-xl border bg-card">

@@ -10,7 +10,9 @@ import {
 import { present, processFixture } from "./fixtures";
 
 export function configuredWorkflow() {
-  const doc = createWorkflowFromProcess(processFixture());
+  const result = createWorkflowFromProcess(processFixture());
+  if (!result.ok) throw new Error(result.reason);
+  const doc = result.doc;
   const [receive, approve, decide] = doc.steps.map((step) => step.id);
   if (!receive || !approve || !decide) throw new Error("Expected three fixture steps.");
   updateWorkflowDoc(doc.id, {

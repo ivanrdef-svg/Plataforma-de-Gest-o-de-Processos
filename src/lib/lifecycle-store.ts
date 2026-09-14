@@ -23,7 +23,6 @@ import {
 } from "@/config/lifecycle-model";
 import { getKnowledgeDoc, updateKnowledgeDoc } from "@/lib/knowledge-store";
 import { updatePopDoc } from "@/lib/pop-store";
-import { PROCESS_STATUS_OPTIONS, updateProcessDoc } from "@/lib/process-store";
 import { updateWorkflowDoc, workflowStatusForState } from "@/lib/workflow-store";
 
 const STORAGE_KEY = "process-platform:lifecycle:v1";
@@ -269,11 +268,7 @@ function mirrorLegacyStatus(entry: LifecycleEntry, next: LifecycleStateId) {
       if (status) updatePopDoc(entry.objectId, { status: status as never });
       break;
     }
-    case "processo": {
-      const status = legacyStatusFor(next, PROCESS_STATUS_OPTIONS);
-      if (status) updateProcessDoc(entry.objectId, { status: status as never });
-      break;
-    }
+    // Process publication is governed exclusively by process-store version APIs.
     case "workflow": {
       const status = workflowStatusForState(next);
       if (status) updateWorkflowDoc(entry.objectId, { status });

@@ -1,6 +1,6 @@
 import { Layers, Users, LogIn, LogOut, FileText, BookOpen, ListChecks } from "lucide-react";
 import { PROCESS_DEMO_ORIGIN } from "@/config/process-structure";
-import type { ProcessDoc } from "@/lib/process-store";
+import type { ProcessDefinition } from "@/lib/process-store";
 import { cn } from "@/lib/utils";
 
 /**
@@ -59,7 +59,7 @@ export function BpmSourcePanel({
   selectedStepId,
   onSelectStep,
 }: {
-  doc: ProcessDoc;
+  doc: ProcessDefinition;
   selectedStepId?: string | undefined;
   onSelectStep: (stepId: string) => void;
 }) {

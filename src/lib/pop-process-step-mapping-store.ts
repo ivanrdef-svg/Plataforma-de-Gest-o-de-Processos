@@ -10,7 +10,7 @@
  *       (`PopDoc.processId === processId`).
  *  I2 — `processStepId` precisa pertencer aos `steps` desse Processo.
  *       `ProcessStep` não carrega `processId`: a checagem é feita pela lista
- *       aninhada `getProcessDoc(processId).steps`.
+ *       da ProcessVersion explicitamente selecionada (definition.steps).
  *  I3/I4 — confirmação é sempre humana; `source` nunca é reescrito.
  *  I5 — rejeitar não apaga: só muda o status.
  *  I6 — mapeamento manual nasce `confirmado`.
@@ -21,7 +21,7 @@
 
 import { useSyncExternalStore } from "react";
 import { getPopDoc } from "@/lib/pop-store";
-import { getProcessDoc, getProcessDocs } from "@/lib/process-store";
+import { getProcessDoc, getProcessDocs, getProcessVersion } from "@/lib/process-store";
 import type {
   CreateManualMappingInput,
   PopProcessStepMapping,
@@ -116,10 +116,10 @@ export function getPopProcessStepMappings(popId: string): PopProcessStepMapping[
  * I10 — o mapeamento aponta para uma etapa que ainda existe no Processo?
  * Somente leitura: nunca apaga nem corrige nada automaticamente.
  */
-export function isMappingConsistent(mapping: PopProcessStepMapping): boolean {
+export function isMappingConsistent(mapping: PopProcessStepMapping, processVersionId: string): boolean {
   const process = getProcessDoc(mapping.processId);
   if (!process) return false;
-  return process.steps.some((s) => s.id === mapping.processStepId);
+  return getProcessVersion(process, processVersionId)?.definition.steps.some((s) => s.id === mapping.processStepId) ?? false;
 }
 
 /* ------------------------------------------------------------------ */
@@ -133,6 +133,7 @@ function validateTarget(
   popId: string,
   processId: string,
   processStepId: string,
+  processVersionId: string,
 ): ValidationFailure | undefined {
   const pop = getPopDoc(popId);
   if (!pop) return { ok: false, reason: "pop-inexistente" };
@@ -141,7 +142,9 @@ function validateTarget(
   const process = getProcessDoc(processId);
   if (!process) return { ok: false, reason: "processo-inexistente" };
 
-  if (!process.steps.some((s) => s.id === processStepId)) {
+  const version = getProcessVersion(process, processVersionId);
+  if (!version) return { ok: false, reason: "versao-inexistente" };
+  if (!version.definition.steps.some((s) => s.id === processStepId)) {
     // Distingue "não existe em lugar nenhum" de "existe, mas em outro Processo".
     const belongsElsewhere = existsInAnotherProcess(processId, processStepId);
     return { ok: false, reason: belongsElsewhere ? "step-de-outro-processo" : "step-inexistente" };
@@ -153,7 +156,7 @@ function existsInAnotherProcess(processId: string, processStepId: string): boole
   // Leitura pura via process-store: a chave de localStorage daquele domínio
   // não é conhecida aqui.
   return getProcessDocs().some(
-    (p) => p.id !== processId && p.steps.some((s) => s.id === processStepId),
+    (p) => p.id !== processId && p.versions.some(v => v.definition.steps.some((s) => s.id === processStepId)),
   );
 }
 
@@ -178,7 +181,7 @@ function commit(mapping: PopProcessStepMapping): PopProcessStepMappingResult {
  */
 export function recordAiSuggestion(input: RecordAiSuggestionInput): PopProcessStepMappingResult {
   ensureHydrated();
-  const invalid = validateTarget(input.popId, input.processId, input.processStepId);
+  const invalid = validateTarget(input.popId, input.processId, input.processStepId, input.processVersionId);
   if (invalid) return invalid;
 
   // I7 estendido: não duplica sugestão idêntica ainda pendente ou já confirmada.
@@ -210,12 +213,14 @@ export function recordAiSuggestion(input: RecordAiSuggestionInput): PopProcessSt
 }
 
 /** Confirmação humana: `sugerido` → `confirmado`. `source` é preservado (I3/I4). */
-export function confirmMapping(mappingId: string): PopProcessStepMappingResult {
+export function confirmMapping(mappingId: string, processVersionId: string): PopProcessStepMappingResult {
   ensureHydrated();
   const current = state[mappingId];
   if (!current) return { ok: false, reason: "mapping-inexistente" };
   if (current.status !== "sugerido") return { ok: false, reason: "status-invalido" };
-  return commit({ ...current, status: "confirmado", updatedAt: new Date().toISOString() });
+  const invalid = validateTarget(current.popId, current.processId, current.processStepId, processVersionId);
+  if (invalid) return invalid;
+  return commit({ ...current, status: "confirmado", confirmedAgainstProcessVersionId: processVersionId, updatedAt: new Date().toISOString() });
 }
 
 /**
@@ -237,13 +242,14 @@ export function rejectMapping(mappingId: string): PopProcessStepMappingResult {
 export function updateMappingTarget(
   mappingId: string,
   newProcessStepId: string,
+  processVersionId: string,
 ): PopProcessStepMappingResult {
   ensureHydrated();
   const current = state[mappingId];
   if (!current) return { ok: false, reason: "mapping-inexistente" };
   if (current.status !== "sugerido") return { ok: false, reason: "status-invalido" };
 
-  const invalid = validateTarget(current.popId, current.processId, newProcessStepId);
+  const invalid = validateTarget(current.popId, current.processId, newProcessStepId, processVersionId);
   if (invalid) return invalid;
 
   const duplicated = Object.values(state).some(
@@ -267,7 +273,7 @@ export function updateMappingTarget(
 /** Mapeamento manual: nasce `source:"manual"` e `status:"confirmado"` (I6). */
 export function createManualMapping(input: CreateManualMappingInput): PopProcessStepMappingResult {
   ensureHydrated();
-  const invalid = validateTarget(input.popId, input.processId, input.processStepId);
+  const invalid = validateTarget(input.popId, input.processId, input.processStepId, input.processVersionId);
   if (invalid) return invalid;
 
   // I7 (texto exato): duplicidade verificada contra mapeamentos `confirmado`.
@@ -290,6 +296,7 @@ export function createManualMapping(input: CreateManualMappingInput): PopProcess
     processStepId: input.processStepId,
     status: "confirmado",
     source: "manual",
+    confirmedAgainstProcessVersionId: input.processVersionId,
     createdAt: now,
     updatedAt: now,
   });

@@ -22,16 +22,32 @@ import {
   type RuleCriticality,
 } from "@/config/process-model";
 
+import {
+  normalizeProcessDoc,
+  getProcessVersion,
+  getWorkingProcessVersion,
+  getPublishedProcessVersion,
+  type ProcessDoc,
+  type LegacyProcessDoc,
+  type ProcessDefinition,
+  type ProcessVersion,
+} from "./process-versioning";
+export {
+  normalizeProcessDoc,
+  getProcessVersion,
+  getWorkingProcessVersion,
+  getPublishedProcessVersion,
+  getAuthoringProcessVersion,
+} from "./process-versioning";
+export type {
+  ProcessDoc,
+  LegacyProcessDoc,
+  ProcessDefinition,
+  ProcessVersion,
+  ProcessVersionStatus,
+} from "./process-versioning";
+
 const STORAGE_KEY = "process-platform:process:v1";
-
-export type ProcessStatus = "rascunho" | "em desenvolvimento" | "em revisão" | "publicado";
-
-export const PROCESS_STATUS_OPTIONS: ProcessStatus[] = [
-  "rascunho",
-  "em desenvolvimento",
-  "em revisão",
-  "publicado",
-];
 
 export const PROCESS_CATEGORIES = [
   "Operações",
@@ -91,29 +107,6 @@ export interface ProcessParticipant {
   stepIds: string[];
 }
 
-export interface ProcessDoc {
-  id: string;
-  code: string;
-  name: string;
-  category: ProcessCategory;
-  status: ProcessStatus;
-  version: string;
-  owner: string;
-  area: string;
-  createdAt: string;
-  revisedAt: string;
-  description: string;
-  tags: string[];
-  keywords: string[];
-  favorite: boolean;
-  sections: ProcessSection[];
-  steps: ProcessStep[];
-  /* Build 007 — opcionais para manter compatibilidade com docs anteriores. */
-  rules?: ProcessRule[];
-  participants?: ProcessParticipant[];
-  savedAt: string;
-}
-
 type StoreState = Record<string, ProcessDoc>;
 
 let state: StoreState = {};
@@ -125,7 +118,11 @@ function ensureHydrated() {
   if (hydrated || typeof window === "undefined") return;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    state = raw ? (JSON.parse(raw) as StoreState) : {};
+    const parsed = raw ? (JSON.parse(raw) as Record<string, ProcessDoc | LegacyProcessDoc>) : {};
+    state = Object.fromEntries(
+      Object.entries(parsed).map(([id, doc]) => [id, freezeProcess(normalizeProcessDoc(doc))]),
+    );
+    if (raw && JSON.stringify(state) !== raw) persist();
   } catch {
     state = {};
   }
@@ -198,14 +195,6 @@ function rid(prefix: string) {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function formatDate(date = new Date()) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  }).format(date);
-}
-
 function nextCode() {
   const n = Object.keys(state).length + 1;
   return `PRC-${String(n).padStart(3, "0")}`;
@@ -222,21 +211,14 @@ export function createProcessDoc(name = "Novo Processo"): ProcessDoc {
   ensureHydrated();
   const now = new Date();
   const id = uniqueId(`prc-${now.getTime().toString(36)}`);
-  const doc: ProcessDoc = {
-    id,
-    code: nextCode(),
+  const definition: ProcessDefinition = {
     name,
     category: "Operações",
-    status: "em desenvolvimento",
-    version: "v0.1",
     owner: "Você",
     area: "Operações",
-    createdAt: formatDate(now),
-    revisedAt: formatDate(now),
     description: "Processo em modelagem a partir do conhecimento existente.",
     tags: ["Processo"],
     keywords: [],
-    favorite: false,
     sections: PROCESS_SECTION_TEMPLATES.map((t) => ({
       id: rid("s"),
       templateId: t.id,
@@ -257,33 +239,73 @@ export function createProcessDoc(name = "Novo Processo"): ProcessDoc {
     })),
     rules: RULE_SEEDS.map((r) => ({ id: rid("r"), ...r })),
     participants: [],
-    savedAt: now.toISOString(),
   };
-  doc.sections = withModelSections(doc.sections);
-  state = { ...state, [id]: doc };
-  persist();
-  emit();
-  return doc;
+  definition.sections = withModelSections(definition.sections);
+  const versionId = id + "-pv1";
+  const at = now.toISOString();
+  return saveProcess({
+    id,
+    code: nextCode(),
+    favorite: false,
+    createdAt: at,
+    savedAt: at,
+    workingVersionId: versionId,
+    versions: [
+      { id: versionId, number: 1, status: "rascunho", definition, createdAt: at, updatedAt: at },
+    ],
+  });
 }
 
-export function updateProcessDoc(
-  id: string,
-  patch: Partial<Omit<ProcessDoc, "id">>,
-): ProcessDoc | undefined {
-  ensureHydrated();
-  const current = state[id];
-  if (!current) return undefined;
-  const next: ProcessDoc = {
-    ...current,
-    ...patch,
-    id,
-    revisedAt: formatDate(),
-    savedAt: new Date().toISOString(),
-  };
-  state = { ...state, [id]: next };
+function freezeProcess<T>(value: T): T {
+  if (value && typeof value === "object" && !Object.isFrozen(value)) {
+    for (const child of Object.values(value)) freezeProcess(child);
+    Object.freeze(value);
+  }
+  return value;
+}
+function saveProcess(doc: ProcessDoc): ProcessDoc {
+  const saved = freezeProcess(structuredClone(doc));
+  state = { ...state, [saved.id]: saved };
   persist();
   emit();
-  return next;
+  return saved;
+}
+function workingDefinition(id: string): ProcessDefinition | undefined {
+  ensureHydrated();
+  const doc = state[id];
+  return doc ? getWorkingProcessVersion(doc)?.definition : undefined;
+}
+export function updateProcessDoc(
+  id: string,
+  patch: Partial<Pick<ProcessDoc, "favorite">>,
+): ProcessDoc | undefined {
+  ensureHydrated();
+  const doc = state[id];
+  if (!doc) return undefined;
+  return saveProcess({
+    ...doc,
+    ...(typeof patch.favorite === "boolean" ? { favorite: patch.favorite } : {}),
+    savedAt: new Date().toISOString(),
+  });
+}
+export function updateWorkingProcessDefinition(
+  id: string,
+  patch: Partial<ProcessDefinition>,
+): ProcessDoc | undefined {
+  ensureHydrated();
+  const doc = state[id];
+  const working = doc && getWorkingProcessVersion(doc);
+  if (!doc || !working) return undefined;
+  const now = new Date().toISOString();
+  return saveProcess({
+    ...doc,
+    savedAt: now,
+    versions: doc.versions.map((v) =>
+      v.id === working.id
+        ? { ...v, updatedAt: now, definition: { ...v.definition, ...structuredClone(patch) } }
+        : v,
+    ),
+  });
 }
 
 export function updateProcessSection(
@@ -291,9 +313,9 @@ export function updateProcessSection(
   sectionKey: string,
   patch: Partial<Omit<ProcessSection, "id">>,
 ) {
-  const doc = state[docId];
+  const doc = workingDefinition(docId);
   if (!doc) return undefined;
-  return updateProcessDoc(docId, {
+  return updateWorkingProcessDefinition(docId, {
     sections: doc.sections.map((s) => (s.id === sectionKey ? { ...s, ...patch } : s)),
   });
 }
@@ -303,15 +325,15 @@ export function updateProcessStep(
   stepKey: string,
   patch: Partial<Omit<ProcessStep, "id">>,
 ) {
-  const doc = state[docId];
+  const doc = workingDefinition(docId);
   if (!doc) return undefined;
-  return updateProcessDoc(docId, {
+  return updateWorkingProcessDefinition(docId, {
     steps: doc.steps.map((s) => (s.id === stepKey ? { ...s, ...patch } : s)),
   });
 }
 
 export function addProcessStep(docId: string, atIndex?: number) {
-  const doc = state[docId];
+  const doc = workingDefinition(docId);
   if (!doc) return undefined;
   const step: ProcessStep = {
     id: rid("e"),
@@ -325,19 +347,19 @@ export function addProcessStep(docId: string, atIndex?: number) {
   };
   const steps = [...doc.steps];
   steps.splice(atIndex ?? steps.length, 0, step);
-  return updateProcessDoc(docId, { steps });
+  return updateWorkingProcessDefinition(docId, { steps });
 }
 
 export function removeProcessStep(docId: string, stepKey: string) {
-  const doc = state[docId];
+  const doc = workingDefinition(docId);
   if (!doc) return undefined;
-  return updateProcessDoc(docId, {
+  return updateWorkingProcessDefinition(docId, {
     steps: doc.steps.filter((s) => s.id !== stepKey),
   });
 }
 
 export function moveProcessStep(docId: string, stepKey: string, delta: number) {
-  const doc = state[docId];
+  const doc = workingDefinition(docId);
   if (!doc) return undefined;
   const index = doc.steps.findIndex((s) => s.id === stepKey);
   const target = index + delta;
@@ -345,33 +367,113 @@ export function moveProcessStep(docId: string, stepKey: string, delta: number) {
   const steps = [...doc.steps];
   const [moved] = steps.splice(index, 1);
   steps.splice(target, 0, moved!);
-  return updateProcessDoc(docId, { steps });
+  return updateWorkingProcessDefinition(docId, { steps });
 }
 
-export function duplicateProcessDoc(id: string): ProcessDoc | undefined {
+export function duplicateProcessDoc(id: string, sourceVersionId: string): ProcessDoc | undefined {
   ensureHydrated();
   const source = state[id];
-  if (!source) return undefined;
-  const now = new Date();
-  const newId = uniqueId(`prc-${now.getTime().toString(36)}`);
-  const copy: ProcessDoc = {
-    ...source,
+  const sourceVersion = source && getProcessVersion(source, sourceVersionId);
+  if (!source || !sourceVersion) return undefined;
+  const now = new Date().toISOString();
+  const newId = uniqueId("prc-" + Date.now().toString(36));
+  const definition = structuredClone(sourceVersion.definition);
+  const stepIds = new Map(definition.steps.map((step) => [step.id, rid("e")]));
+  definition.name += " (cópia)";
+  definition.sections = definition.sections.map((section) => ({ ...section, id: rid("s") }));
+  definition.steps = definition.steps.map((step) => ({ ...step, id: stepIds.get(step.id)! }));
+  definition.rules = definition.rules.map((rule) => ({ ...rule, id: rid("r") }));
+  definition.participants = definition.participants.map((participant) => ({
+    ...participant,
+    id: rid("p"),
+    stepIds: participant.stepIds.flatMap((id) => {
+      const mapped = stepIds.get(id);
+      return mapped ? [mapped] : [];
+    }),
+  }));
+  const versionId = newId + "-pv1";
+  return saveProcess({
     id: newId,
     code: nextCode(),
-    name: `${source.name} (cópia)`,
-    status: "rascunho",
-    version: "v0.1",
-    createdAt: formatDate(now),
-    revisedAt: formatDate(now),
     favorite: false,
-    sections: source.sections.map((s) => ({ ...s, id: rid("s") })),
-    steps: source.steps.map((s) => ({ ...s, id: rid("e") })),
-    savedAt: now.toISOString(),
+    createdAt: now,
+    savedAt: now,
+    workingVersionId: versionId,
+    versions: [
+      { id: versionId, number: 1, status: "rascunho", createdAt: now, updatedAt: now, definition },
+    ],
+  });
+}
+
+export type CreateProcessVersionResult =
+  | { ok: true; version: ProcessVersion }
+  | {
+      ok: false;
+      reason:
+        "process-not-found" | "draft-exists" | "version-not-found" | "version-not-owned-by-process";
+    };
+export function createProcessVersion(
+  processId: string,
+  basedOnVersionId?: string,
+): CreateProcessVersionResult {
+  ensureHydrated();
+  const doc = state[processId];
+  if (!doc) return { ok: false, reason: "process-not-found" };
+  if (doc.versions.some((v) => v.status === "rascunho"))
+    return { ok: false, reason: "draft-exists" };
+  const base = basedOnVersionId
+    ? getProcessVersion(doc, basedOnVersionId)
+    : getPublishedProcessVersion(doc);
+  if (!base) {
+    const otherOwner =
+      basedOnVersionId &&
+      Object.values(state).some(
+        (other) => other.id !== processId && other.versions.some((v) => v.id === basedOnVersionId),
+      );
+    return { ok: false, reason: otherOwner ? "version-not-owned-by-process" : "version-not-found" };
+  }
+  const number = Math.max(0, ...doc.versions.map((v) => v.number)) + 1;
+  const now = new Date().toISOString();
+  const version: ProcessVersion = {
+    id: doc.id + "-pv" + number,
+    number,
+    status: "rascunho",
+    basedOnVersionId: base.id,
+    definition: structuredClone(base.definition),
+    createdAt: now,
+    updatedAt: now,
   };
-  state = { ...state, [newId]: copy };
-  persist();
-  emit();
-  return copy;
+  const saved = saveProcess({
+    ...doc,
+    workingVersionId: version.id,
+    savedAt: now,
+    versions: [...doc.versions, version],
+  });
+  return { ok: true, version: getWorkingProcessVersion(saved)! };
+}
+export type PublishProcessVersionResult =
+  { ok: true; version: ProcessVersion } | { ok: false; reason: "process-not-found" | "no-draft" };
+export function publishProcessVersion(processId: string): PublishProcessVersionResult {
+  ensureHydrated();
+  const doc = state[processId];
+  if (!doc) return { ok: false, reason: "process-not-found" };
+  const draft = getWorkingProcessVersion(doc);
+  if (!draft) return { ok: false, reason: "no-draft" };
+  const now = new Date().toISOString();
+  const { workingVersionId: _working, ...container } = doc;
+  const saved = saveProcess({
+    ...container,
+    savedAt: now,
+    publishedVersionId: draft.id,
+    versions: doc.versions.map((version) =>
+      version.id === draft.id
+        ? { ...version, status: "publicada", publishedAt: now, updatedAt: now }
+        : version.status === "publicada"
+          ? { ...version, status: "arquivada", archivedAt: now, updatedAt: now }
+          : version,
+    ),
+  });
+  return { ok: true, version: getPublishedProcessVersion(saved)! };
 }
 
 /* ------------------------------------------------------------------ */
@@ -419,26 +521,15 @@ export function withModelSections(sections: ProcessSection[]): ProcessSection[] 
 
 /** Aplica os blocos do modelo a um processo já existente (idempotente). */
 export function ensureProcessModel(docId: string) {
-  ensureHydrated();
-  const doc = state[docId];
-  if (!doc) return undefined;
-  const sections = withModelSections(doc.sections);
-  const missing = sections.length !== doc.sections.length;
-  if (!missing && doc.rules && doc.participants) return doc;
-  const next: ProcessDoc = {
-    ...doc,
-    sections,
-    rules: doc.rules ?? RULE_SEEDS.map((r) => ({ id: rid("r"), ...r })),
-    participants: doc.participants ?? [],
-  };
-  state = { ...state, [docId]: next };
-  persist();
-  emit();
-  return next;
+  const definition = workingDefinition(docId);
+  if (!definition) return undefined;
+  const sections = withModelSections(definition.sections);
+  if (sections.length === definition.sections.length) return getProcessDoc(docId);
+  return updateWorkingProcessDefinition(docId, { sections });
 }
 
 export function addProcessRule(docId: string) {
-  const doc = state[docId];
+  const doc = workingDefinition(docId);
   if (!doc) return undefined;
   const rule: ProcessRule = {
     id: rid("r"),
@@ -448,7 +539,7 @@ export function addProcessRule(docId: string) {
     impact: "",
     criticality: "média",
   };
-  return updateProcessDoc(docId, { rules: [...(doc.rules ?? []), rule] });
+  return updateWorkingProcessDefinition(docId, { rules: [...(doc.rules ?? []), rule] });
 }
 
 export function updateProcessRule(
@@ -456,23 +547,23 @@ export function updateProcessRule(
   ruleId: string,
   patch: Partial<Omit<ProcessRule, "id">>,
 ) {
-  const doc = state[docId];
+  const doc = workingDefinition(docId);
   if (!doc) return undefined;
-  return updateProcessDoc(docId, {
+  return updateWorkingProcessDefinition(docId, {
     rules: (doc.rules ?? []).map((r) => (r.id === ruleId ? { ...r, ...patch } : r)),
   });
 }
 
 export function removeProcessRule(docId: string, ruleId: string) {
-  const doc = state[docId];
+  const doc = workingDefinition(docId);
   if (!doc) return undefined;
-  return updateProcessDoc(docId, {
+  return updateWorkingProcessDefinition(docId, {
     rules: (doc.rules ?? []).filter((r) => r.id !== ruleId),
   });
 }
 
 export function addProcessParticipant(docId: string, seed?: Partial<ProcessParticipant>) {
-  const doc = state[docId];
+  const doc = workingDefinition(docId);
   if (!doc) return undefined;
   const participant: ProcessParticipant = {
     id: rid("p"),
@@ -481,7 +572,7 @@ export function addProcessParticipant(docId: string, seed?: Partial<ProcessParti
     area: seed?.area ?? "",
     stepIds: seed?.stepIds ?? [],
   };
-  return updateProcessDoc(docId, {
+  return updateWorkingProcessDefinition(docId, {
     participants: [...(doc.participants ?? []), participant],
   });
 }
@@ -491,9 +582,9 @@ export function updateProcessParticipant(
   participantId: string,
   patch: Partial<Omit<ProcessParticipant, "id">>,
 ) {
-  const doc = state[docId];
+  const doc = workingDefinition(docId);
   if (!doc) return undefined;
-  return updateProcessDoc(docId, {
+  return updateWorkingProcessDefinition(docId, {
     participants: (doc.participants ?? []).map((p) =>
       p.id === participantId ? { ...p, ...patch } : p,
     ),
@@ -501,15 +592,15 @@ export function updateProcessParticipant(
 }
 
 export function removeProcessParticipant(docId: string, participantId: string) {
-  const doc = state[docId];
+  const doc = workingDefinition(docId);
   if (!doc) return undefined;
-  return updateProcessDoc(docId, {
+  return updateWorkingProcessDefinition(docId, {
     participants: (doc.participants ?? []).filter((p) => p.id !== participantId),
   });
 }
 
 export function toggleParticipantStep(docId: string, participantId: string, stepId: string) {
-  const doc = state[docId];
+  const doc = workingDefinition(docId);
   const participant = doc?.participants?.find((p) => p.id === participantId);
   if (!doc || !participant) return undefined;
   const stepIds = participant.stepIds.includes(stepId)

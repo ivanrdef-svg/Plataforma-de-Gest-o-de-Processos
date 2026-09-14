@@ -21,7 +21,7 @@ import {
   type BpmNode,
   type BpmNodeKind,
 } from "@/config/bpm-model";
-import type { ProcessDoc } from "@/lib/process-store";
+import type { ProcessDefinition } from "@/lib/process-store";
 
 const STORAGE_KEY = "process-platform:bpm:v1";
 
@@ -98,10 +98,10 @@ function write(processId: string, next: BpmDiagram) {
  * Build 020: nada no store chama esta função automaticamente sobre um
  * diagrama existente.
  */
-export function rebuildDiagramFromProcess(doc: ProcessDoc): BpmDiagram {
+export function rebuildDiagramFromProcess(processId: string, processVersionId: string, doc: ProcessDefinition): BpmDiagram {
   ensureHydrated();
-  const fresh = generateDiagramFromProcess(doc);
-  write(doc.id, fresh);
+  const fresh = generateDiagramFromProcess(processId, processVersionId, doc);
+  write(processId, fresh);
   return fresh;
 }
 
@@ -109,11 +109,11 @@ export function rebuildDiagramFromProcess(doc: ProcessDoc): BpmDiagram {
  * Garante que exista um diagrama para o Processo.
  * Se já existir, retorna exatamente o que está salvo — sem tocar em nada.
  */
-export function ensureDiagram(doc: ProcessDoc): BpmDiagram {
+export function ensureDiagram(processId: string, processVersionId: string, doc: ProcessDefinition): BpmDiagram {
   ensureHydrated();
-  const current = state[doc.id];
+  const current = state[processId];
   if (current) return current;
-  return rebuildDiagramFromProcess(doc);
+  return rebuildDiagramFromProcess(processId, processVersionId, doc);
 }
 
 /**
@@ -122,7 +122,9 @@ export function ensureDiagram(doc: ProcessDoc): BpmDiagram {
  * conteúdo e sem qualquer efeito destrutivo.
  */
 export function pendingProcessChanges(
-  doc: ProcessDoc,
+  processId: string,
+  processVersionId: string,
+  doc: ProcessDefinition,
   diagram?: BpmDiagram,
 ): { count: number; stepIds: string[] } {
   if (!diagram) return { count: doc.steps.length, stepIds: doc.steps.map((s) => s.id) };
@@ -156,13 +158,13 @@ function nextFreeSlot(diagram: BpmDiagram, index: number, kind: BpmNodeKind) {
  * Nunca remove, reposiciona ou sobrescreve nós/arestas existentes, nem toca em
  * `notes`.
  */
-export function syncDiagramWithProcess(doc: ProcessDoc): BpmDiagram {
+export function syncDiagramWithProcess(processId: string, processVersionId: string, doc: ProcessDefinition): BpmDiagram {
   ensureHydrated();
-  const current = state[doc.id];
-  if (!current) return rebuildDiagramFromProcess(doc);
+  const current = state[processId];
+  if (!current) return rebuildDiagramFromProcess(processId, processVersionId, doc);
 
-  const { stepIds } = pendingProcessChanges(doc, current);
-  if (!stepIds.length) return current;
+  const { stepIds } = pendingProcessChanges(processId, processVersionId, doc, current);
+  if (!stepIds.length && current.syncedFromProcessVersionId === processVersionId) return current;
 
   const nodeByStep = new Map<string, string>();
   current.nodes.forEach((n) => {
@@ -226,8 +228,8 @@ export function syncDiagramWithProcess(doc: ProcessDoc): BpmDiagram {
     }
   });
 
-  const next: BpmDiagram = { ...current, nodes, edges };
-  write(doc.id, next);
+  const next: BpmDiagram = { ...current, nodes, edges, syncedFromProcessVersionId: processVersionId };
+  write(processId, next);
   return next;
 }
 
@@ -348,6 +350,6 @@ export function removeEdge(processId: string, edgeId: string) {
 }
 
 /** Assinatura atual do modelo — informativa (não dispara regeneração). */
-export function currentProcessSignature(doc: ProcessDoc) {
+export function processDefinitionSignature(doc: ProcessDefinition) {
   return processSignature(doc);
 }

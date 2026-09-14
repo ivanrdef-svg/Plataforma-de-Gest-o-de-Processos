@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { KNOWLEDGE_CATEGORIES, type KnowledgeCategory } from "@/config/knowledge-demo";
 import { LinkPopProcessDialog } from "@/components/pop/link-pop-process-dialog";
-import { useProcessDocs } from "@/lib/process-store";
+import { getAuthoringProcessVersion, useProcessDocs } from "@/lib/process-store";
 import { unlinkPopFromProcess, type PopDoc, type PopStatus } from "@/lib/pop-store";
 
 /**
@@ -140,7 +140,7 @@ function ProcessLinkField({ doc }: { doc: PopDoc }) {
         </div>
       ) : linked ? (
         <div className="space-y-2">
-          <p className="text-xs text-foreground/90">{linked.name}</p>
+          <p className="text-xs text-foreground/90">{getAuthoringProcessVersion(linked)?.definition.name ?? linked.code}</p>
           <p className="font-mono text-[11px] text-muted-foreground">{linked.code}</p>
           <div className="flex flex-wrap gap-1.5">
             <Button asChild size="sm" variant="outline" className="h-7 text-xs">

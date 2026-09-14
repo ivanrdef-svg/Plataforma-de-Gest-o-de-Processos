@@ -11,7 +11,7 @@
  */
 
 import { useSyncExternalStore } from "react";
-import type { ProcessDoc, ProcessStep } from "@/lib/process-store";
+import { getPublishedProcessVersion, type ProcessVersion, type ProcessDoc, type ProcessStep } from "@/lib/process-store";
 import type { ProcessStepTypeId } from "@/config/process-model";
 import type { ResponsibilityRole } from "@/config/governance-model";
 import type { LifecycleStateId } from "@/config/lifecycle-model";
@@ -138,6 +138,8 @@ export interface WorkflowDoc {
    * Template e Workflow são totalmente independentes após a criação.
    */
   templateOrigin?: WorkflowTemplateOrigin;
+  /** Explicit draft source, frozen on Workflow publication. */
+  workingSourceProcessVersionId?: string;
 }
 
 /** Build 019 — rastreabilidade da criação a partir de um Template. */
@@ -147,6 +149,7 @@ export interface WorkflowTemplateOrigin {
   /** Workflow que originou o Template (rastreabilidade, não dependência). */
   sourceWorkflowId?: string;
   sourceWorkflowVersion?: number;
+  sourceProcessVersionId?: string;
   createdAt: string;
 }
 
@@ -187,6 +190,7 @@ export interface WorkflowVersionContent {
 }
 
 export interface WorkflowVersion {
+  sourceProcessVersionId?: string;
   /** `<workflowId>-v<n>` */
   versionId: string;
   number: number;
@@ -387,7 +391,14 @@ function roleForStep(step: ProcessStep): ResponsibilityRole {
 }
 
 /** Cria a definição de Workflow herdando tudo o que já existe no Processo. */
-export function createWorkflowFromProcess(process: ProcessDoc): WorkflowDoc {
+export type CreateWorkflowFromProcessResult =
+  | { ok: true; doc: WorkflowDoc }
+  | { ok: false; reason: "no-published-process-version" };
+
+export function createWorkflowFromProcess(processDoc: ProcessDoc): CreateWorkflowFromProcessResult {
+  const source = getPublishedProcessVersion(processDoc);
+  if (!source) return { ok: false, reason: "no-published-process-version" };
+  const process = source.definition;
   ensureHydrated();
   const now = new Date();
   const id = `wkf-${now.getTime().toString(36)}`;
@@ -428,9 +439,10 @@ export function createWorkflowFromProcess(process: ProcessDoc): WorkflowDoc {
     code: nextCode(),
     name: `Workflow · ${process.name}`,
     description: `Definição de execução do processo ${process.name}.`,
-    processId: process.id,
+    processId: processDoc.id,
+    workingSourceProcessVersionId: source.id,
     processName: process.name,
-    processVersion: process.version,
+    processVersion: `V${source.number}`,
     objective: objectiveSection?.content?.trim() || process.description,
     version: "v0.1",
     status: "em configuração",
@@ -459,7 +471,7 @@ export function createWorkflowFromProcess(process: ProcessDoc): WorkflowDoc {
   state = { ...state, [id]: doc };
   persist();
   emit();
-  return doc;
+  return { ok: true, doc };
 }
 
 /* ------------------------------------------------------------------ */
@@ -771,10 +783,12 @@ function mergeWorkflowStepFromProcess(
 }
 
 /** Updates Process-owned fields without rebuilding executable configuration. */
-export function syncWorkflowWithProcess(docId: string, process: ProcessDoc) {
+export function syncWorkflowWithProcess(docId: string, processId: string, source: ProcessVersion) {
+  const process = source.definition;
   if (!editable(docId)) return undefined;
   const doc = state[docId];
   if (!doc) return undefined;
+  if (doc.processId !== processId) return undefined;
   const byProcessStep = new Map(doc.steps.map((s) => [s.processStepId, s]));
   const steps: WorkflowStep[] = process.steps.map((step, index) => {
     const existing = byProcessStep.get(step.id);
@@ -788,7 +802,8 @@ export function syncWorkflowWithProcess(docId: string, process: ProcessDoc) {
   return updateWorkflowDoc(docId, {
     steps,
     processName: process.name,
-    processVersion: process.version,
+    processVersion: `V${source.number}`,
+    workingSourceProcessVersionId: source.id,
   });
 }
 
@@ -843,11 +858,22 @@ export function lifecycleStatusOf(doc: WorkflowDoc): string {
 /* ------------------------------------------------------------------ */
 
 /** Escrita direta: não altera `revisedAt` (validar não é revisar). */
-function writeRaw(id: string, patch: Partial<Omit<WorkflowDoc, "id">>) {
+type WorkflowInternalPatch = Partial<Omit<WorkflowDoc, "id" | "workingSourceProcessVersionId">> & {
+  workingSourceProcessVersionId?: string | undefined;
+};
+
+function writeRaw(id: string, patch: WorkflowInternalPatch) {
   ensureHydrated();
   const current = state[id];
   if (!current) return undefined;
-  const next: WorkflowDoc = { ...current, ...patch, id };
+  const { workingSourceProcessVersionId, ...fields } = patch;
+  const next: WorkflowDoc = { ...current, ...fields, id };
+  if (Object.prototype.hasOwnProperty.call(patch, "workingSourceProcessVersionId")) {
+    delete next.workingSourceProcessVersionId;
+    if (workingSourceProcessVersionId !== undefined) {
+      next.workingSourceProcessVersionId = workingSourceProcessVersionId;
+    }
+  }
   state = { ...state, [id]: next };
   persist();
   emit();
@@ -855,7 +881,7 @@ function writeRaw(id: string, patch: Partial<Omit<WorkflowDoc, "id">>) {
 }
 
 /** Escrita interna dos fluxos oficiais de versão (ignora a trava de edição). */
-function writeVersioned(id: string, patch: Partial<Omit<WorkflowDoc, "id">>) {
+function writeVersioned(id: string, patch: WorkflowInternalPatch) {
   return writeRaw(id, {
     ...patch,
     revisedAt: formatDate(),
@@ -1025,18 +1051,21 @@ export function publishWorkflow(docId: string): PublishResult {
     publishedAt,
     publishedVersionNumber: number,
     validation: validationRecord,
-    versions: (current.versions ?? []).map((v) =>
-      v.number === number
-        ? {
-            ...v,
-            status: "publicada" as WorkflowVersionStatus,
-            publishedAt,
-            validation: validationRecord,
-            content: contentOf(current),
-            publication,
-          }
-        : v,
-    ),
+    versions: (current.versions ?? []).map((v) => {
+      if (v.number !== number) return v;
+      const { sourceProcessVersionId: _previousSource, ...version } = v;
+      return {
+        ...version,
+        status: "publicada" as WorkflowVersionStatus,
+        publishedAt,
+        validation: validationRecord,
+        content: contentOf(current),
+        ...(current.workingSourceProcessVersionId !== undefined
+          ? { sourceProcessVersionId: current.workingSourceProcessVersionId }
+          : {}),
+        publication,
+      };
+    }),
   });
   appendWorkflowEvent(
     docId,
@@ -1093,6 +1122,7 @@ export function createWorkflowVersion(docId: string): NewVersionResult {
 
   writeVersioned(docId, {
     ...content,
+    workingSourceProcessVersionId: base.sourceProcessVersionId,
     status: "em configuração",
     versions: [...versions, version],
     currentVersionNumber: number,
@@ -1211,6 +1241,9 @@ export function createWorkflowFromTemplateContent(
     ],
     currentVersionNumber: 1,
     ...(origin ? { templateOrigin: origin } : {}),
+    ...(origin?.sourceProcessVersionId !== undefined
+      ? { workingSourceProcessVersionId: origin.sourceProcessVersionId }
+      : {}),
   };
 
   state = { ...state, [id]: doc };

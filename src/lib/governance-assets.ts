@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useKnowledgeDocs } from "@/lib/knowledge-store";
 import { usePopDocs } from "@/lib/pop-store";
-import { useProcessDocs } from "@/lib/process-store";
+import { getAuthoringProcessVersion, useProcessDocs } from "@/lib/process-store";
 import { getLifecycle, useLifecycleEntries, type LifecycleSeed } from "@/lib/lifecycle-store";
 import {
   getGovernance,
@@ -35,7 +35,7 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 export function useGovernedAssets(): GovernedAsset[] {
-  useLifecycleEntries();
+  const lifecycleEntries = useLifecycleEntries();
   const knowledge = useKnowledgeDocs();
   const pops = usePopDocs();
   const processes = useProcessDocs();
@@ -61,10 +61,10 @@ export function useGovernedAssets(): GovernedAsset[] {
       ...processes.map((doc) => ({
         objectId: doc.id,
         kind: "processo" as const,
-        name: doc.name,
-        owner: doc.owner,
-        status: doc.status,
-        updatedAt: doc.savedAt || doc.revisedAt,
+        name: getAuthoringProcessVersion(doc)?.definition.name ?? doc.code,
+        owner: getAuthoringProcessVersion(doc)?.definition.owner ?? "",
+        status: doc.legacyLifecycleSeedStatus ?? "",
+        updatedAt: doc.savedAt || doc.createdAt,
       })),
     ];
 
@@ -79,5 +79,5 @@ export function useGovernedAssets(): GovernedAsset[] {
         typeLabel: TYPE_LABEL[seed.kind] ?? "Ativo",
       };
     });
-  }, [knowledge, pops, processes]);
+  }, [knowledge, pops, processes, lifecycleEntries]);
 }

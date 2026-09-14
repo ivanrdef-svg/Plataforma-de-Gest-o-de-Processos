@@ -1,3 +1,4 @@
+import { getPublishedProcessVersion } from "@/lib/process-store";
 import { expect } from "bun:test";
 import { isolatedTest } from "./support/isolated-test";
 import { processFixture, present } from "./support/fixtures";
@@ -17,7 +18,11 @@ for (const field of ["correctionStepId", "conditionTargetStepId"] as const) {
     import.meta.url,
     () => {
       const process = processFixture();
-      const doc = createWorkflowFromProcess(process);
+    const sourceVersion = present(getPublishedProcessVersion(process));
+    const definition = sourceVersion.definition;
+      const created = createWorkflowFromProcess(process);
+    if (!created.ok) throw new Error(created.reason);
+    const doc = created.doc;
       const source = doc.steps[0]!;
       const target = doc.steps[1]!;
       updateWorkflowStep(doc.id, source.id, {
@@ -25,8 +30,8 @@ for (const field of ["correctionStepId", "conditionTargetStepId"] as const) {
         ...(field === "conditionTargetStepId" ? { condition: "Se aprovado" } : {}),
       });
       expect(validateWorkflow(present(getWorkflowDoc(doc.id))).canPublish).toBe(true);
-      process.steps = process.steps.filter((s) => s.id !== target.processStepId);
-      const synced = present(syncWorkflowWithProcess(doc.id, process));
+      definition.steps = definition.steps.filter((s) => s.id !== target.processStepId);
+      const synced = present(syncWorkflowWithProcess(doc.id, process.id, sourceVersion));
       const before = structuredClone(synced);
       expect(synced.steps.some((s) => s.id === target.id)).toBe(false);
       expect(synced.steps.find((s) => s.id === source.id)?.[field]).toBe(target.id);
@@ -52,7 +57,11 @@ isolatedTest(
   import.meta.url,
   () => {
     const process = processFixture();
-    const doc = createWorkflowFromProcess(process);
+    const sourceVersion = present(getPublishedProcessVersion(process));
+    const definition = sourceVersion.definition;
+    const created = createWorkflowFromProcess(process);
+    if (!created.ok) throw new Error(created.reason);
+    const doc = created.doc;
     const target = doc.steps[1]!;
     updateWorkflowStep(doc.id, doc.steps[0]!.id, {
       kind: "tarefa",
@@ -60,8 +69,8 @@ isolatedTest(
         { id: "retained", label: "Opção preservada", nextStepId: target.id, note: "" },
       ],
     });
-    process.steps = process.steps.filter((s) => s.id !== target.processStepId);
-    const synced = present(syncWorkflowWithProcess(doc.id, process));
+    definition.steps = definition.steps.filter((s) => s.id !== target.processStepId);
+    const synced = present(syncWorkflowWithProcess(doc.id, process.id, sourceVersion));
     const validation = validateWorkflow(synced);
     expect(validation.canPublish).toBe(false);
     expect(validation.errors.some((e) => e.id === "retained-destino-inexistente")).toBe(true);
@@ -73,7 +82,9 @@ isolatedTest(
   "existing and empty correction/condition targets remain valid without changing end transitions",
   import.meta.url,
   () => {
-    const doc = createWorkflowFromProcess(processFixture());
+    const created = createWorkflowFromProcess(processFixture());
+    if (!created.ok) throw new Error(created.reason);
+    const doc = created.doc;
     const source = doc.steps[0]!;
     const target = doc.steps[1]!.id;
     updateWorkflowStep(doc.id, source.id, {
