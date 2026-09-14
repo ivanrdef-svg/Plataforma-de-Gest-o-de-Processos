@@ -11,7 +11,7 @@
 import type { PopProcessStepMapping } from "@/config/pop-process-step-mapping-model";
 import type { BpmDiagram } from "@/config/bpm-model";
 import type { PopDoc, PopSection } from "@/lib/pop-store";
-import type { ProcessDoc } from "@/lib/process-store";
+import type { ProcessDefinition } from "@/lib/process-store";
 import type { WorkflowDoc } from "@/lib/workflow-store";
 import type { WorkflowInstance } from "@/lib/runtime-store";
 import { getExecutedWorkflowVersion } from "@/lib/runtime-history";
@@ -60,10 +60,17 @@ export interface PopSectionTraceability {
   workflowSteps: WorkflowTraceRef[];
 }
 
+/** Explicit Process layer source; runtime remains joined through executed WorkflowVersion. */
+export interface TraceProcessSource {
+  id: string;
+  versionId: string;
+  definition: ProcessDefinition;
+}
+
 export interface PopTraceabilityInput {
   section: PopSection;
   mappings: PopProcessStepMapping[];
-  process?: ProcessDoc;
+  process?: TraceProcessSource;
   bpmDiagram?: BpmDiagram;
   workflowDocs: WorkflowDoc[];
   instances: WorkflowInstance[];
@@ -74,7 +81,7 @@ export interface PopTraceabilityInput {
 /* ------------------------------------------------------------------ */
 
 interface TraceIndexes {
-  process: ProcessDoc | undefined;
+  process: TraceProcessSource | undefined;
   /** processStepId → { step, order } */
   processSteps: Map<string, { name: string; order: number }>;
   bpmProcessId: string | undefined;
@@ -85,7 +92,7 @@ interface TraceIndexes {
 }
 
 function buildIndexes(input: {
-  process?: ProcessDoc;
+  process?: TraceProcessSource;
   bpmDiagram?: BpmDiagram;
   workflowDocs: WorkflowDoc[];
   instances: WorkflowInstance[];
@@ -93,7 +100,7 @@ function buildIndexes(input: {
   const { process, bpmDiagram, workflowDocs, instances } = input;
 
   const processSteps = new Map<string, { name: string; order: number }>();
-  process?.steps.forEach((step, index) => {
+  process?.definition.steps.forEach((step, index) => {
     processSteps.set(step.id, { name: step.name, order: index + 1 });
   });
 
@@ -263,7 +270,7 @@ export function getPopTraceabilitySummary(
   sections: PopSection[],
   input: {
     mappings: PopProcessStepMapping[];
-    process?: ProcessDoc;
+    process?: TraceProcessSource;
     bpmDiagram?: BpmDiagram;
     workflowDocs: WorkflowDoc[];
     instances: WorkflowInstance[];

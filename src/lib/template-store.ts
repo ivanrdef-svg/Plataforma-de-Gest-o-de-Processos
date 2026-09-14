@@ -56,6 +56,7 @@ export interface WorkflowTemplate {
   /* Rastreabilidade — NUNCA uma dependência operacional. */
   sourceWorkflowId?: string;
   sourceWorkflowVersion?: number;
+  sourceProcessVersionId?: string;
   /** Snapshot congelado e independente. */
   content: WorkflowTemplateContent;
   /** Mesmo formato de validação já usado pelos Workflows. */
@@ -255,6 +256,9 @@ export function createTemplateFromWorkflow(
     updatedAt: now,
     sourceWorkflowId: doc.id,
     sourceWorkflowVersion: published.number,
+    ...(published.sourceProcessVersionId !== undefined
+      ? { sourceProcessVersionId: published.sourceProcessVersionId }
+      : {}),
     content: deepCopy(published.content),
   };
 
@@ -378,6 +382,9 @@ export function createWorkflowFromTemplate(
   if (template.status !== "ativo") return { ok: false, reason: "not-active" };
 
   const origin: WorkflowTemplateOrigin = {
+    ...(template.sourceProcessVersionId !== undefined
+      ? { sourceProcessVersionId: template.sourceProcessVersionId }
+      : {}),
     templateId: template.id,
     templateName: template.name,
     ...(template.sourceWorkflowId

@@ -48,15 +48,21 @@ import {
   moveProcessStep,
   removeProcessStep,
   updateProcessDoc,
+  updateWorkingProcessDefinition,
+  createProcessVersion,
+  publishProcessVersion,
+  getProcessVersion,
+  getAuthoringProcessVersion,
   updateProcessSection,
   updateProcessStep,
   useProcessDoc,
-  type ProcessDoc,
+  type ProcessDefinition,
 } from "@/lib/process-store";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/processos/$processId")({
-  validateSearch: (search: Record<string, unknown>): { tab?: "bpmn" } => ({
+  validateSearch: (search: Record<string, unknown>): { tab?: "bpmn"; versionId?: string } => ({
+    ...(typeof search["versionId"] === "string" ? { versionId: search["versionId"] } : {}),
     ...(search["tab"] === "bpmn" ? { tab: "bpmn" as const } : {}),
   }),
   component: ProcessWorkspace,
@@ -85,11 +91,13 @@ function ActionButton({
   icon: Icon,
   onClick,
   active,
+  disabled,
 }: {
   label: string;
   icon: typeof Save;
   onClick: () => void;
   active?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <Tooltip>
@@ -98,6 +106,7 @@ function ActionButton({
           variant="ghost"
           size="sm"
           aria-label={label}
+          disabled={disabled}
           onClick={onClick}
           className={cn("h-8 w-8 p-0", active && "text-primary")}
         >
@@ -109,9 +118,13 @@ function ActionButton({
   );
 }
 
-function ProcessStructure({ doc }: { doc: ProcessDoc }) {
+function ProcessStructure({ processId, definition, editable }: {
+  processId: string;
+  definition: ProcessDefinition;
+  editable: boolean;
+}) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
-  const [active, setActive] = useState(doc.sections[0]?.id);
+  const [active, setActive] = useState(definition.sections[0]?.id);
 
   const goTo = (id: string) => {
     setActive(id);
@@ -130,7 +143,7 @@ function ProcessStructure({ doc }: { doc: ProcessDoc }) {
           <p className="mb-2 text-[10px] uppercase tracking-wider text-muted-foreground/80">
             Estrutura
           </p>
-          {doc.sections.map((s, i) => (
+          {definition.sections.map((s, i) => (
             <button
               key={s.id}
               type="button"
@@ -162,7 +175,7 @@ function ProcessStructure({ doc }: { doc: ProcessDoc }) {
           <button
             type="button"
             className="text-[11px] text-muted-foreground transition-colors hover:text-foreground"
-            onClick={() => setCollapsed(Object.fromEntries(doc.sections.map((s) => [s.id, true])))}
+            onClick={() => setCollapsed(Object.fromEntries(definition.sections.map((s) => [s.id, true])))}
           >
             Recolher tudo
           </button>
@@ -170,14 +183,14 @@ function ProcessStructure({ doc }: { doc: ProcessDoc }) {
       </aside>
 
       <div className="min-w-0 flex-1 space-y-3">
-        {doc.sections.map((section, i) => (
+        {definition.sections.map((section, i) => (
           <ProcessSectionBlock
             key={section.id}
             index={i}
             section={section}
-            open={!collapsed[section.id]}
+            open={!editable || !collapsed[section.id]}
             onToggle={() => setCollapsed((c) => ({ ...c, [section.id]: !c[section.id] }))}
-            onChange={(patch) => updateProcessSection(doc.id, section.id, patch)}
+            onChange={(patch) => editable && updateProcessSection(processId, section.id, patch)}
           />
         ))}
       </div>
@@ -262,22 +275,34 @@ function LinkedPopsSection({ processId }: { processId: string }) {
 
 function ProcessWorkspace() {
   const { processId } = Route.useParams();
-  const { tab } = Route.useSearch();
-  const doc = useProcessDoc(processId);
+  const { tab, versionId } = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const processDoc = useProcessDoc(processId);
+  const doc = processDoc;
+  // HISTORICAL_EXPLICIT when versionId is supplied; otherwise AUTHORING_VERSION.
+  const selectedVersion = doc
+    ? (versionId ? getProcessVersion(doc, versionId) : getAuthoringProcessVersion(doc))
+    : undefined;
+  const selectedDefinition = selectedVersion?.definition;
+  const authoringDefinition = doc ? getAuthoringProcessVersion(doc)?.definition : undefined;
+  const editable = Boolean(
+    selectedVersion && selectedVersion.id === doc?.workingVersionId &&
+    selectedVersion.status === "rascunho",
+  );
 
   /* Build 007 — injeta os blocos do modelo organizacional em processos
      criados em builds anteriores, preservando todo o conteúdo existente. */
   useEffect(() => {
-    if (processId) ensureProcessModel(processId);
-  }, [processId]);
+    if (editable) ensureProcessModel(processId);
+  }, [processId, editable]);
 
   const lifecycleSeed: LifecycleSeed = {
     objectId: doc?.id ?? "",
     kind: "processo",
-    name: doc?.name ?? "",
-    owner: doc?.owner ?? "",
-    status: doc?.status ?? "",
-    updatedAt: doc?.savedAt ?? doc?.revisedAt ?? "",
+    name: authoringDefinition?.name ?? "",
+    owner: authoringDefinition?.owner ?? "",
+    status: doc?.legacyLifecycleSeedStatus ?? "",
+    updatedAt: doc?.savedAt ?? doc?.createdAt ?? "",
   };
   const lifecycle = useLifecycle(lifecycleSeed);
 
@@ -293,26 +318,61 @@ function ProcessWorkspace() {
     );
   }
 
-  const patch = (values: Partial<ProcessDoc>) => updateProcessDoc(doc.id, values);
+  if (!selectedVersion || !selectedDefinition) {
+    return (
+      <div className="p-10">
+        <p>Versão do processo não encontrada.</p>
+        <Link to="/processos/$processId" params={{ processId }} search={{}}>
+          Abrir versão de autoria
+        </Link>
+      </div>
+    );
+  }
+
+  const patch = (values: Partial<ProcessDefinition>) => {
+    if (editable) updateWorkingProcessDefinition(doc.id, values);
+  };
+  const selectVersion = (id: string) => {
+    void navigate({ search: { ...(tab ? { tab } : {}), versionId: id } });
+  };
+  const createVersion = (baseId?: string) => {
+    const result = createProcessVersion(doc.id, baseId);
+    if (!result.ok) {
+      toast.error("Não foi possível criar a versão", { description: result.reason });
+      return;
+    }
+    selectVersion(result.version.id);
+    toast.success("Nova versão rascunho criada");
+  };
+  const publishVersion = () => {
+    if (!editable) return;
+    const result = publishProcessVersion(doc.id);
+    if (!result.ok) {
+      toast.error("Não foi possível publicar", { description: result.reason });
+      return;
+    }
+    toast.success("Versão publicada");
+  };
 
   return (
     <WorkspaceLayout
-      title={doc.name}
-      subtitle={doc.description}
+      title={selectedDefinition.name}
+      subtitle={selectedDefinition.description}
       meta={
         <WorkspaceMeta
           items={[
             { label: "Código", value: doc.code },
             { label: "Tipo", value: "Processo" },
-            { label: "Categoria", value: doc.category },
-            { label: "Versão", value: doc.version },
+            { label: "Categoria", value: selectedDefinition.category },
+            { label: "Versão", value: `V${selectedVersion.number}` },
+            { label: "Status da versão", value: selectedVersion.status },
             {
-              label: "Estado",
+              label: "Estado do Processo",
               value: <LifecycleBadge state={lifecycle.state} size="sm" />,
             },
-            { label: "Responsável", value: doc.owner },
-            { label: "Etapas", value: String(doc.steps.length) },
-            { label: "Última revisão", value: doc.revisedAt },
+            { label: "Responsável", value: selectedDefinition.owner },
+            { label: "Etapas", value: String(selectedDefinition.steps.length) },
+            { label: "Última revisão", value: selectedVersion.updatedAt },
           ]}
         />
       }
@@ -320,6 +380,7 @@ function ProcessWorkspace() {
         <>
           <ActionButton
             label="Salvar"
+            disabled={!editable}
             icon={Save}
             onClick={() => {
               patch({});
@@ -333,7 +394,7 @@ function ProcessWorkspace() {
             icon={Copy}
             onClick={() => {
               const copy = duplicateProcessDoc(doc.id);
-              toast.success("Processo duplicado", { description: copy?.name });
+              toast.success("Processo duplicado", { description: copy ? getAuthoringProcessVersion(copy)?.definition.name : undefined });
             }}
           />
           <ActionButton
@@ -355,7 +416,7 @@ function ProcessWorkspace() {
             icon={Star}
             active={doc.favorite}
             onClick={() => {
-              patch({ favorite: !doc.favorite });
+              updateProcessDoc(doc.id, { favorite: !doc.favorite });
               toast(doc.favorite ? "Removido dos favoritos" : "Adicionado aos favoritos");
             }}
           />
@@ -368,91 +429,118 @@ function ProcessWorkspace() {
         </>
       }
       contextBar={
-        <WorkspaceContextBar
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <label htmlFor="process-version">Versão</label>
+            <select id="process-version" value={selectedVersion.id} onChange={(event) => selectVersion(event.target.value)} className="rounded border bg-background px-2 py-1 text-xs">
+              {doc.versions.map((version) => <option key={version.id} value={version.id}>V{version.number} · {version.status}</option>)}
+            </select>
+            {selectedVersion.basedOnVersionId && <span className="text-xs">Baseada em V{getProcessVersion(doc, selectedVersion.basedOnVersionId)?.number}</span>}
+            {!editable && <span className="text-xs">Definição somente leitura</span>}
+            <Button size="sm" variant="outline" disabled={Boolean(doc.workingVersionId) || !doc.publishedVersionId} onClick={() => createVersion()}>Criar nova versão</Button>
+            <Button size="sm" variant="outline" disabled={Boolean(doc.workingVersionId)} onClick={() => createVersion(selectedVersion.id)}>Criar draft a partir desta versão</Button>
+            <Button size="sm" disabled={!editable} onClick={publishVersion}>Publicar draft</Button>
+          </div>
+          <WorkspaceContextBar
           groups={PROCESS_DEMO_ORIGIN.map((g) => ({
             label: g.group,
             items: g.items.map((i) => i.name),
           }))}
         />
+        </div>
       }
       tabs={[
         {
           id: "estrutura",
           label: "Estrutura",
-          content: <ProcessStructure key={doc.id} doc={doc} />,
+          content: (
+            <fieldset disabled={!editable}>
+              <ProcessStructure key={selectedVersion.id} processId={doc.id}
+                definition={selectedDefinition} editable={editable} />
+            </fieldset>
+          ),
         },
         {
           id: "etapas",
           label: "Etapas",
           content: (
-            <ProcessSteps
-              steps={doc.steps}
-              onChange={(id, p) => updateProcessStep(doc.id, id, p)}
-              onMove={(id, delta) => moveProcessStep(doc.id, id, delta)}
-              onRemove={(id) => removeProcessStep(doc.id, id)}
-              onAdd={() => addProcessStep(doc.id)}
-            />
+            <fieldset disabled={!editable}>
+              <ProcessSteps
+                key={selectedVersion.id}
+                readOnly={!editable}
+                steps={selectedDefinition.steps}
+                onChange={(id, p) => editable && updateProcessStep(doc.id, id, p)}
+                onMove={(id, delta) => editable && moveProcessStep(doc.id, id, delta)}
+                onRemove={(id) => editable && removeProcessStep(doc.id, id)}
+                onAdd={() => editable && addProcessStep(doc.id)}
+              />
+            </fieldset>
           ),
         },
         {
           id: "timeline",
           label: "Timeline",
-          content: <ProcessTimeline steps={doc.steps} />,
+          content: <ProcessTimeline steps={selectedDefinition.steps} />,
         },
         {
           id: "regras",
           label: "Regras",
           content: (
-            <ProcessRules
-              rules={doc.rules ?? []}
-              onChange={(id, p) => updateProcessRule(doc.id, id, p)}
-              onRemove={(id) => removeProcessRule(doc.id, id)}
-              onAdd={() => addProcessRule(doc.id)}
-            />
+            <fieldset disabled={!editable}>
+              <ProcessRules
+                rules={selectedDefinition.rules ?? []}
+                onChange={(id, p) => editable && updateProcessRule(doc.id, id, p)}
+                onRemove={(id) => editable && removeProcessRule(doc.id, id)}
+                onAdd={() => editable && addProcessRule(doc.id)}
+              />
+            </fieldset>
           ),
         },
         {
           id: "participantes",
           label: "Participantes",
           content: (
-            <ProcessParticipants
-              participants={doc.participants ?? []}
-              steps={doc.steps}
-              onChange={(id, p) => updateProcessParticipant(doc.id, id, p)}
-              onToggleStep={(id, stepId) => toggleParticipantStep(doc.id, id, stepId)}
-              onRemove={(id) => removeProcessParticipant(doc.id, id)}
-              onAdd={() => addProcessParticipant(doc.id)}
-              onImportFromSteps={() => {
-                const mapped = new Set((doc.participants ?? []).map((p) => p.name.trim()));
-                const owners = [
-                  ...new Set(doc.steps.map((s) => s.owner.trim()).filter(Boolean)),
-                ].filter((o) => !mapped.has(o));
-                owners.forEach((owner) =>
-                  addProcessParticipant(doc.id, {
-                    name: owner,
-                    area: doc.area,
-                    stepIds: doc.steps.filter((s) => s.owner.trim() === owner).map((s) => s.id),
-                  }),
-                );
-                toast.success("Participantes importados", {
-                  description: `${owners.length} responsável(is) das etapas.`,
-                });
-              }}
-            />
+            <fieldset disabled={!editable}>
+              <ProcessParticipants
+                participants={selectedDefinition.participants ?? []}
+                steps={selectedDefinition.steps}
+                onChange={(id, p) => editable && updateProcessParticipant(doc.id, id, p)}
+                onToggleStep={(id, stepId) => editable && toggleParticipantStep(doc.id, id, stepId)}
+                onRemove={(id) => editable && removeProcessParticipant(doc.id, id)}
+                onAdd={() => editable && addProcessParticipant(doc.id)}
+                onImportFromSteps={() => {
+                  if (!editable) return;
+                  const mapped = new Set((selectedDefinition.participants ?? []).map((p) => p.name.trim()));
+                  const owners = [
+                    ...new Set(selectedDefinition.steps.map((s) => s.owner.trim()).filter(Boolean)),
+                  ].filter((o) => !mapped.has(o));
+                  owners.forEach((owner) =>
+                    addProcessParticipant(doc.id, {
+                      name: owner,
+                      area: selectedDefinition.area,
+                      stepIds: selectedDefinition.steps.filter((s) => s.owner.trim() === owner).map((s) => s.id),
+                    }),
+                  );
+                  toast.success("Participantes importados", {
+                    description: `${owners.length} responsável(is) das etapas.`,
+                  });
+                }}
+              />
+            </fieldset>
           ),
         },
         {
           id: "origem",
           label: "Origem",
-          content: <ProcessOrigin processName={doc.name} />,
+          content: <ProcessOrigin processName={selectedDefinition.name} />,
         },
         {
           id: "bpmn",
           label: "Modelagem BPM",
           content: (
             <div className="space-y-6">
-              <BpmReadinessBanner doc={doc} />
-              <BpmDesigner key={doc.id} doc={doc} />
+              <BpmReadinessBanner doc={selectedDefinition} />
+              <BpmDesigner key={doc.id} doc={doc} version={selectedVersion} />
             </div>
           ),
         },
@@ -478,7 +566,7 @@ function ProcessWorkspace() {
 
               <section className="space-y-3">
                 <h2 className="text-sm font-medium">Rede de relacionamentos</h2>
-                <RelationshipsTab objectId={doc.id} objectName={doc.name} objectType="Processo" />
+                <RelationshipsTab objectId={doc.id} objectName={selectedDefinition.name} objectType="Processo" />
               </section>
             </div>
           ),
@@ -505,9 +593,12 @@ function ProcessWorkspace() {
         <div className="space-y-6">
           <LifecyclePanel seed={lifecycleSeed} showTimeline={false} />
           <Separator />
-          <ProcessMetadataPanel key={doc.id} doc={doc} onChange={patch} />
+          <fieldset disabled={!editable}>
+            <ProcessMetadataPanel key={selectedVersion.id} doc={doc}
+              version={selectedVersion} onChange={patch} />
+          </fieldset>
           <Separator />
-          <ProcessConsistencyPanel doc={doc} />
+          <ProcessConsistencyPanel doc={selectedDefinition} />
           <Separator />
           <WorkspaceAiPanel />
         </div>
@@ -516,7 +607,7 @@ function ProcessWorkspace() {
         <WorkspaceStatusBar
           status={DEMO_ENVIRONMENT.status}
           lastSync={DEMO_ENVIRONMENT.lastSync}
-          version={`${doc.version} · ${DEMO_ENVIRONMENT.version}`}
+          version={`V${selectedVersion.number} · ${DEMO_ENVIRONMENT.version}`}
           environment={DEMO_ENVIRONMENT.environment}
         />
       }

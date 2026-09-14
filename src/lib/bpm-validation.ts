@@ -11,7 +11,7 @@
  */
 
 import type { BpmDiagram, BpmIssue, BpmNode } from "@/config/bpm-model";
-import type { ProcessDoc } from "@/lib/process-store";
+import type { ProcessDefinition } from "@/lib/process-store";
 
 export type BpmValidationStatus = "válido" | "válido com avisos" | "inválido";
 
@@ -28,7 +28,7 @@ function label(node: BpmNode | undefined, fallback: string) {
   return name || fallback;
 }
 
-export function validateBpmn(diagram: BpmDiagram, doc: ProcessDoc): BpmValidation {
+export function validateBpmn(diagram: BpmDiagram, doc: ProcessDefinition): BpmValidation {
   const issues: BpmIssue[] = [];
   const infos: string[] = [];
 

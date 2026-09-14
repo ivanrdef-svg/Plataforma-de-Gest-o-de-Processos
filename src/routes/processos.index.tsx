@@ -6,7 +6,7 @@ import { WorkspaceLayout } from "@/components/workspace/workspace-layout";
 import { WorkspaceAiPanel } from "@/components/workspace/workspace-ai-panel";
 import { WorkspaceStatusBar } from "@/components/workspace/workspace-status-bar";
 import { LifecycleBadge, LifecycleTrack } from "@/components/lifecycle/lifecycle-badge";
-import { useLifecycleState } from "@/lib/lifecycle-store";
+import { getLifecycle, useLifecycleEntries, useLifecycleState } from "@/lib/lifecycle-store";
 import { CardQuickActions } from "@/components/workspace/card-quick-actions";
 import { RelationshipIndicators } from "@/components/relationships/relationship-badges";
 import { useRelationshipStats } from "@/lib/relationship-store";
@@ -16,11 +16,13 @@ import { readinessScore } from "@/components/process/process-consistency-panel";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { DEMO_ENVIRONMENT } from "@/config/workspace-demo";
+import { LIFECYCLE_STATE_IDS } from "@/config/lifecycle-model";
 import { PROCESS_CENTER_STATS } from "@/config/process-structure";
 import {
   createProcessDoc,
   PROCESS_CATEGORIES,
-  PROCESS_STATUS_OPTIONS,
+  getAuthoringProcessVersion,
+  getPublishedProcessVersion,
   useProcessDocs,
   type ProcessDoc,
 } from "@/lib/process-store";
@@ -48,14 +50,16 @@ export const Route = createFileRoute("/processos/")({
 });
 
 function ProcessCard({ doc }: { doc: ProcessDoc }) {
+  const version = getAuthoringProcessVersion(doc);
+  const definition = version?.definition;
   const stats = useRelationshipStats(doc.id);
   const state = useLifecycleState({
     objectId: doc.id,
     kind: "processo",
-    name: doc.name,
-    owner: doc.owner,
-    status: doc.status,
-    updatedAt: doc.savedAt || doc.revisedAt,
+    name: (definition?.name ?? ""),
+    owner: (definition?.owner ?? ""),
+    status: doc.legacyLifecycleSeedStatus ?? "",
+    updatedAt: doc.savedAt || doc.createdAt,
   });
   return (
     <Link
@@ -66,22 +70,22 @@ function ProcessCard({ doc }: { doc: ProcessDoc }) {
       <div className="flex items-center gap-2">
         <span className="font-mono text-[11px] text-muted-foreground">{doc.code}</span>
         <LifecycleBadge state={state} size="sm" className="ml-auto" />
-        <CardQuickActions name={doc.name} className="-mr-1" />
+        <CardQuickActions name={(definition?.name ?? "")} className="-mr-1" />
       </div>
       <div className="mt-1.5 flex items-center gap-1.5">
         <Workflow className="h-4 w-4 shrink-0 text-muted-foreground" />
-        <span className="truncate text-sm font-medium">{doc.name}</span>
+        <span className="truncate text-sm font-medium">{(definition?.name ?? "")}</span>
         {doc.favorite && (
           <Star className="h-3.5 w-3.5 shrink-0 fill-current text-primary" />
         )}
       </div>
       <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-        {doc.description}
+        {(definition?.description ?? "")}
       </p>
       <LifecycleTrack state={state} className="mt-3" />
       <RelationshipIndicators stats={stats} compact className="mt-3" />
       <p className="mt-2 text-[11px] text-muted-foreground/80">
-        {doc.category} · {doc.steps.length} etapas · {doc.version} · {doc.owner}
+        {(definition?.category ?? "")} · {definition?.steps.length ?? 0} etapas · V{version?.number} · {version?.status} · {(definition?.owner ?? "")}
       </p>
     </Link>
   );
@@ -108,6 +112,13 @@ function ProcessGrid({ docs }: { docs: ProcessDoc[] }) {
 
 function ProcessCenter() {
   const docs = useProcessDocs();
+  const lifecycleEntries = useLifecycleEntries();
+  const lifecycleState = (doc: ProcessDoc) => getLifecycle({
+    objectId: doc.id, kind: "processo",
+    name: getAuthoringProcessVersion(doc)?.definition.name ?? doc.code,
+    owner: getAuthoringProcessVersion(doc)?.definition.owner ?? "",
+    status: doc.legacyLifecycleSeedStatus ?? "", updatedAt: doc.savedAt || doc.createdAt,
+  }).state;
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<string | null>(null);
@@ -124,34 +135,36 @@ function ProcessCenter() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return docs.filter((d) => {
-      if (status && d.status !== status) return false;
-      if (category && d.category !== category) return false;
+      const definition = getAuthoringProcessVersion(d)?.definition;
+      if (!definition) return false;
+      if (status && lifecycleState(d) !== status) return false;
+      if (category && definition.category !== category) return false;
       if (!q) return true;
-      return [d.name, d.code, d.description, d.category, d.owner, ...d.tags]
+      return [definition.name, d.code, definition.description, definition.category, definition.owner, ...definition.tags]
         .join(" ")
         .toLowerCase()
         .includes(q);
     });
-  }, [docs, query, status, category]);
+  }, [docs, query, status, category, lifecycleEntries]);
 
   const kpis: Record<string, number> = {
     total: docs.length,
-    desenvolvimento: docs.filter((d) => d.status === "em desenvolvimento").length,
-    publicados: docs.filter((d) => d.status === "publicado").length,
-    etapas: docs.reduce((sum, d) => sum + d.steps.length, 0),
-    revisao: docs.filter((d) => d.status === "em revisão").length,
+    desenvolvimento: docs.filter((d) => lifecycleState(d) === "em elaboração").length,
+    publicados: docs.filter((d) => getPublishedProcessVersion(d)).length,
+    etapas: docs.reduce((sum, d) => sum + (getAuthoringProcessVersion(d)?.definition.steps.length ?? 0), 0),
+    revisao: docs.filter((d) => lifecycleState(d) === "em revisão").length,
     modelagem: docs.filter(
-      (d) => d.steps.length > 0 && readinessScore(d).blocking > 0,
+      (d) => { const definition = getAuthoringProcessVersion(d)?.definition; return definition && definition.steps.length > 0 && readinessScore(definition).blocking > 0; },
     ).length,
     prontos: docs.filter(
-      (d) => d.steps.length >= 3 && readinessScore(d).blocking === 0,
+      (d) => { const definition = getAuthoringProcessVersion(d)?.definition; return definition && definition.steps.length >= 3 && readinessScore(definition).blocking === 0; },
     ).length,
   };
 
   const recent = docs.slice(0, 6);
   const favorites = docs.filter((d) => d.favorite);
   const developing = docs.filter(
-    (d) => d.status === "em desenvolvimento" || d.status === "rascunho",
+    (d) => Boolean(d.workingVersionId),
   );
 
   const toolbar = (
@@ -162,7 +175,7 @@ function ProcessCenter() {
             key={stat.id}
             className="rounded-xl border bg-card px-4 py-3 transition-shadow duration-200 hover:shadow-soft"
           >
-            <p className="text-[11px] text-muted-foreground">{stat.label}</p>
+            <p className="text-[11px] text-muted-foreground">{stat.id === "publicados" ? "Com versão publicada" : stat.label}</p>
             <p className="mt-1 text-xl font-semibold tracking-tight">
               {kpis[stat.id] ?? 0}
             </p>
@@ -189,7 +202,7 @@ function ProcessCenter() {
       <div className="flex flex-wrap items-center gap-1.5">
         {[
           { label: "Todos", active: !status && !category, clear: true },
-          ...PROCESS_STATUS_OPTIONS.map((s) => ({
+          ...LIFECYCLE_STATE_IDS.map((s) => ({
             label: s,
             active: status === s,
             onClick: () => setStatus(status === s ? null : s),

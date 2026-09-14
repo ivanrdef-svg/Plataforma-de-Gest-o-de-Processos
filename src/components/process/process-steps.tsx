@@ -64,6 +64,7 @@ function StepCard({
   index,
   total,
   step,
+  readOnly,
   onChange,
   onMove,
   onRemove,
@@ -71,11 +72,13 @@ function StepCard({
   index: number;
   total: number;
   step: ProcessStep;
+  readOnly: boolean;
   onChange: (patch: Partial<ProcessStep>) => void;
   onMove: (delta: number) => void;
   onRemove: () => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [expanded, setOpen] = useState(false);
+  const open = readOnly || expanded;
 
   return (
     <div className="relative pl-10">
@@ -287,12 +290,14 @@ function StepCard({
 
 export function ProcessSteps({
   steps,
+  readOnly = false,
   onChange,
   onMove,
   onRemove,
   onAdd,
 }: {
   steps: ProcessStep[];
+  readOnly?: boolean;
   onChange: (id: string, patch: Partial<ProcessStep>) => void;
   onMove: (id: string, delta: number) => void;
   onRemove: (id: string) => void;
@@ -320,6 +325,7 @@ export function ProcessSteps({
             index={i}
             total={steps.length}
             step={step}
+            readOnly={readOnly}
             onChange={(patch) => onChange(step.id, patch)}
             onMove={(delta) => onMove(step.id, delta)}
             onRemove={() => onRemove(step.id)}

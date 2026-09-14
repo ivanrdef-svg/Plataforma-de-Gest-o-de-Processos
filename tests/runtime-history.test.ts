@@ -1,3 +1,4 @@
+import { getPublishedProcessVersion } from "@/lib/process-store";
 import { expect } from "bun:test";
 import { isolatedTest } from "./support/isolated-test";
 import { publishedWorkflow } from "./support/workflow";
@@ -114,7 +115,7 @@ isolatedTest(
     const input = {
       section,
       mappings: [mapping],
-      process: processFixture(),
+      process: { id: processFixture().id, versionId: present(getPublishedProcessVersion(processFixture())).id, definition: present(getPublishedProcessVersion(processFixture())).definition },
       workflowDocs: [structuredClone(current)],
       instances: [started.instance],
     };

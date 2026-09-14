@@ -1,14 +1,14 @@
 import { Sparkles, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { readinessScore } from "./process-consistency-panel";
-import type { ProcessDoc } from "@/lib/process-store";
+import type { ProcessDefinition } from "@/lib/process-store";
 
 /**
  * Build 007 — preparação para o BPM.
  * O modelo organizacional já possui estrutura suficiente para a geração
  * automática do primeiro diagrama; a geração chega na próxima Build.
  */
-export function BpmReadinessBanner({ doc }: { doc: ProcessDoc }) {
+export function BpmReadinessBanner({ doc }: { doc: ProcessDefinition }) {
   const { score, blocking } = readinessScore(doc);
   const rules = doc.rules?.length ?? 0;
   const participants = doc.participants?.length ?? 0;

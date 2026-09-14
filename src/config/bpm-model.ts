@@ -11,7 +11,7 @@
  * início/fim, atividades, decisões (gateway) e aprovações.
  */
 
-import type { ProcessDoc, ProcessStep } from "@/lib/process-store";
+import type { ProcessDefinition, ProcessStep } from "@/lib/process-store";
 import type { ProcessStepTypeId } from "@/config/process-model";
 
 /** Tipos de nó suportados hoje + reservados para builds futuras. */
@@ -88,6 +88,7 @@ export interface BpmLane {
 
 export interface BpmDiagram {
   processId: string;
+  syncedFromProcessVersionId?: string;
   /**
    * Build 020 — assinatura do modelo no momento da geração inicial.
    * Uso apenas informativo/histórico: NÃO dispara mais regeneração destrutiva.
@@ -122,7 +123,7 @@ const BAND_GAP_Y = 140;
 const ROW_HEIGHT = NODE_SIZE.task.height;
 
 /** Assinatura determinística do modelo do processo. */
-export function processSignature(doc: ProcessDoc): string {
+export function processSignature(doc: ProcessDefinition): string {
   return doc.steps
     .map((s) =>
       [
@@ -176,7 +177,7 @@ function buildLayers(steps: ProcessStep[]): ProcessStep[][] {
  * Dependências declaradas viram conectores adicionais e os participantes
  * alimentam as lanes do diagrama.
  */
-export function generateDiagramFromProcess(doc: ProcessDoc): BpmDiagram {
+export function generateDiagramFromProcess(processId: string, processVersionId: string, doc: ProcessDefinition): BpmDiagram {
   const nodes: BpmNode[] = [];
   const edges: BpmEdge[] = [];
   const issues: BpmIssue[] = [];
@@ -413,7 +414,8 @@ export function generateDiagramFromProcess(doc: ProcessDoc): BpmDiagram {
   const lanes: BpmLane[] = Array.from(laneNames, ([id, name]) => ({ id, name }));
 
   return {
-    processId: doc.id,
+    processId,
+    syncedFromProcessVersionId: processVersionId,
     signature: processSignature(doc),
     nodes: withIssues,
     edges,

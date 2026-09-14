@@ -31,7 +31,7 @@ import { VERSION_TONE } from "@/config/workflow-version";
 import { READINESS_TONE } from "@/config/publication-model";
 import { publicationReadiness } from "@/lib/publication-readiness";
 import { stateFromLegacyStatus } from "@/config/lifecycle-model";
-import { useProcessDocs } from "@/lib/process-store";
+import { getPublishedProcessVersion, useProcessDocs } from "@/lib/process-store";
 import {
   createWorkflowFromProcess,
   lifecycleStatusOf,
@@ -114,9 +114,14 @@ function WorkflowCenter() {
   const create = (processId: string) => {
     const process = processes.find((p) => p.id === processId);
     if (!process) return;
-    const doc = createWorkflowFromProcess(process);
+    const result = createWorkflowFromProcess(process);
+    if (!result.ok) {
+      toast.error("Publique uma versão do Processo antes de criar o Workflow.");
+      return;
+    }
+    const doc = result.doc;
     toast.success("Workflow criado", {
-      description: `${doc.steps.length} etapas herdadas de ${process.name}.`,
+      description: `${doc.steps.length} etapas herdadas de ${doc.processName}.`,
     });
     navigate({ to: "/workflow/$workflowId", params: { workflowId: doc.id } });
   };
@@ -159,11 +164,12 @@ function WorkflowCenter() {
                   <DropdownMenuItem
                     key={p.id}
                     className="text-xs"
+                    disabled={!getPublishedProcessVersion(p)}
                     onSelect={() => create(p.id)}
                   >
-                    <span className="truncate">{p.name}</span>
+                    <span className="truncate">{getPublishedProcessVersion(p)?.definition.name ?? p.code}</span>
                     <span className="ml-auto text-[10px] text-muted-foreground">
-                      {p.steps.length} etapas
+                      {getPublishedProcessVersion(p)?.definition.steps.length ?? 0} etapas
                     </span>
                   </DropdownMenuItem>
                 ))

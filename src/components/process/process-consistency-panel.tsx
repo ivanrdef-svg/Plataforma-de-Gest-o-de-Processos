@@ -1,6 +1,6 @@
 import { AlertTriangle, CheckCircle2, Info, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { ProcessDoc } from "@/lib/process-store";
+import type { ProcessDefinition } from "@/lib/process-store";
 
 /**
  * Build 007 — painel "Consistência do Processo".
@@ -34,7 +34,7 @@ const SEVERITY_META: Record<
   info: { label: "Sugestão", icon: Info, tone: "text-muted-foreground" },
 };
 
-export function analyzeProcess(doc: ProcessDoc): ConsistencyIssue[] {
+export function analyzeProcess(doc: ProcessDefinition): ConsistencyIssue[] {
   const issues: ConsistencyIssue[] = [];
   const steps = doc.steps ?? [];
   const rules = doc.rules ?? [];
@@ -128,7 +128,7 @@ export function analyzeProcess(doc: ProcessDoc): ConsistencyIssue[] {
 }
 
 /** Percentual de prontidão do modelo para gerar o BPM. */
-export function readinessScore(doc: ProcessDoc) {
+export function readinessScore(doc: ProcessDefinition) {
   const issues = analyzeProcess(doc);
   const blocking = issues.filter((i) => i.severity === "erro").length;
   const warnings = issues.filter((i) => i.severity === "atencao").length;
@@ -137,7 +137,7 @@ export function readinessScore(doc: ProcessDoc) {
   return { score, issues, blocking, warnings };
 }
 
-export function ProcessConsistencyPanel({ doc }: { doc: ProcessDoc }) {
+export function ProcessConsistencyPanel({ doc }: { doc: ProcessDefinition }) {
   const { score, issues, blocking } = readinessScore(doc);
 
   return (

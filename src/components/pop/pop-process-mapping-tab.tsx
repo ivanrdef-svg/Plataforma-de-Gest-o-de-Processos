@@ -34,7 +34,7 @@ import { Pill } from "@/components/ui/pill";
 import { Separator } from "@/components/ui/separator";
 import { SelectProcessStepDialog } from "@/components/pop/select-process-step-dialog";
 import type { PopDoc } from "@/lib/pop-store";
-import type { ProcessDoc, ProcessStep } from "@/lib/process-store";
+import { getPublishedProcessVersion, type ProcessDoc, type ProcessStep } from "@/lib/process-store";
 import type { PopProcessStepMapping } from "@/config/pop-process-step-mapping-model";
 import {
   confirmMapping,
@@ -70,16 +70,18 @@ function stepLabel(steps: ProcessStep[], stepId: string): string | undefined {
 function MappingRow({
   mapping,
   steps,
+  processVersionId,
   onChangeTarget,
   onRemove,
 }: {
   mapping: PopProcessStepMapping;
   steps: ProcessStep[];
+  processVersionId: string;
   onChangeTarget: (mapping: PopProcessStepMapping) => void;
   onRemove: (mapping: PopProcessStepMapping) => void;
 }) {
   const label = stepLabel(steps, mapping.processStepId);
-  const consistent = isMappingConsistent(mapping);
+  const consistent = isMappingConsistent(mapping, processVersionId);
 
   if (mapping.status === "rejeitado") {
     return (
@@ -127,7 +129,7 @@ function MappingRow({
                 variant="ghost"
                 className="h-7 text-xs"
                 onClick={() => {
-                  const result = confirmMapping(mapping.id);
+                  const result = confirmMapping(mapping.id, processVersionId);
                   if (!result.ok) {
                     toast.error("Não foi possível confirmar esta correspondência.");
                     return;
@@ -280,6 +282,8 @@ export function PopProcessMappingTab({
   doc: PopDoc;
   process: ProcessDoc | undefined;
 }) {
+  // Institutional mapping explicitly uses the published ProcessVersion.
+  const sourceVersion = process ? getPublishedProcessVersion(process) : undefined;
   const mappings = usePopProcessStepMappings(doc.id);
   const bpmDiagram = useBpmDiagram(doc.processId ?? "");
   const workflowDocs = useWorkflowDocs();
@@ -303,12 +307,12 @@ export function PopProcessMappingTab({
     () =>
       getPopTraceabilitySummary(doc, doc.sections, {
         mappings,
-        ...(process ? { process } : {}),
+        ...(process && sourceVersion ? { process: { id: process.id, versionId: sourceVersion.id, definition: sourceVersion.definition } } : {}),
         ...(bpmDiagram ? { bpmDiagram } : {}),
         workflowDocs,
         instances,
       }),
-    [doc, mappings, process, bpmDiagram, workflowDocs, instances],
+    [doc, mappings, process, sourceVersion, bpmDiagram, workflowDocs, instances],
   );
   const traceabilityBySection = useMemo(
     () => new Map(traceability.map((trace) => [trace.popSectionId, trace])),
@@ -323,7 +327,8 @@ export function PopProcessMappingTab({
     );
   }
 
-  const steps = process.steps;
+  if (!sourceVersion) return <p className="text-sm text-muted-foreground">Publique uma versão do Processo para habilitar o mapeamento institucional.</p>;
+  const steps = sourceVersion.definition.steps;
 
   if (steps.length === 0) {
     return (
@@ -348,7 +353,7 @@ export function PopProcessMappingTab({
             title: s.title,
             content: s.content,
           })),
-          processName: process.name,
+          processName: sourceVersion.definition.name,
           processSteps: steps.map((s) => ({
             id: s.id,
             name: s.name,
@@ -366,6 +371,7 @@ export function PopProcessMappingTab({
       let created = 0;
       for (const suggestion of result.suggestions) {
         const recorded = recordAiSuggestion({
+          processVersionId: sourceVersion.id,
           popId: doc.id,
           processId,
           popSectionId: suggestion.popSectionId,
@@ -408,7 +414,7 @@ export function PopProcessMappingTab({
             <p className="text-sm text-muted-foreground">Nenhuma análise realizada ainda.</p>
           )}
           <p className="text-xs text-muted-foreground">
-            Processo vinculado: {process.name} · {steps.length} etapa(s).
+            Processo vinculado: {sourceVersion.definition.name} · V{sourceVersion.number} publicada · {steps.length} etapa(s).
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -467,6 +473,7 @@ export function PopProcessMappingTab({
                       key={mapping.id}
                       mapping={mapping}
                       steps={steps}
+                      processVersionId={sourceVersion.id}
                       onChangeTarget={setChanging}
                       onRemove={setRemoving}
                     />
@@ -499,6 +506,7 @@ export function PopProcessMappingTab({
         onConfirm={(stepId) => {
           if (!addFor) return;
           const result = createManualMapping({
+            processVersionId: sourceVersion.id,
             popId: doc.id,
             popSectionId: addFor,
             processId,
@@ -529,7 +537,7 @@ export function PopProcessMappingTab({
         }}
         onConfirm={(stepId) => {
           if (!changing) return;
-          const result = updateMappingTarget(changing.id, stepId);
+          const result = updateMappingTarget(changing.id, stepId, sourceVersion.id);
           setChanging(undefined);
           if (!result.ok) {
             toast.error(

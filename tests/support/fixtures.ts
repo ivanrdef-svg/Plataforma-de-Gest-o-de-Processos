@@ -1,13 +1,17 @@
-import type { ProcessDoc } from "@/lib/process-store";
+import { normalizeProcessDoc, type ProcessDoc, type LegacyProcessDoc } from "@/lib/process-store";
 import type { PopDraftProposal } from "@/config/pop-draft-proposal-model";
 
 export function processFixture(): ProcessDoc {
+  return normalizeProcessDoc(legacyProcessFixture());
+}
+
+export function legacyProcessFixture(): LegacyProcessDoc {
   return {
     id: "process-fixture",
     code: "PROC-TEST",
     name: "Conferência documental",
     category: "Operações",
-    status: "rascunho",
+    status: "publicado",
     version: "1.0",
     owner: "Analista",
     area: "Contabilidade",

@@ -11,10 +11,10 @@ import {
 } from "@/components/ui/select";
 import {
   PROCESS_CATEGORIES,
-  PROCESS_STATUS_OPTIONS,
   type ProcessCategory,
   type ProcessDoc,
-  type ProcessStatus,
+  type ProcessVersion,
+  type ProcessDefinition,
 } from "@/lib/process-store";
 
 /**
@@ -109,11 +109,14 @@ function TextField({
 
 export function ProcessMetadataPanel({
   doc,
+  version,
   onChange,
 }: {
   doc: ProcessDoc;
-  onChange: (patch: Partial<ProcessDoc>) => void;
+  version: ProcessVersion;
+  onChange: (patch: Partial<ProcessDefinition>) => void;
 }) {
+  const definition = version.definition;
   return (
     <div className="space-y-4">
       <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
@@ -134,7 +137,7 @@ export function ProcessMetadataPanel({
           Categoria
         </Label>
         <Select
-          value={doc.category}
+          value={definition.category}
           onValueChange={(v) => onChange({ category: v as ProcessCategory })}
         >
           <SelectTrigger className="h-8 text-xs">
@@ -150,38 +153,14 @@ export function ProcessMetadataPanel({
         </Select>
       </div>
 
-      <div className="space-y-1.5">
-        <Label className="text-[11px] uppercase tracking-wider text-muted-foreground">
-          Status
-        </Label>
-        <Select
-          value={doc.status}
-          onValueChange={(v) => onChange({ status: v as ProcessStatus })}
-        >
-          <SelectTrigger className="h-8 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {PROCESS_STATUS_OPTIONS.map((s) => (
-              <SelectItem key={s} value={s} className="text-xs">
-                {s}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <TextField
-        label="Versão"
-        value={doc.version}
-        onChange={(version) => onChange({ version })}
-      />
+      <p className="text-xs">Versão: V{version.number} · {version.status}</p>
+      <TextField label="Nome" value={definition.name} onChange={(name) => onChange({ name })} />
       <TextField
         label="Responsável"
-        value={doc.owner}
+        value={definition.owner}
         onChange={(owner) => onChange({ owner })}
       />
-      <TextField label="Área" value={doc.area} onChange={(area) => onChange({ area })} />
+      <TextField label="Área" value={definition.area} onChange={(area) => onChange({ area })} />
 
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -194,19 +173,19 @@ export function ProcessMetadataPanel({
           <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
             Última revisão
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">{doc.revisedAt}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{version.updatedAt}</p>
         </div>
       </div>
 
       <TagField
         label="Tags"
-        values={doc.tags}
+        values={definition.tags}
         placeholder="Adicionar tag…"
         onChange={(tags) => onChange({ tags })}
       />
       <TagField
         label="Palavras-chave"
-        values={doc.keywords}
+        values={definition.keywords}
         placeholder="Adicionar palavra-chave…"
         onChange={(keywords) => onChange({ keywords })}
       />
@@ -216,7 +195,7 @@ export function ProcessMetadataPanel({
           Descrição
         </Label>
         <textarea
-          value={doc.description}
+          value={definition.description}
           onChange={(e) => onChange({ description: e.target.value })}
           rows={3}
           className="w-full resize-none rounded-md border bg-background px-2 py-1.5 text-xs leading-relaxed outline-none focus:border-border-strong"

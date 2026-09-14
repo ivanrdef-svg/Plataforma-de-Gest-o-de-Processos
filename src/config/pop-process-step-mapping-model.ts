@@ -15,6 +15,7 @@ export interface PopProcessStepMapping {
   popSectionId: string;
   processId: string;
   processStepId: string;
+  confirmedAgainstProcessVersionId?: string;
   status: PopProcessStepMappingStatus;
   source: PopProcessStepMappingSource;
   /** Presente apenas quando `source === "ia"`. */
@@ -30,6 +31,7 @@ export type PopProcessStepMappingFailure =
   | "pop-inexistente"
   | "processo-inexistente"
   | "processo-nao-vinculado"
+  | "versao-inexistente"
   | "step-inexistente"
   | "step-de-outro-processo"
   | "duplicado"
@@ -41,6 +43,7 @@ export type PopProcessStepMappingResult =
   | { ok: false; reason: PopProcessStepMappingFailure };
 
 export interface RecordAiSuggestionInput {
+  processVersionId: string;
   popId: string;
   popSectionId: string;
   processId: string;
@@ -50,6 +53,7 @@ export interface RecordAiSuggestionInput {
 }
 
 export interface CreateManualMappingInput {
+  processVersionId: string;
   popId: string;
   popSectionId: string;
   processId: string;

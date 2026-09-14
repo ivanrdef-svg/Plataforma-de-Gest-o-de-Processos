@@ -45,7 +45,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { DEMO_ENVIRONMENT } from "@/config/workspace-demo";
 import { WORKFLOW_DEMO_HISTORY } from "@/config/workflow-model";
 import { useLifecycle, type LifecycleSeed } from "@/lib/lifecycle-store";
-import { useProcessDocs } from "@/lib/process-store";
+import { getPublishedProcessVersion, useProcessDocs } from "@/lib/process-store";
 import {
   addWorkflowParticipant,
   currentWorkflowVersion,
@@ -244,7 +244,7 @@ function WorkflowWorkspace() {
             }}
           />
           <ActionButton
-            label="Reimportar etapas do processo"
+            label="Sincronizar com versão publicada do Processo"
             icon={RefreshCw}
             onClick={() => {
               if (!editable) {
@@ -258,7 +258,12 @@ function WorkflowWorkspace() {
                 toast.error("Processo de origem não encontrado");
                 return;
               }
-              syncWorkflowWithProcess(doc.id, process);
+              const source = getPublishedProcessVersion(process);
+              if (!source) {
+                toast.error("O Processo não possui versão publicada para sincronização.");
+                return;
+              }
+              syncWorkflowWithProcess(doc.id, process.id, source);
               toast.success("Etapas sincronizadas", {
                 description: "Configuração de execução preservada.",
               });
