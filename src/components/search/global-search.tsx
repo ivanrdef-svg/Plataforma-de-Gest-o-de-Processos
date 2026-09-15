@@ -9,10 +9,12 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
-import { BookOpen, Home, LayoutGrid } from "lucide-react";
+import { BookOpen, FileText, GitBranch, Home, Workflow } from "lucide-react";
 import { MODULE_GROUPS, PLATFORM_MODULES, type ModuleGroup } from "@/config/modules";
-import { KNOWLEDGE_PACKAGES } from "@/config/knowledge-demo";
-import { DEMO_WORKSPACES } from "@/config/workspace-demo";
+import { useKnowledgeDocs } from "@/lib/knowledge-store";
+import { usePopDocs } from "@/lib/pop-store";
+import { getAuthoringProcessVersion, useProcessDocs } from "@/lib/process-store";
+import { useWorkflowDocs } from "@/lib/workflow-store";
 import { useGlobalSearch } from "./global-search-context";
 
 const GROUP_ORDER: ModuleGroup[] = ["core", "execucao", "inteligencia", "governanca"];
@@ -25,6 +27,10 @@ const GROUP_ORDER: ModuleGroup[] = ["core", "execucao", "inteligencia", "governa
 export function GlobalSearch() {
   const { isOpen, setOpen, close } = useGlobalSearch();
   const navigate = useNavigate();
+  const knowledgeDocs = useKnowledgeDocs();
+  const popDocs = usePopDocs();
+  const processDocs = useProcessDocs();
+  const workflowDocs = useWorkflowDocs();
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -44,7 +50,7 @@ export function GlobalSearch() {
 
   return (
     <CommandDialog open={isOpen} onOpenChange={setOpen}>
-      <CommandInput placeholder="Pesquisar módulos, workspaces e conhecimento..." />
+      <CommandInput placeholder="Pesquisar módulos, processos, POPs e conhecimento..." />
       <CommandList>
         <CommandEmpty>Nenhum resultado encontrado.</CommandEmpty>
         <CommandGroup heading="Navegação">
@@ -52,14 +58,10 @@ export function GlobalSearch() {
             <Home className="mr-2 h-4 w-4" />
             Início
           </CommandItem>
-          <CommandItem onSelect={() => go("/workspaces")}>
-            <LayoutGrid className="mr-2 h-4 w-4" />
-            Workspaces
-          </CommandItem>
         </CommandGroup>
         <CommandSeparator />
         <CommandGroup heading="Knowledge">
-          {KNOWLEDGE_PACKAGES.map((pkg) => (
+          {knowledgeDocs.map((pkg) => (
             <CommandItem
               key={pkg.id}
               value={`${pkg.name} ${pkg.type} ${pkg.category} conhecimento pop`}
@@ -74,18 +76,50 @@ export function GlobalSearch() {
           ))}
         </CommandGroup>
         <CommandSeparator />
-        <CommandGroup heading="Workspaces e processos">
-          {DEMO_WORKSPACES.map((ws) => (
+        <CommandGroup heading="Processos">
+          {processDocs.map((process) => {
+            const definition = getAuthoringProcessVersion(process)?.definition;
+            if (!definition) return null;
+            return (
             <CommandItem
-              key={ws.id}
-              value={`${ws.name} ${ws.type} workspace processo`}
-              onSelect={() => go(`/workspaces/${ws.id}`)}
+              key={process.id}
+              value={`${definition.name} ${definition.category} ${definition.area} processo`}
+              onSelect={() => go(`/processos/${process.id}`)}
             >
-              <LayoutGrid className="mr-2 h-4 w-4" />
-              <span>{ws.name}</span>
+              <GitBranch className="mr-2 h-4 w-4" />
+              <span>{definition.name}</span>
               <span className="ml-auto text-[10px] text-muted-foreground">
-                {ws.type}
+                Processo
               </span>
+            </CommandItem>
+            );
+          })}
+        </CommandGroup>
+        <CommandSeparator />
+        <CommandGroup heading="POPs">
+          {popDocs.map((pop) => (
+            <CommandItem
+              key={pop.id}
+              value={`${pop.name} ${pop.code} ${pop.category} pop`}
+              onSelect={() => go(`/pop/${pop.id}`)}
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              <span>{pop.name}</span>
+              <span className="ml-auto text-[10px] text-muted-foreground">POP</span>
+            </CommandItem>
+          ))}
+        </CommandGroup>
+        <CommandSeparator />
+        <CommandGroup heading="Workflows">
+          {workflowDocs.map((workflow) => (
+            <CommandItem
+              key={workflow.id}
+              value={`${workflow.name} ${workflow.code} ${workflow.area} workflow`}
+              onSelect={() => go(`/workflow/${workflow.id}`)}
+            >
+              <Workflow className="mr-2 h-4 w-4" />
+              <span>{workflow.name}</span>
+              <span className="ml-auto text-[10px] text-muted-foreground">Workflow</span>
             </CommandItem>
           ))}
         </CommandGroup>

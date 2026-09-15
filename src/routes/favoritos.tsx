@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Star } from "lucide-react";
-import { PageContainer, SectionHeader } from "@/components/layout/page";
-import { DEMO_FAVORITES } from "@/config/workspace-demo";
+import { EmptyState, PageContainer, SectionHeader } from "@/components/layout/page";
+import { getAuthoringProcessVersion, useProcessDocs } from "@/lib/process-store";
 
 export const Route = createFileRoute("/favoritos")({
   component: FavoritesPage,
@@ -24,26 +24,42 @@ export const Route = createFileRoute("/favoritos")({
 });
 
 function FavoritesPage() {
+  const favorites = useProcessDocs().filter((process) => process.favorite);
+
   return (
     <PageContainer>
       <SectionHeader
         title="Favoritos"
         description="Acesso rápido aos objetos que você acompanha."
       />
-      <div className="grid gap-3 sm:grid-cols-2">
-        {DEMO_FAVORITES.map((item) => (
-          <div
-            key={item.id}
+      {favorites.length === 0 ? (
+        <EmptyState
+          icon={<Star className="h-5 w-5" />}
+          title="Nenhum favorito ainda"
+          description="Processos marcados como favoritos aparecerão aqui."
+        />
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2">
+        {favorites.map((process) => {
+          const definition = getAuthoringProcessVersion(process)?.definition;
+          if (!definition) return null;
+          return (
+          <Link
+            key={process.id}
+            to="/processos/$processId"
+            params={{ processId: process.id }}
             className="flex items-center gap-3 rounded-xl border bg-card p-4 transition-shadow hover:shadow-soft"
           >
             <Star className="h-4 w-4 shrink-0 text-muted-foreground" />
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium">{item.title}</p>
-              <p className="text-[11px] text-muted-foreground">{item.type}</p>
+              <p className="truncate text-sm font-medium">{definition.name}</p>
+              <p className="text-[11px] text-muted-foreground">Processo</p>
             </div>
-          </div>
-        ))}
-      </div>
+          </Link>
+          );
+        })}
+        </div>
+      )}
     </PageContainer>
   );
 }
