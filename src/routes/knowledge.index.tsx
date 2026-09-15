@@ -244,6 +244,7 @@ function KnowledgeExplorer() {
 
 function KnowledgeCenterPage() {
   const docs = useKnowledgeDocs();
+  const categoryCount = new Set(docs.map((doc) => doc.category)).size;
   return (
     <WorkspaceLayout
       title="Knowledge Center"
@@ -252,7 +253,7 @@ function KnowledgeCenterPage() {
       contextBar={
         <span>
           {docs.length} Knowledge Packages ·{" "}
-          {KNOWLEDGE_CATEGORIES.length} categorias
+          {categoryCount} categorias
         </span>
       }
       tabs={[

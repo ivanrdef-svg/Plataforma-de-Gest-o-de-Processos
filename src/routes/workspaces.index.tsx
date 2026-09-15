@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { LayoutGrid } from "lucide-react";
 import { WorkspaceLayout } from "@/components/workspace/workspace-layout";
 import { WorkspaceAiPanel } from "@/components/workspace/workspace-ai-panel";
-import { WorkspaceStatusBar } from "@/components/workspace/workspace-status-bar";
 import { EmptyState } from "@/components/layout/page";
 
 export const Route = createFileRoute("/workspaces/")({
@@ -58,7 +57,6 @@ function WorkspacesPage() {
         },
       ]}
       sidePanel={<WorkspaceAiPanel />}
-      statusBar={<WorkspaceStatusBar status="Pronto" lastSync="—" version="—" environment="—" />}
     />
   );
 }
