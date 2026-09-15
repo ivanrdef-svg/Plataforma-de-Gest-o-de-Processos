@@ -163,13 +163,7 @@ function KnowledgeExplorer() {
 
   return (
     <div className="space-y-6">
-      <KnowledgeStats
-        overrides={{
-          packages: docs.length,
-          revisao: docs.filter((d) => d.status === "em revisão").length,
-          publicados: docs.filter((d) => d.status === "publicado").length,
-        }}
-      />
+      <KnowledgeStats docs={docs} />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
@@ -224,6 +218,13 @@ function KnowledgeExplorer() {
             <KnowledgeCardSkeleton key={i} />
           ))}
         </div>
+      ) : docs.length === 0 ? (
+        <EmptyState
+          icon={<BookOpen className="h-5 w-5" />}
+          title="Nenhum conteúdo de conhecimento ainda."
+          description="Crie o primeiro conteúdo para iniciar a base de conhecimento."
+          action={<NewKnowledgeMenu />}
+        />
       ) : results.length > 0 ? (
         <div className="grid animate-fade-in gap-3 sm:grid-cols-2 2xl:grid-cols-3">
           {results.map((pkg) => (
