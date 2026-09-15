@@ -1,27 +1,19 @@
-# Build 031 — Etapa 2: rastreabilidade na interface
+# Cleanup 001 — Fases A, B e C
 
 ## Objetivo
-Exibir, sem criar novos vínculos ou fontes de verdade, a cadeia derivada entre seção do POP, etapa do Processo, BPMN, Workflow e quantidade de execuções.
+Remover dados demonstrativos das áreas de Knowledge, Workspaces, Favoritos, pesquisa e Home, sem apagar conteúdo persistido nem alterar os motores de Processo, versões, Runtime, BPM ou Workflow.
 
 ## Implementação
-- Consumir os hooks reativos existentes de mapeamentos, BPMN, Workflows e execuções na aba **Mapeamento com Processo**.
-- Calcular uma única vez, com `useMemo`, o resumo de `getPopTraceabilitySummary` para todas as seções.
-- Manter o bloco atual de mapping e acrescentar abaixo dele:
-  - aviso terminal quando a etapa estiver inconsistente;
-  - nós BPMN reais, ou a mensagem de ausência;
-  - etapas de Workflow reais e sua contagem de execuções, ou a mensagem de ausência;
-  - aviso não operacional para sugestões pendentes.
-- Renderizar ações somente quando o elo correspondente realmente existir.
-- Navegar ao Processo abrindo a aba existente `bpmn` (**Modelagem BPM**) sem foco em nó; navegar ao Workflow pela rota existente `/workflow/$workflowId`, sem foco em etapa.
-- Manter a contagem já existente em **POPs vinculados**, confirmando que conta somente mappings confirmados pertencentes ao Processo atual.
+- **Fase A:** fazer o Knowledge Store listar somente documentos persistidos; calcular apenas totais e status reais; mostrar estado vazio com a ação **Novo**.
+- **Fase B:** remover o fallback de workspace desconhecido; ocultar Workspaces da navegação e da Home; listar somente Processos realmente favoritos; alimentar a pesquisa apenas com stores reais de Knowledge e Processo.
+- **Fase C:** retirar da Home as seções sem fonte real de recentes/workspaces; usar Processos persistidos com versão de trabalho em “Processos em andamento”; exibir favoritos reais e zerar somente indicadores com contagem real disponível.
 
-## Detalhes técnicos
-- Nenhuma regra de domínio será recriada em React; a interface consumirá exclusivamente o resultado de `getPopTraceabilitySummary`.
-- Para abrir a aba BPMN, será adicionada seleção inicial opcional de aba ao `WorkspaceLayout` via navegação interna da rota existente; isso não cria foco de nó, rota nova nem relação estrutural.
-- O componente visual de rastreabilidade será pequeno e separado do bloco de edição do mapping.
-- Inconsistência interrompe BPMN/Workflow somente na apresentação daquela seção, preservando o mapping visível.
+## Limites
+- Não limpar nem migrar o armazenamento local.
+- Não remover rotas ou componentes existentes de Workspace.
+- Não alterar ProcessVersion, H002, H003, Runtime, BPM ou Workflow.
+- Não avançar para fases posteriores sem confirmação.
 
 ## Validação
-- Verificar por código que arrays vazios nunca geram botões, sugestões nunca geram links operacionais e inconsistências encerram a cadeia visual.
-- Executar typecheck, lint e build.
-- Entregar o relatório final completo nos tópicos solicitados, sem avançar para outro Build.
+- Confirmar por busca que as telas alteradas não consomem as constantes demo abrangidas.
+- Executar typecheck e build.

@@ -1,7 +1,6 @@
-# Build 031 — Etapa 2
+# Cleanup 001 — Fases A, B e C
 
-- [x] Integrar rastreabilidade derivada na aba de mapeamento do POP
-- [x] Permitir seleção inicial da aba BPMN, sem foco em nó
-- [x] Confirmar/manter contagem de seções mapeadas em POPs vinculados ao Processo
-- [x] Validar cenários de honestidade e navegação no código
-- [x] Executar verificações globais (lint mantém pendências anteriores fora do Build 031)
+- [ ] Fase A: Knowledge somente com dados persistidos e indicadores reais
+- [ ] Fase B: retirar demos de Workspaces, Favoritos e Pesquisa Global
+- [ ] Fase C: retirar demos da Home e usar somente contagens/fontes reais
+- [ ] Validar typecheck e build
