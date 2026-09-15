@@ -126,7 +126,9 @@ export function GlobalSearch() {
         <CommandSeparator />
         {GROUP_ORDER.map((group) => (
           <CommandGroup key={group} heading={MODULE_GROUPS[group].label}>
-            {PLATFORM_MODULES.filter((m) => m.group === group).map((module) => {
+            {PLATFORM_MODULES.filter(
+              (module) => module.group === group && module.id !== "workspaces",
+            ).map((module) => {
               const Icon = module.icon;
               return (
                 <CommandItem
