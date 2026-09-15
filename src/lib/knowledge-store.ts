@@ -2,16 +2,14 @@
  * Build 003 — armazenamento local de Knowledge Packages.
  *
  * O backend real chega em builds futuras; a interface já funciona como
- * definitiva. Os pacotes de demonstração (`KNOWLEDGE_PACKAGES`) continuam
- * existindo e podem ser editados — as alterações ficam guardadas aqui.
+ * definitiva. Somente documentos efetivamente persistidos são expostos.
  */
 
 import { useSyncExternalStore } from "react";
-import {
-  KNOWLEDGE_PACKAGES,
-  type KnowledgeCategory,
-  type KnowledgePackage,
-  type KnowledgeStatus,
+import type {
+  KnowledgeCategory,
+  KnowledgePackage,
+  KnowledgeStatus,
 } from "@/config/knowledge-demo";
 import type { KnowledgeType } from "@/config/knowledge-types";
 import {
@@ -73,24 +71,13 @@ function subscribe(listener: () => void) {
   return () => listeners.delete(listener);
 }
 
-/** Documento base derivado de um pacote de demonstração. */
-function baseDoc(pkg: KnowledgePackage): KnowledgeDoc {
-  return {
-    ...pkg,
-    tags: [pkg.category, pkg.type],
-    keywords: [],
-    blocks: KNOWLEDGE_TEMPLATES[pkg.type].blocks(),
-  };
-}
-
 let snapshotCache: KnowledgeDoc[] | null = null;
 
 function buildList(): KnowledgeDoc[] {
   ensureHydrated();
-  const demo = KNOWLEDGE_PACKAGES.map((p) => state[p.id] ?? baseDoc(p));
-  const custom = Object.values(state).filter((d) => d.custom);
-  custom.sort((a, b) => (b.savedAt ?? "").localeCompare(a.savedAt ?? ""));
-  return [...custom, ...demo];
+  return Object.values(state).sort((a, b) =>
+    (b.savedAt ?? "").localeCompare(a.savedAt ?? ""),
+  );
 }
 
 function getSnapshot(): KnowledgeDoc[] {
@@ -98,7 +85,7 @@ function getSnapshot(): KnowledgeDoc[] {
   return snapshotCache;
 }
 
-const serverSnapshot: KnowledgeDoc[] = KNOWLEDGE_PACKAGES.map(baseDoc);
+const serverSnapshot: KnowledgeDoc[] = [];
 
 function getServerSnapshot() {
   return serverSnapshot;
@@ -115,9 +102,7 @@ export function useKnowledgeDoc(id: string): KnowledgeDoc | undefined {
 
 export function getKnowledgeDoc(id: string): KnowledgeDoc | undefined {
   ensureHydrated();
-  if (state[id]) return state[id];
-  const pkg = KNOWLEDGE_PACKAGES.find((p) => p.id === id);
-  return pkg ? baseDoc(pkg) : undefined;
+  return state[id];
 }
 
 function slugify(value: string) {
@@ -131,10 +116,7 @@ function slugify(value: string) {
 }
 
 function uniqueId(base: string) {
-  const existing = new Set([
-    ...KNOWLEDGE_PACKAGES.map((p) => p.id),
-    ...Object.keys(state),
-  ]);
+  const existing = new Set(Object.keys(state));
   let id = base || "knowledge";
   let n = 2;
   while (existing.has(id)) id = `${base}-${n++}`;

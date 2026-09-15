@@ -12,7 +12,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { BookOpen, Home, Inbox, LayoutGrid, Search, Settings2, Star } from "lucide-react";
+import { BookOpen, Home, Inbox, Search, Settings2, Star } from "lucide-react";
 import { MODULE_GROUPS, PLATFORM_MODULES, type ModuleGroup } from "@/config/modules";
 import { cn } from "@/lib/utils";
 import { useGlobalSearch } from "@/components/search/global-search-context";
@@ -80,18 +80,6 @@ export function AppSidebar() {
                         {stats.abertas}
                       </span>
                     )}
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isActive("/workspaces")}
-                  tooltip="Workspaces"
-                >
-                  <Link to="/workspaces" className="flex items-center gap-2.5">
-                    <LayoutGrid className="h-4 w-4" />
-                    {!collapsed && <span>Workspaces</span>}
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

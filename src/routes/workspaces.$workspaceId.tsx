@@ -39,7 +39,37 @@ export const Route = createFileRoute("/workspaces/$workspaceId")({
 
 function WorkspaceDetail() {
   const { workspaceId } = Route.useParams();
-  const ws = DEMO_WORKSPACES.find((w) => w.id === workspaceId) ?? DEMO_WORKSPACES[0]!;
+  const ws = DEMO_WORKSPACES.find((w) => w.id === workspaceId);
+
+  if (!ws) {
+    return (
+      <WorkspaceLayout
+        title="Workspace não encontrado"
+        subtitle="O workspace solicitado não existe."
+        actions={
+          <Button asChild variant="ghost" size="sm" className="gap-1.5">
+            <Link to="/workspaces">
+              <ChevronLeft className="h-4 w-4" />
+              <span className="hidden sm:inline">Workspaces</span>
+            </Link>
+          </Button>
+        }
+        tabs={[
+          {
+            id: "indisponivel",
+            label: "Workspace",
+            content: (
+              <EmptyState
+                icon={<FileText className="h-5 w-5" />}
+                title="Workspace não encontrado"
+                description="Verifique o endereço ou retorne à lista de workspaces."
+              />
+            ),
+          },
+        ]}
+      />
+    );
+  }
 
   return (
     <WorkspaceLayout
